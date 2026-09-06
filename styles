@@ -1,0 +1,131 @@
+/* =============================================================
+   MEDISFARMA | cargue_styles.css
+   Paleta corporativa: azul, verde y blanco
+   ============================================================= */
+
+:root {
+  --mf-azul: #0d6efd;
+  --mf-azul-osc: #0a4fb5;
+  --mf-verde: #2fb457;
+  --mf-verde-osc: #218838;
+  --mf-gris: #f4f7fb;
+  --mf-borde: #dbe4f0;
+  --mf-rojo: #dc3545;
+}
+
+body {
+  background: var(--mf-gris);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  color: #1f2d3d;
+}
+
+/* ---------- Barra superior ---------- */
+.mf-navbar {
+  background: linear-gradient(90deg, var(--mf-azul) 0%, var(--mf-verde) 100%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(13, 110, 253, .25);
+}
+.mf-logo {
+  height: 48px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+.mf-navbar .mf-titulo { font-weight: 700; letter-spacing: .3px; line-height: 1.1; }
+.mf-navbar .mf-sub { font-size: .75rem; opacity: .9; }
+
+/* ---------- Pestanas ---------- */
+.nav-tabs .nav-link {
+  color: var(--mf-azul-osc);
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.nav-tabs .nav-link.active {
+  color: #fff;
+  background: var(--mf-azul);
+  border-color: var(--mf-azul);
+}
+.nav-tabs .nav-link .dot {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; margin-right: 6px;
+}
+
+/* ---------- Tarjetas ---------- */
+.mf-card {
+  background: #fff;
+  border: 1px solid var(--mf-borde);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(31, 45, 61, .06);
+}
+.mf-card-header {
+  border-bottom: 1px solid var(--mf-borde);
+  padding: 14px 18px;
+  font-weight: 700;
+  border-radius: 14px 14px 0 0;
+  background: #fbfdff;
+}
+.mf-card-body { padding: 18px; }
+
+/* Panel de configuracion de carpeta de Drive */
+.mf-drive-panel {
+  background: #eef6ff;
+  border: 1px dashed var(--mf-azul);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.mf-drive-panel label { font-weight: 600; font-size: .85rem; color: var(--mf-azul-osc); }
+
+/* ---------- Formularios ---------- */
+.form-label { font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .2px; }
+.form-control, .form-select { border-radius: 8px; border-color: var(--mf-borde); }
+.form-control:focus, .form-select:focus {
+  border-color: var(--mf-verde);
+  box-shadow: 0 0 0 .18rem rgba(47, 180, 87, .18);
+}
+.form-control[readonly], .campo-bloqueado {
+  background: #eef1f6 !important;
+  color: #465063;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+.campo-auto-ok { border-color: var(--mf-verde) !important; }
+.is-invalid-mf { border-color: var(--mf-rojo) !important; background: #fff5f5; }
+
+/* ---------- Botones ---------- */
+.btn-mf-azul { background: var(--mf-azul); border-color: var(--mf-azul); color: #fff; font-weight: 600; }
+.btn-mf-azul:hover { background: var(--mf-azul-osc); color: #fff; }
+.btn-mf-verde { background: var(--mf-verde); border-color: var(--mf-verde); color: #fff; font-weight: 600; }
+.btn-mf-verde:hover { background: var(--mf-verde-osc); color: #fff; }
+.btn-backup { font-weight: 700; }
+
+/* Boton flotante de respaldo */
+.mf-float-backup {
+  position: fixed; right: 22px; bottom: 22px; z-index: 1050;
+  border-radius: 40px; padding: 12px 20px;
+  box-shadow: 0 8px 22px rgba(33, 136, 56, .35);
+}
+
+/* ---------- Alertas / estado ---------- */
+.mf-estado { font-size: .82rem; font-weight: 600; }
+.mf-badge-urgente {
+  background: var(--mf-rojo); color: #fff;
+  padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+}
+.mf-toast-wrap { position: fixed; top: 78px; right: 18px; z-index: 1090; width: 340px; }
+
+/* Tabla de items en memoria (recepcion tecnica / inventario) */
+.mf-tabla-items { font-size: .82rem; }
+.mf-tabla-items thead th { background: var(--mf-azul); color: #fff; white-space: nowrap; }
+.mf-dif-negativa { background: #ffe6e6 !important; color: var(--mf-rojo); font-weight: 700; }
+.mf-dif-positiva { background: #fff8e1 !important; font-weight: 700; }
+.mf-dif-cero { background: #e9f9ee !important; color: var(--mf-verde-osc); font-weight: 700; }
+
+/* ---------- Impresion de planilla ---------- */
+@media print {
+  .no-print, .mf-navbar, .nav-tabs, .mf-drive-panel, .mf-float-backup { display: none !important; }
+  body { background: #fff; }
+  .mf-card { box-shadow: none; border: none; }
+  .print-only { display: block !important; }
+}
+.print-only { display: none; }
