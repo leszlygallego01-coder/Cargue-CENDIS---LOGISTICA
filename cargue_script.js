@@ -37,7 +37,7 @@ function limpiarCampos(prefijo) {
 }
 
 function limpiarTarjeta(num) {
-  var prefijos = { 1: 's_', 2: 'b_', 3: 't3_', 4: 't4_', 5: 'f_', 6: 'i_' };
+  var prefijos = { 1: 's_', 2: 'b_', 3: 't3_', 4: 'log_', 5: 'f_', 6: 'i_' };
   limpiarCampos(prefijos[num] || '');
   showToast('Tarjeta ' + num + ' limpiada.', 'info');
 }
@@ -639,24 +639,42 @@ function t3Guardar() {
 /* ═════════════════════════════════════════════════════════════════════════════════
    9. TARJETA 4 — LOGISTICA Y DESPACHOS
    ═════════════════════════════════════════════════════════════════════════════════ */
-function t4Buscar() {
-  var traslado = $('t4_traslado') ? $('t4_traslado').value.trim() : '';
+function logBuscar() {
+  var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
   var folderId = CONFIG.folders.trasladosConsulta;
-  var estado = $('t4_estadoTraslado');
+  var estado = $('log_estadoTraslado');
+  var despachoEstado = $('log_despacho_estado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
+  if (despachoEstado) despachoEstado.textContent = '';
 
   apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
         var reg = r.registro;
-        if ($('t4_bodega_origen')) $('t4_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
-        if ($('t4_destino')) $('t4_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
-        if ($('t4_zona')) $('t4_zona').value = reg['Zona'] || '';
+        /* Auto-fill Recepcion y Entrega */
+        if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
+        if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        if ($('log_zona')) $('log_zona').value = reg['Zona'] || '';
+        if ($('log_urgente') && reg['Urgente']) $('log_urgente').value = reg['Urgente'];
+        if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
+
+        /* Fill Despacho read-only panel */
+        if ($('log_d_bodega_origen')) $('log_d_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
+        if ($('log_d_destino')) $('log_d_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        if ($('log_d_zona')) $('log_d_zona').value = reg['Zona'] || '';
+        if ($('log_d_cantidad')) $('log_d_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || '';
+        if ($('log_d_urgente')) $('log_d_urgente').value = reg['Urgente'] || 'NO';
+        if ($('log_d_resp_cendis')) $('log_d_resp_cendis').value = reg['RESPONSABLE DE ENTREGA CENDIS'] || reg['Responsable de Entrega'] || '';
+        if ($('log_d_quien_alista')) $('log_d_quien_alista').value = reg['QUIEN ALISTA'] || reg['Quien Alista'] || reg['Quien Alisto'] || '';
+        if ($('log_d_marca_temporal')) $('log_d_marca_temporal').value = reg['Marca temporal'] || reg['Fecha Inicial'] || reg['Timestamp'] || '';
+
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
+        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">Datos cargados</span>';
         showToast('Traslado <strong>' + traslado + '</strong> encontrado.', 'success');
       } else {
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-danger">Sin datos</span>';
         showToast('Traslado no encontrado.', 'danger');
       }
     })
@@ -666,23 +684,28 @@ function t4Buscar() {
     });
 }
 
-function t4Guardar() {
-  var traslado = $('t4_traslado') ? $('t4_traslado').value.trim() : '';
+function logGuardarRecepcion() {
+  var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  var quienRecibio = $('log_quien_recibio') ? $('log_quien_recibio').value : '';
+  if (!quienRecibio) { showToast('Seleccione quien recibio.', 'danger'); return; }
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
   var registro = {
     'Documento Traslado': traslado,
-    'Bodega Origen': $('t4_bodega_origen') ? $('t4_bodega_origen').value : '',
-    'Bodega Destino': $('t4_destino') ? $('t4_destino').value : '',
-    'Zona': $('t4_zona') ? $('t4_zona').value : '',
-    'Fecha Envio': $('t4_fecha_envio') ? $('t4_fecha_envio').value : '',
-    'Conductor / Mensajero': $('t4_conductor') ? $('t4_conductor').value : '',
-    'Placa': $('t4_placa') ? $('t4_placa').value : '',
-    'Planilla': $('t4_planilla') ? $('t4_planilla').value : '',
-    'Quien Recibe': $('t4_quien_recibe') ? $('t4_quien_recibe').value.trim() : '',
-    'Observacion': $('t4_observacion') ? $('t4_observacion').value.trim() : '',
+    'Bodega Origen': $('log_bodega_origen') ? $('log_bodega_origen').value : '',
+    'Bodega Destino': $('log_destino') ? $('log_destino').value : '',
+    'Zona': $('log_zona') ? $('log_zona').value : '',
+    'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
+    'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
+    'Quien Recibio': quienRecibio,
+    'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
+    'Cantidad': $('log_d_cantidad') ? $('log_d_cantidad').value : '',
+    'Responsable Entrega CENDIS': $('log_d_resp_cendis') ? $('log_d_resp_cendis').value : '',
+    'Quien Alista': $('log_d_quien_alista') ? $('log_d_quien_alista').value : '',
+    'Marca Temporal': $('log_d_marca_temporal') ? $('log_d_marca_temporal').value : '',
+    'Revisado': 'NO',
     'Marca temporal': ahora(),
     'Perfil': perfilActivo(),
     'Usuario': nombreUsuario()
@@ -691,10 +714,10 @@ function t4Guardar() {
   apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'logistica', registro: registro })
     .then(function (r) {
       if (r && r.ok) {
-        showToast('&#128190; <strong>Logistica</strong> guardada en Drive.', 'success');
-        limpiarCampos('t4_');
+        showToast('&#128190; <strong>Recepcion</strong> guardada en Drive.', 'success');
+        logLimpiar();
       } else {
-        showToast('Error al guardar Logistica: ' + (r.error || ''), 'danger');
+        showToast('Error al guardar Recepcion: ' + (r.error || ''), 'danger');
       }
     })
     .catch(function (err) {
@@ -702,8 +725,14 @@ function t4Guardar() {
     });
 }
 
-function t4Imprimir() {
-  var traslado = $('t4_traslado') ? $('t4_traslado').value.trim() : '';
+function logLimpiar() {
+  limpiarCampos('log_');
+  var despachoEstado = $('log_despacho_estado');
+  if (despachoEstado) despachoEstado.textContent = '';
+}
+
+function logImprimir() {
+  var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!traslado) { showToast('Busque un traslado primero.', 'danger'); return; }
   var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
 
@@ -886,9 +915,10 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('t2_btnGuardar'); if (btn) btn.addEventListener('click', t2Guardar);
   btn = $('t3_btnValidar'); if (btn) btn.addEventListener('click', t3ValidarTraslado);
   btn = $('t3_btnGuardar'); if (btn) btn.addEventListener('click', t3Guardar);
-  btn = $('t4_btnBuscar');  if (btn) btn.addEventListener('click', t4Buscar);
-  btn = $('t4_btnGuardar'); if (btn) btn.addEventListener('click', t4Guardar);
-  btn = $('t4_btnImprimir'); if (btn) btn.addEventListener('click', t4Imprimir);
+  btn = $('log_btnBuscar');  if (btn) btn.addEventListener('click', logBuscar);
+  btn = $('log_btnGuardar'); if (btn) btn.addEventListener('click', logGuardarRecepcion);
+  btn = $('log_btnImprimir'); if (btn) btn.addEventListener('click', logImprimir);
+  btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
   btn = $('t5_btnGuardar'); if (btn) btn.addEventListener('click', t5Guardar);
   btn = $('t6_btnAgregar'); if (btn) btn.addEventListener('click', t6AgregarItem);
   btn = $('t6_btnGuardar'); if (btn) btn.addEventListener('click', t6Guardar);
@@ -902,15 +932,6 @@ document.addEventListener('DOMContentLoaded', function () {
   // Perfil selector
   var sel = $('selPerfil');
   if (sel) sel.addEventListener('change', function () { seleccionarPerfil(sel.value); });
-
-  // Conductores dropdown
-  var condSel = $('t4_conductor');
-  if (condSel) {
-    condSel.innerHTML = '<option value="">Seleccione...</option>';
-    (CONFIG.conductores || CONFIG_DEFAULT.conductores).forEach(function (c) {
-      condSel.innerHTML += '<option>' + c + '</option>';
-    });
-  }
 
   // Diferencia automatica en Recepcion
   var bEnv = $('b_enviada'), bRec = $('b_recibida'), bDif = $('b_diferencia');
