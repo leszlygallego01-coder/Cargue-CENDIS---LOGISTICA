@@ -305,23 +305,36 @@
           </div>
 
           <!-- Campos autocompletados (SOLO LECTURA) -->
-          <h6 class="text-primary fw-bold">Datos traidos desde Google Drive (bloqueados)</h6>
+          <h6 class="text-primary fw-bold">Datos traídos desde Google Drive (bloqueados)</h6>
           <div class="row g-3 mb-3">
+            <!-- ═══ VISIBLES (6 casillas requeridas) ═══ -->
             <div class="col-md-4"><label class="form-label">Bodega Origen</label>
               <input class="form-control campo-bloqueado" id="t1_bodega_origen" readonly></div>
-            <div class="col-md-4"><label class="form-label">Destino</label>
+            <div class="col-md-4"><label class="form-label">Bodega Destino</label>
               <input class="form-control campo-bloqueado" id="t1_destino" readonly></div>
             <div class="col-md-4"><label class="form-label">Zona</label>
               <input class="form-control campo-bloqueado" id="t1_zona" readonly></div>
-            <div class="col-md-3"><label class="form-label">Cantidad</label>
+            <div class="col-md-2"><label class="form-label">Cantidad</label>
               <input class="form-control campo-bloqueado" id="t1_cantidad" readonly></div>
-            <div class="col-md-3"><label class="form-label">Tipo</label>
+            <div class="col-md-2"><label class="form-label">Tipo</label>
               <input class="form-control campo-bloqueado" id="t1_tipo" readonly></div>
-            <div class="col-md-3"><label class="form-label">Urgente</label>
+            <div class="col-md-2"><label class="form-label">Urgente</label>
               <input class="form-control campo-bloqueado" id="t1_urgente" readonly></div>
-            <div class="col-md-3 d-flex align-items-end">
+            <div class="col-md-2 d-flex align-items-end">
               <span id="t1_badgeUrgente"></span>
             </div>
+
+            <!-- ═══ OCULTOS (datos internos, se cargan igualmente) ═══ -->
+            <div class="d-none"><input id="t1_traslado_mostrar" readonly></div>
+            <div class="d-none"><input id="t1_fecha" readonly></div>
+            <div class="d-none"><input id="t1_recibido" readonly></div>
+            <div class="d-none"><input id="t1_codigo" readonly></div>
+            <div class="d-none"><input id="t1_descripcion" readonly></div>
+            <div class="d-none"><input id="t1_unidades" readonly></div>
+            <div class="d-none"><input id="t1_usuario" readonly></div>
+            <div class="d-none"><input id="t1_lote" readonly></div>
+            <div class="d-none"><input id="t1_fechaVenc" readonly></div>
+            <div class="d-none"><input id="t1_observaciones_drive" readonly></div>
           </div>
 
           <!-- Campos nuevos (EDITABLES) -->
