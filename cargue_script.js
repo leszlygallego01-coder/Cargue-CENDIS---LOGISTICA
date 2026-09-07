@@ -77,7 +77,7 @@ function verificarLogin() {
     errDiv.style.display = 'block';
     errDiv.textContent = 'Seleccione un perfil.'; return;
   }
-  if (CREDENCIALES[usuario] && CREDENCIALES[usuario] === clave) {
+  if (CREDENCIALES[usuario] && CREDENCIALES[usuario].toLowerCase() === clave.toLowerCase()) {
     localStorage.setItem(LS_LOGIN, usuario);
     PERFIL_ACTIVO = usuario;
     localStorage.setItem(LS_PERFIL, usuario);
@@ -481,7 +481,5 @@ async function api(action, payload = {}) {
     body: JSON.stringify(Object.assign({ action }, payload))
   });
   const data = await res.json();
-  if (data.ok === false) throw new Error(data.error || 'Error del backend');
-  return data;
-    }
+  if (data.ok === false) throw new Error(data.error || 'Error del   }
     
