@@ -484,14 +484,26 @@ const ALIAS = {
 /** POST JSON via text/plain para evitar preflight CORS en Apps Script. */
 async function api(action, payload = {}) {
   if (!CONFIG.apiUrl) throw new Error('No se ha configurado la URL de la Web App.');
-  const res = await fetch(CONFIG.apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ action }, payload))
-  });
-  const data = await res.json();
-  if (data.ok === false) throw new Error(data.error || 'Error del backend');
-  return data;
+  try {
+    const res = await fetch(CONFIG.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action }, payload))
+    });
+    /* Si la respuesta es HTML (Google login redirect), detectarlo */
+    const ct = res.headers.get('Content-Type') || '';
+    if (ct.includes('text/html')) {
+      throw new Error('La Web App requiere autenticacion. Redespliegue con acceso "Cualquier usuario" (publico).');
+    }
+    const data = await res.json();
+    if (data.ok === false) throw new Error(data.error || 'Error del backend');
+    return data;
+  } catch (e) {
+    if (e.message && e.message.includes('Failed to fetch')) {
+      throw new Error('No se pudo conectar a la Web App. Verifique: 1) La URL es correcta, 2) La Web App esta desplegada como "Cualquier usuario" (acceso publico), 3) No hay redireccion a login de Google.');
+    }
+    throw e;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -1241,7 +1253,12 @@ function pintarPerfilesUsuario() {
 }
 
 async function verificarApi() {
-  if (CONFIG.modoLocal || !CONFIG.apiUrl) return;
+  if (!CONFIG.apiUrl) {
+    $('estadoApi').className = 'badge bg-warning text-dark';
+    $('estadoApi').textContent = 'Sin URL configurada';
+    return;
+  }
+  if (CONFIG.modoLocal) return;
   try {
     await api('ping');
     $('estadoApi').className = 'badge bg-success';
@@ -1249,6 +1266,33 @@ async function verificarApi() {
   } catch (e) {
     $('estadoApi').className = 'badge bg-danger';
     $('estadoApi').textContent = 'Sin conexion';
+    console.error('Error verificacion API:', e.message);
+    toast('Error de conexion: ' + e.message, 'danger');
+  }
+}
+
+async function probarConexion() {
+  const btn = $('btnProbarApi');
+  const badge = $('estadoApi');
+  if (btn) { btn.disabled = true; btn.innerHTML = '&\#8987; Probando...'; }
+  badge.className = 'badge bg-warning text-dark';
+  badge.textContent = 'Probando conexion...';
+  try {
+    await api('ping');
+    badge.className = 'badge bg-success';
+    badge.textContent = 'Conectado a Drive';
+    toast('Conexion exitosa con Google Drive', 'success');
+  } catch (e) {
+    badge.className = 'badge bg-danger';
+    badge.textContent = 'Sin conexion';
+    let msg = e.message || 'Error desconocido';
+    if (msg.includes('Failed to fetch') || msg.includes('No se pudo conectar')) {
+      msg = 'La Web App requiere acceso publico. Vaya a Apps Script > Implementar > Nueva implementacion > Quien tiene acceso: Cualquier usuario.';
+    }
+    toast('Error: ' + msg, 'danger');
+    console.error('Prueba de conexion fallida:', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '&\#127760; Probar Conexion'; }
   }
 }
 
@@ -1270,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btnLogin').addEventListener('click', verificarLogin);
   $('loginContrasena').addEventListener('keydown', e => { if (e.key === 'Enter') verificarLogin(); });
   $('btnCerrarSesion').addEventListener('click', cerrarSesion);
+  if ($('btnProbarApi')) $('btnProbarApi').addEventListener('click', probarConexion);
 
   pintarConfig();
   verificarApi();
