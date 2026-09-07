@@ -320,6 +320,28 @@ body.mf-login-activo {
 .rot-badge-pitar    { background: var(--mf-azul); }
 .rot-badge-empacar  { background: var(--mf-ambar, #ffc107); color: #5a4200; }
 
+/* ---------- Rotacion: badges de grupo por color ---------- */
+.rot-grupo-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .3px;
+  vertical-align: middle;
+  margin: 2px;
+}
+.rot-grupo-verde-menta { background: #3eb489; }
+.rot-grupo-naranja     { background: #FF8C00; }
+.rot-grupo-verde       { background: #2fb457; }
+.rot-grupo-rojo        { background: #dc3545; }
+.rot-grupo-morado      { background: #6f42c1; }
+.rot-grupo-amarillo    { background: #ffc107; color: #5a4200; }
+.rot-grupo-azul        { background: #0d6efd; }
+.rot-grupo-gris        { background: #6c757d; }
+.rot-grupo-tb5         { background: #6c757d; border: 2px dashed #495057; }
+
 /* ---------- Rotacion: campo de solo lectura con fondo ---------- */
 .campo-rotacion {
   background: #eef6ff !important;
