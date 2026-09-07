@@ -14,6 +14,40 @@
 </head>
 <body>
 
+<!-- ============================ PANTALLA DE LOGIN ============================ -->
+<div class="mf-login-overlay" id="pantallaLogin">
+  <div class="mf-login-box">
+    <div class="mf-login-header">
+      <img src="assets/logo.jpeg" alt="MEDISFARMA">
+      <h4>SISTEMA INTEGRAL DE GESTION LOGISTICA</h4>
+      <p>Modulo CARGUE &middot; Inicio de Sesion</p>
+    </div>
+    <div class="mf-login-body">
+      <div class="mf-login-error" id="loginError">Usuario o contrasena incorrectos</div>
+      <div class="mb-3">
+        <label for="loginUsuario">Usuario / Perfil</label>
+        <select class="form-select" id="loginUsuario">
+          <option value="">Seleccione su perfil...</option>
+          <option value="administrador">&#128081; Administrador</option>
+          <option value="lider">&#128104;&#8205;&#128188; Lider</option>
+          <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
+          <option value="recibido_logistica">&#9989; Recibido Logistica</option>
+          <option value="planillar_logistica">&#128203; Planillar Logistica</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="loginContrasena">Contrasena</label>
+        <input type="password" class="form-control" id="loginContrasena" placeholder="Ingrese su contrasena">
+      </div>
+      <button class="mf-login-btn" id="btnLogin">INGRESAR AL SISTEMA</button>
+    </div>
+    <div class="mf-login-footer">
+      MEDISFARMA &middot; Unidos por su Salud<br>
+      Acceso exclusivo personal autorizado
+    </div>
+  </div>
+</div>
+
 <!-- ============================ BARRA SUPERIOR ============================ -->
 <nav class="mf-navbar py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2 no-print">
   <div class="d-flex align-items-center gap-3">
@@ -43,6 +77,7 @@
     <button class="btn btn-mf-verde btn-sm btn-backup" id="btnBackupTop">
       &#128190; DESCARGAR ARCHIVO DE SEGURIDAD (BACKUP)
     </button>
+    <button class="btn btn-outline-light btn-sm" id="btnCerrarSesion">&#128274; Cerrar Sesion</button>
     <a class="btn btn-outline-light btn-sm" href="visor.html" target="_blank">Ir al VISOR &rarr;</a>
   </div>
 </nav>
@@ -80,7 +115,7 @@
             <div class="col-md-7">
               <label>ID Carpeta Drive Despachos</label>
               <input type="text" class="form-control form-control-sm" id="folder_despachos"
-                     value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
+                     value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_">
             </div>
             <div class="col-md-5 d-flex gap-2">
               <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
@@ -166,11 +201,23 @@
 
           <div class="mf-drive-panel row g-2 align-items-end no-print">
             <div class="col-md-7">
-              <label>ID Carpeta Drive Logistica</label>
-              <input type="text" class="form-control form-control-sm" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
+              <label>ID Carpeta Drive Despachos (Validacion y traer datos)</label>
+              <input type="text" class="form-control form-control-sm" id="folder_despachos_t2" value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_">
             </div>
             <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('logistica')">Validar carpeta</button>
+              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
+              <span class="mf-estado align-self-center" id="estado_folder_despachos_t2"></span>
+            </div>
+          </div>
+
+          <!-- Carpeta donde se guarda la informacion de logistica -->
+          <div class="row g-2 mb-2 no-print">
+            <div class="col-md-7">
+              <label class="text-secondary small">ID Carpeta Drive Logistica (Guardado)</label>
+              <input type="text" class="form-control form-control-sm text-secondary" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
+            </div>
+            <div class="col-md-5 d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary" onclick="validarFolder('logistica')">Validar carpeta guardado</button>
               <span class="mf-estado align-self-center" id="estado_folder_logistica"></span>
             </div>
           </div>
@@ -286,24 +333,4 @@
           </div>
 
           <!-- OPCION B -->
-          <div id="bloque_rec_b" class="d-none">
-            <div class="row g-3">
-              <div class="col-md-2"><label class="form-label">Numero Traslado *</label><input class="form-control" id="b_traslado"></div>
-              <div class="col-md-3"><label class="form-label">Bodega Origen Emisora *</label><input class="form-control" id="b_origen"></div>
-              <div class="col-md-2"><label class="form-label">Bodega Destino *</label>
-                <select class="form-select" id="b_destino">
-                  <option value="">Seleccione...</option><option>CENDIS PRINCIPAL</option><option>B05</option>
-                </select></div>
-              <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="b_fecha_recepcion"></div>
-              <div class="col-md-3"><label class="form-label">Codigo Producto / Molecula *</label><input class="form-control" id="b_codigo"></div>
-              <div class="col-md-4"><label class="form-label">Descripcion *</label><input class="form-control" id="b_descripcion"></div>
-              <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="b_laboratorio"></div>
-              <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="b_lote"></div>
-              <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="b_vencimiento"></div>
-              <div class="col-md-2"><label class="form-label">Cantidad Enviada *</label><input type="number" class="form-control" id="b_enviada"></div>
-              <div class="col-md-2"><label class="form-label">Cantidad Recibida *</label><input type="number" class="form-control" id="b_recibida"></div>
-              <div class="col-md-2"><label class="form-label">Diferencia</label><input class="form-control campo-bloqueado" id="b_diferencia" readonly></div>
-              <div class="col-md-3"><label class="form-label">Responsable Recepcion *</label><input class="form-control" id="b_responsable"></div>
-              <div class="col-md-3"><label class="form-label">Estado Recepcion Tecnica *</label>
-                <select class="form-select" id="b_estado"><option>CONFORME</option><option>NOVEDAD</option></select></div>
-              <div class="col-12"><label class="form-label">Observaciones</label><input class="form-co
+          <div id=
