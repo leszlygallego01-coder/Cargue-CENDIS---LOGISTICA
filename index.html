@@ -350,14 +350,368 @@
               <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_externa" value="EXTERNA" checked><label class="form-check-label" for="r_externa">Externa</label></div>
               <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_interna" value="INTERNA"><label class="form-check-label" for="r_interna">Interna</label></div>
             </div>
-            <div class="col-md-3"><label class="form-label">Traslado *</label><input class="form-control" id="b_traslado" placeholder="Numero de traslado"></div>
+            <div class="col-md-3"><label class="form-label" id="lbl_doc_recepcion">Factura *</label><input class="form-control" id="b_traslado" placeholder="Numero de factura"></div>
             <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
               <select class="form-select" id="b_bodega_origen">
-                <option value="">Seleccione...</option><option>CENDIS</option><option>B05</option><option>EXTERNA</option>
+                <option value="">Seleccione...</option>
+                <option>CENDIS PRINCIPAL TULUA</option>
+                <option>B10 BODEGA BOGOTA</option>
+                <option>B05 ALTO COSTO</option>
+                <option>BOD. N11 MEDISFARMA</option>
+                <option>BOD. N40 BOGOTA MEDIFARMA</option>
+                <option>BOD. 80 FACTURACION</option>
+                <option>ST28 BODEGA LOGISTICA</option>
+                <option>ST07 MDF. POPAYAN SUR</option>
+                <option>URG01 MDF. URGENCIA</option>
+                <option>N31 MDF. SURTIDROGAS</option>
+                <option>CASOS JURIDICOS</option>
+                <option>B9 POPAYAN PARQUE CALDAS</option>
+                <option>EXTERNA</option>
+                <option>M03 NEIVA HUILA</option>
+                <option>M07 UBATE CUNDINAMARCA</option>
+                <option>M15 IBAGUE TOLIMA</option>
+                <option>M16 MEDELLIN ANTIOQUIA</option>
+                <option>M17 ALVERNIA VALLE DEL CAUCA</option>
+                <option>M18 BUENAVENTURA VALLE</option>
+                <option>M20 JAMUNDI VALLE DEL CAUCA</option>
+                <option>M21 CARTAGO VALLE DEL CAUCA</option>
+                <option>M27 PALMIRA VALLE DEL CAUCA</option>
+                <option>M29 FLORIDA VALLE DEL CAUCA</option>
+                <option>M31 SAN VICENTE TULUA</option>
+                <option>M32 PASTO NARIÑO</option>
+                <option>M33 CALI VALLE DEL CAUCA</option>
+                <option>M34 TUNJA BOYACA</option>
+                <option>M42 PEREIRA RISARALDA</option>
+                <option>M43 MANIZALES CALDAS</option>
+                <option>M46 ARMENIA QUINDIO</option>
+                <option>M61 PASTO NARIÑO</option>
+                <option>M65 SOATA BOYACA</option>
+                <option>M73 SOGAMOSO BOYACA</option>
+                <option>M75 RIOHACHA GUAJIRA</option>
+                <option>M76 PUERTO BOYACA</option>
+                <option>M77 SILVIA CAUCA</option>
+                <option>M78 PIENDAMO CAUCA</option>
+                <option>M79 CALOTO CAUCA</option>
+                <option>M82 SANTANDER QUILICHAO</option>
+                <option>M84 POPAYAN CAUCA</option>
+                <option>M85 POPAYAN CAUCA</option>
+                <option>M87 YUMBO VALLE DEL CAUCA</option>
+                <option>M88 GUACARI VALLE DEL CAUCA</option>
+                <option>M89 GINEBRA VALLE DEL CAUCA</option>
+                <option>M90 CERRITO VALLE DEL CAUCA</option>
+                <option>M91 CALIMA VALLE DEL CAUCA</option>
+                <option>M92 CANDELARIA VALLE DEL CAUCA</option>
+                <option>M93 PRADERA VALLE DEL CAUCA</option>
+                <option>M94 CALI VALLE DEL CAUCA</option>
+                <option>M95 POPAYAN CAUCA</option>
+                <option>M96 SANTANDER CAUCA</option>
+                <option>M100 TUMACO NARIÑO</option>
+                <option>M102 IPIALES NARIÑO</option>
+                <option>M103 SANDONA NARIÑO</option>
+                <option>M104 LEIVA NARIÑO</option>
+                <option>M107 BELEN DE UMBRIA</option>
+                <option>M108 DOSQUEBRADAS RISARALDA</option>
+                <option>M111 PUERTO TEJADA CAUCA</option>
+                <option>M112 BOLIVAR CAUCA</option>
+                <option>M116 TIMBIQUI CAUCA</option>
+                <option>M117 EL BORDO CAUCA</option>
+                <option>M118 MERCADERES CAUCA</option>
+                <option>M119 CORINTO CAUCA</option>
+                <option>M120 ROSAS CAUCA</option>
+                <option>M123 MONIQUIRA BOYACA</option>
+                <option>M124 CARTAGENA DEL CHAIRA</option>
+                <option>M125 SAN VICENTE DEL CAGUAN</option>
+                <option>M126 PUERTO RICO CAQUETA</option>
+                <option>M130 EL DONCELLO CAQUETA</option>
+                <option>M133 SAN JOSE DE FRAGUA</option>
+                <option>M137 BALBOA CAUCA</option>
+                <option>M138 BUENOS AIRES CAUCA</option>
+                <option>M139 BUENOS AIRES - SANO</option>
+                <option>M140 CAJIBIO CAUCA</option>
+                <option>M141 CAJIBIO ROSARIO CAUCA</option>
+                <option>M143 INZA CAUCA</option>
+                <option>M144 VEGA CAUCA</option>
+                <option>M145 LA VEGA - SAN MIGUEL</option>
+                <option>M146 LOPEZ DE MICAY</option>
+                <option>M147 MIRANDA CAUCA</option>
+                <option>M148 MORALES CAUCA</option>
+                <option>M149 PADILLA CAUCA</option>
+                <option>M151 PIENDAMO CAUCA</option>
+                <option>M152 POPAYAN CAUCA</option>
+                <option>M153 PURACE COCONUCO</option>
+                <option>M154 PURACE SANTA ISABEL</option>
+                <option>M155 ROSAS CAUCA (OTROS)</option>
+                <option>M156 SANTANDER QUILICHAO</option>
+                <option>M157 SUAREZ CAUCA</option>
+                <option>M158 SUCRE CAUCA</option>
+                <option>M159 TIMBIO CAUCA</option>
+                <option>M160 ALVARADO TOLIMA</option>
+                <option>M161 AMBALEMA TOLIMA</option>
+                <option>M162 ANZOATEGUI TOLIMA</option>
+                <option>M163 ARMERO TOLIMA</option>
+                <option>M164 ATACO TOLIMA</option>
+                <option>M165 CAJAMARCA TOLIMA</option>
+                <option>M166 CARMEN DE APICALA</option>
+                <option>M167 CASABIANCA TOLIMA</option>
+                <option>M168 CHAPARRAL TOLIMA</option>
+                <option>M169 COYAIMA TOLIMA</option>
+                <option>M170 CUNDAY TOLIMA</option>
+                <option>M171 GUAMO TOLIMA</option>
+                <option>M172 HONDA TOLIMA</option>
+                <option>M173 ICONONZO TOLIMA</option>
+                <option>M174 LERIDA TOLIMA</option>
+                <option>M175 LIBANO TOLIMA</option>
+                <option>M176 MARIQUITA TOLIMA</option>
+                <option>M177 PALOCABILDO TOLIMA</option>
+                <option>M178 PRADO TOLIMA</option>
+                <option>M179 PURIFICACION TOLIMA</option>
+                <option>M180 RIOBLANCO TOLIMA</option>
+                <option>M181 ROVIRA TOLIMA</option>
+                <option>M182 SAN ANTONIO TOLIMA</option>
+                <option>M183 VILLAHERMOSA TOLIMA</option>
+                <option>M184 EL TAMBO CAUCA</option>
+                <option>M185 SAN AGUSTIN HUILA</option>
+                <option>M188 PAEZ CAUCA</option>
+                <option>M189 CALDONO CAUCA</option>
+                <option>M190 ALMAGUER CAUCA</option>
+                <option>M193 FLORENCIA CAUCA</option>
+                <option>M194 GUACHENE CAUCA</option>
+                <option>M195 LA SIERRA CAUCA</option>
+                <option>M197 PUERTO TEJADA CAUCA</option>
+                <option>M209 LA VIRGINIA RISARALDA</option>
+                <option>M210 GUATICA RISARALDA</option>
+                <option>M211 QUINCHIA RISARALDA</option>
+                <option>M212 PUEBLO RICO RISARALDA</option>
+                <option>M213 CALI VALLE DEL CAUCA</option>
+                <option>M214 PEREIRA CUBA RISARALDA</option>
+                <option>M217 TULUA E.D VALLE</option>
+                <option>M218 SAN SEBASTIAN CAUCA</option>
+                <option>M219 POPAYAN PARQUE CALDAS</option>
+                <option>M220 POPAYAN CAUCA</option>
+                <option>M223 CALI VALLE DEL CAUCA</option>
+                <option>M225 BUGA VALLE DEL CAUCA</option>
+                <option>SM226 ORTEGA TOLIMA</option>
+                <option>M235 POPAYAN CAUCA</option>
+                <option>M239 PARATEBUENO CUNDINAMARCA</option>
+                <option>M240 SAN JUAN DEL CESAR</option>
+                <option>M241 FONSECA GUAJIRA</option>
+                <option>M243 BOD. NUEVA EPS</option>
+                <option>M244 TOCANCIPA CUNDINAMARCA</option>
+                <option>M245 BUCARAMANGA</option>
+                <option>M249 PALMIRA VALLE DEL CAUCA</option>
+                <option>M251 ANAPOIMA CUNDINAMARCA</option>
+                <option>M253 PURACE CAUCA</option>
+                <option>M257 PEREIRA PINARES</option>
+                <option>M259 FUSAGASUGA CUNDINAMARCA</option>
+                <option>M260 LA MESA CUNDINAMARCA</option>
+                <option>M266 PEREIRA RISARALDA</option>
+                <option>M267 PEREIRA GARZAS RISARALDA</option>
+                <option>M268 URIBIA LA GUAJIRA</option>
+                <option>M270 SANTA ROSA CAUCA</option>
+                <option>M283 DUITAMA BOYACA</option>
+                <option>M286 CHIQUINQUIRA BOYACA</option>
+                <option>M291 LA HERRADURA BOYACA</option>
+                <option>M292 GARAGOA BOYACA</option>
+                <option>M305 VILLETA CUNDINAMARCA</option>
+                <option>M306 GUADUAS CUNDINAMARCA</option>
+                <option>M307 RICAURTE CUNDINAMARCA</option>
+                <option>M308 BOJACA CUNDINAMARCA</option>
+                <option>M309 TENJO CUNDINAMARCA</option>
+                <option>M310 VILLA DE LEYVA BOYACA</option>
+                <option>M311 GUICAN BOYACA</option>
+                <option>M313 MIRAFLORES MIRANDA</option>
+                <option>M314 GUATEQUE GUAJIRA</option>
+                <option>M337 CARTAGENA DE INDIAS</option>
+                <option>SM256 MANAURE GUAJIRA</option>
+                <option>SM299 MAICAO GUAJIRA</option>
+                <option>SM300 BARRANCAS GUAJIRA</option>
+                <option>SM301 HATONUEVO GUAJIRA</option>
+                <option>SM302 VILLANUEVA GUAJIRA</option>
+                <option>SM303 URUMITA GUAJIRA</option>
+                <option>SM304 DIBULLA GUAJIRA</option>
+                <option>02M FLORENCIA CAQUETA</option>
+                <option>35 YOPAL CASANARE</option>
               </select></div>
             <div class="col-md-3"><label class="form-label">Bodega Destino *</label>
               <select class="form-select" id="b_destino">
-                <option value="">Seleccione...</option><option>CENDIS PRINCIPAL</option><option>B05</option>
+                <option value="">Seleccione...</option>
+                <option>CENDIS PRINCIPAL TULUA</option>
+                <option>B10 BODEGA BOGOTA</option>
+                <option>B05 ALTO COSTO</option>
+                <option>BOD. N11 MEDISFARMA</option>
+                <option>BOD. N40 BOGOTA MEDIFARMA</option>
+                <option>BOD. 80 FACTURACION</option>
+                <option>ST28 BODEGA LOGISTICA</option>
+                <option>ST07 MDF. POPAYAN SUR</option>
+                <option>URG01 MDF. URGENCIA</option>
+                <option>N31 MDF. SURTIDROGAS</option>
+                <option>CASOS JURIDICOS</option>
+                <option>B9 POPAYAN PARQUE CALDAS</option>
+                <option>EXTERNA</option>
+                <option>M03 NEIVA HUILA</option>
+                <option>M07 UBATE CUNDINAMARCA</option>
+                <option>M15 IBAGUE TOLIMA</option>
+                <option>M16 MEDELLIN ANTIOQUIA</option>
+                <option>M17 ALVERNIA VALLE DEL CAUCA</option>
+                <option>M18 BUENAVENTURA VALLE</option>
+                <option>M20 JAMUNDI VALLE DEL CAUCA</option>
+                <option>M21 CARTAGO VALLE DEL CAUCA</option>
+                <option>M27 PALMIRA VALLE DEL CAUCA</option>
+                <option>M29 FLORIDA VALLE DEL CAUCA</option>
+                <option>M31 SAN VICENTE TULUA</option>
+                <option>M32 PASTO NARIÑO</option>
+                <option>M33 CALI VALLE DEL CAUCA</option>
+                <option>M34 TUNJA BOYACA</option>
+                <option>M42 PEREIRA RISARALDA</option>
+                <option>M43 MANIZALES CALDAS</option>
+                <option>M46 ARMENIA QUINDIO</option>
+                <option>M61 PASTO NARIÑO</option>
+                <option>M65 SOATA BOYACA</option>
+                <option>M73 SOGAMOSO BOYACA</option>
+                <option>M75 RIOHACHA GUAJIRA</option>
+                <option>M76 PUERTO BOYACA</option>
+                <option>M77 SILVIA CAUCA</option>
+                <option>M78 PIENDAMO CAUCA</option>
+                <option>M79 CALOTO CAUCA</option>
+                <option>M82 SANTANDER QUILICHAO</option>
+                <option>M84 POPAYAN CAUCA</option>
+                <option>M85 POPAYAN CAUCA</option>
+                <option>M87 YUMBO VALLE DEL CAUCA</option>
+                <option>M88 GUACARI VALLE DEL CAUCA</option>
+                <option>M89 GINEBRA VALLE DEL CAUCA</option>
+                <option>M90 CERRITO VALLE DEL CAUCA</option>
+                <option>M91 CALIMA VALLE DEL CAUCA</option>
+                <option>M92 CANDELARIA VALLE DEL CAUCA</option>
+                <option>M93 PRADERA VALLE DEL CAUCA</option>
+                <option>M94 CALI VALLE DEL CAUCA</option>
+                <option>M95 POPAYAN CAUCA</option>
+                <option>M96 SANTANDER CAUCA</option>
+                <option>M100 TUMACO NARIÑO</option>
+                <option>M102 IPIALES NARIÑO</option>
+                <option>M103 SANDONA NARIÑO</option>
+                <option>M104 LEIVA NARIÑO</option>
+                <option>M107 BELEN DE UMBRIA</option>
+                <option>M108 DOSQUEBRADAS RISARALDA</option>
+                <option>M111 PUERTO TEJADA CAUCA</option>
+                <option>M112 BOLIVAR CAUCA</option>
+                <option>M116 TIMBIQUI CAUCA</option>
+                <option>M117 EL BORDO CAUCA</option>
+                <option>M118 MERCADERES CAUCA</option>
+                <option>M119 CORINTO CAUCA</option>
+                <option>M120 ROSAS CAUCA</option>
+                <option>M123 MONIQUIRA BOYACA</option>
+                <option>M124 CARTAGENA DEL CHAIRA</option>
+                <option>M125 SAN VICENTE DEL CAGUAN</option>
+                <option>M126 PUERTO RICO CAQUETA</option>
+                <option>M130 EL DONCELLO CAQUETA</option>
+                <option>M133 SAN JOSE DE FRAGUA</option>
+                <option>M137 BALBOA CAUCA</option>
+                <option>M138 BUENOS AIRES CAUCA</option>
+                <option>M139 BUENOS AIRES - SANO</option>
+                <option>M140 CAJIBIO CAUCA</option>
+                <option>M141 CAJIBIO ROSARIO CAUCA</option>
+                <option>M143 INZA CAUCA</option>
+                <option>M144 VEGA CAUCA</option>
+                <option>M145 LA VEGA - SAN MIGUEL</option>
+                <option>M146 LOPEZ DE MICAY</option>
+                <option>M147 MIRANDA CAUCA</option>
+                <option>M148 MORALES CAUCA</option>
+                <option>M149 PADILLA CAUCA</option>
+                <option>M151 PIENDAMO CAUCA</option>
+                <option>M152 POPAYAN CAUCA</option>
+                <option>M153 PURACE COCONUCO</option>
+                <option>M154 PURACE SANTA ISABEL</option>
+                <option>M155 ROSAS CAUCA (OTROS)</option>
+                <option>M156 SANTANDER QUILICHAO</option>
+                <option>M157 SUAREZ CAUCA</option>
+                <option>M158 SUCRE CAUCA</option>
+                <option>M159 TIMBIO CAUCA</option>
+                <option>M160 ALVARADO TOLIMA</option>
+                <option>M161 AMBALEMA TOLIMA</option>
+                <option>M162 ANZOATEGUI TOLIMA</option>
+                <option>M163 ARMERO TOLIMA</option>
+                <option>M164 ATACO TOLIMA</option>
+                <option>M165 CAJAMARCA TOLIMA</option>
+                <option>M166 CARMEN DE APICALA</option>
+                <option>M167 CASABIANCA TOLIMA</option>
+                <option>M168 CHAPARRAL TOLIMA</option>
+                <option>M169 COYAIMA TOLIMA</option>
+                <option>M170 CUNDAY TOLIMA</option>
+                <option>M171 GUAMO TOLIMA</option>
+                <option>M172 HONDA TOLIMA</option>
+                <option>M173 ICONONZO TOLIMA</option>
+                <option>M174 LERIDA TOLIMA</option>
+                <option>M175 LIBANO TOLIMA</option>
+                <option>M176 MARIQUITA TOLIMA</option>
+                <option>M177 PALOCABILDO TOLIMA</option>
+                <option>M178 PRADO TOLIMA</option>
+                <option>M179 PURIFICACION TOLIMA</option>
+                <option>M180 RIOBLANCO TOLIMA</option>
+                <option>M181 ROVIRA TOLIMA</option>
+                <option>M182 SAN ANTONIO TOLIMA</option>
+                <option>M183 VILLAHERMOSA TOLIMA</option>
+                <option>M184 EL TAMBO CAUCA</option>
+                <option>M185 SAN AGUSTIN HUILA</option>
+                <option>M188 PAEZ CAUCA</option>
+                <option>M189 CALDONO CAUCA</option>
+                <option>M190 ALMAGUER CAUCA</option>
+                <option>M193 FLORENCIA CAUCA</option>
+                <option>M194 GUACHENE CAUCA</option>
+                <option>M195 LA SIERRA CAUCA</option>
+                <option>M197 PUERTO TEJADA CAUCA</option>
+                <option>M209 LA VIRGINIA RISARALDA</option>
+                <option>M210 GUATICA RISARALDA</option>
+                <option>M211 QUINCHIA RISARALDA</option>
+                <option>M212 PUEBLO RICO RISARALDA</option>
+                <option>M213 CALI VALLE DEL CAUCA</option>
+                <option>M214 PEREIRA CUBA RISARALDA</option>
+                <option>M217 TULUA E.D VALLE</option>
+                <option>M218 SAN SEBASTIAN CAUCA</option>
+                <option>M219 POPAYAN PARQUE CALDAS</option>
+                <option>M220 POPAYAN CAUCA</option>
+                <option>M223 CALI VALLE DEL CAUCA</option>
+                <option>M225 BUGA VALLE DEL CAUCA</option>
+                <option>SM226 ORTEGA TOLIMA</option>
+                <option>M235 POPAYAN CAUCA</option>
+                <option>M239 PARATEBUENO CUNDINAMARCA</option>
+                <option>M240 SAN JUAN DEL CESAR</option>
+                <option>M241 FONSECA GUAJIRA</option>
+                <option>M243 BOD. NUEVA EPS</option>
+                <option>M244 TOCANCIPA CUNDINAMARCA</option>
+                <option>M245 BUCARAMANGA</option>
+                <option>M249 PALMIRA VALLE DEL CAUCA</option>
+                <option>M251 ANAPOIMA CUNDINAMARCA</option>
+                <option>M253 PURACE CAUCA</option>
+                <option>M257 PEREIRA PINARES</option>
+                <option>M259 FUSAGASUGA CUNDINAMARCA</option>
+                <option>M260 LA MESA CUNDINAMARCA</option>
+                <option>M266 PEREIRA RISARALDA</option>
+                <option>M267 PEREIRA GARZAS RISARALDA</option>
+                <option>M268 URIBIA LA GUAJIRA</option>
+                <option>M270 SANTA ROSA CAUCA</option>
+                <option>M283 DUITAMA BOYACA</option>
+                <option>M286 CHIQUINQUIRA BOYACA</option>
+                <option>M291 LA HERRADURA BOYACA</option>
+                <option>M292 GARAGOA BOYACA</option>
+                <option>M305 VILLETA CUNDINAMARCA</option>
+                <option>M306 GUADUAS CUNDINAMARCA</option>
+                <option>M307 RICAURTE CUNDINAMARCA</option>
+                <option>M308 BOJACA CUNDINAMARCA</option>
+                <option>M309 TENJO CUNDINAMARCA</option>
+                <option>M310 VILLA DE LEYVA BOYACA</option>
+                <option>M311 GUICAN BOYACA</option>
+                <option>M313 MIRAFLORES MIRANDA</option>
+                <option>M314 GUATEQUE GUAJIRA</option>
+                <option>M337 CARTAGENA DE INDIAS</option>
+                <option>SM256 MANAURE GUAJIRA</option>
+                <option>SM299 MAICAO GUAJIRA</option>
+                <option>SM300 BARRANCAS GUAJIRA</option>
+                <option>SM301 HATONUEVO GUAJIRA</option>
+                <option>SM302 VILLANUEVA GUAJIRA</option>
+                <option>SM303 URUMITA GUAJIRA</option>
+                <option>SM304 DIBULLA GUAJIRA</option>
+                <option>02M FLORENCIA CAQUETA</option>
+                <option>35 YOPAL CASANARE</option>
               </select></div>
           </div>
 
@@ -373,8 +727,24 @@
             <div class="col-md-2"><label class="form-label">Diferencia</label><input class="form-control campo-bloqueado" id="b_diferencia" readonly></div>
             <div class="col-md-3"><label class="form-label">Responsable Recepcion *</label><input class="form-control" id="b_responsable"></div>
             <div class="col-md-3"><label class="form-label">Estado Recepcion Tecnica *</label>
-              <select class="form-select" id="b_estado"><option>CONFORME</option><option>NOVEDAD</option></select></div>
-            <div class="col-12"><label class="form-label">Observaciones</label><input class="form-control" id="b_observaciones"></div>
+              <select class="form-select" id="b_estado">
+                <option value="">Seleccione...</option>
+                <option>CONFORME</option>
+                <option>NOVEDAD</option>
+                <option>PRODUCTO DAÑADO</option>
+                <option>PRODUCTO VENCIDO</option>
+                <option>CANTIDAD DIFERENTE</option>
+                <option>EMPAQUE DAÑADO</option>
+                <option>FALTANTE</option>
+                <option>DEVOLUCION</option>
+                <option>EN CUARENTENA</option>
+                <option>RECHAZADO</option>
+                <option>PRODUCTO SIN REGISTRO</option>
+                <option>LOTE ERRADO</option>
+                <option>TEMPERATURA ALTERADA</option>
+                <option>DOCUMENTACION INCOMPLETA</option>
+              </select></div>
+            <div class="col-12"><label class="form-label">Observaciones</label><textarea class="form-control" id="b_observaciones" rows="2" placeholder="Observaciones sobre la recepcion..."></textarea></div>
           </div>
 
           <div class="d-flex gap-2 mt-4 no-print">
