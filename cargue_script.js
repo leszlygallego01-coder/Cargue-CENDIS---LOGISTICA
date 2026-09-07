@@ -1,1850 +1,932 @@
-/* =================================================================================
- * MEDISFARMA | cargue_script.js
- * Modulo CARGUE: configuracion de Folder ID por tarjeta, lectura dinamica por
- * nombre de cabecera, autocompletado, validaciones, guardado en Drive y
- * generacion del archivo de respaldo de seguridad (XLSX / JSON).
+/************************************************************************************
+ * MEDISFARMA - Modulo CARGUE
+ * cargue_script.js  — Frontend JavaScript completo
  *
- * PERFILES DE USUARIO:
- *   1. ADMINISTRADOR   — Monta/relaciona traslados, acceso total a todas las tarjetas
- *   2. LIDER            — Registra traslado y asigna responsable (lista plegable),
- *                         captura punto automatico. Para traslados NO CENDIS (243,
- *                         URG, B05, Juridicos) NO exige punto.
- *   3. AUXILIAR ENTREGA — Llama traslado, ve destino, registra unidades/cajas/
- *                         urgencia/quien empaco. Si falta info NO avanza.
- *   4. RECIBIDO LOGISTICA — Llama traslado, registra quien recibe, fecha/hora
- *                         automatica, bloquea al recibir, opcion observacion.
- *   5. PLANILLAR LOGISTICA — Por validar (acceso basico a logistica).
- * ================================================================================= */
-'use strict';
+ * ORDEN TARJETAS (v3):
+ *   T1 = Seguridad (Guia, Factura, Proveedor, Unidades, Quien Recibe)
+ *   T2 = Recepcion Tecnica
+ *   T3 = Planilla Entrega Despachos (enriquecida con rotacion + nuevos campos)
+ *   T4 = Logistica y Despachos
+ *   T5 = Cargue de Factura (Transporte)
+ *   T6 = Verificacion de Inventario
+ *
+ * MODULOS: ['seguridad','recepcion','despachos','logistica','facturacion','inventario']
+ ************************************************************************************/
 
-/* ---------------------------------------------------------------------------
- * 1. CONFIGURACION PERSISTENTE (localStorage)
- * ------------------------------------------------------------------------- */
-const LS_KEY = 'MF_CONFIG_CARGUE';
-const LS_DATA = 'MF_DATOS_SESION';
-const LS_PERFIL = 'MF_PERFIL_ACTIVO';
+/* ═════════════════════════════════════════════════════════════════════════════════
+   0. UTILIDADES GLOBALES
+   ═════════════════════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
 
-const CONFIG_DEFAULT = {
-  apiUrl: 'https://script.google.com/macros/s/AKfycbxyQBBPPZVYpuwCtKX1MTPVp4Pkaa6uJQc1xcbh3Tk68mrDFGRc5MQQ034CyOR2okYr/exec',
-  modoLocal: false,
+function showToast(msg, type) {
+  var tw = $('toastWrap');
+  if (!tw) { tw = document.createElement('div'); tw.id = 'toastWrap'; tw.className = 'mf-toast-wrap'; document.body.appendChild(tw); }
+  var d = document.createElement('div');
+  var bg = type === 'success' ? 'alert-success' : type === 'danger' ? 'alert-danger' : 'alert-info';
+  d.className = 'alert ' + bg + ' shadow-sm py-2 px-3 small';
+  d.innerHTML = msg;
+  tw.appendChild(d);
+  setTimeout(function () { if (d.parentNode) d.remove(); }, 6000);
+}
+
+function limpiarCampos(prefijo) {
+  document.querySelectorAll('[id^="' + prefijo + '"]').forEach(function (el) {
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
+    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+  });
+}
+
+function limpiarTarjeta(num) {
+  var prefijos = { 1: 's_', 2: 'b_', 3: 't3_', 4: 't4_', 5: 'f_', 6: 'i_' };
+  limpiarCampos(prefijos[num] || '');
+  showToast('Tarjeta ' + num + ' limpiada.', 'info');
+}
+
+function hoy() {
+  var d = new Date();
+  var dd = String(d.getDate()).padStart(2, '0');
+  var mm = String(d.getMonth() + 1).padStart(2, '0');
+  return d.getFullYear() + '-' + mm + '-' + dd;
+}
+
+function ahora() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') +
+    ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+}
+
+function fechaLocal() {
+  return new Date().toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   1. CONFIGURACION POR DEFECTO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var CONFIG_DEFAULT = {
+  api_url: 'https://script.google.com/macros/s/AKfycbxyQBBPPZVYpuwCtKX1MTPVp4Pkaa6uJQc1xcbh3Tk68mrDFGRc5MQQ034CyOR2okYr/exec',
   folders: {
-    trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',  // Carpeta TRASLADOS — ORIGEN fija (solo lectura)
-    despachos:         '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',  // Carpeta DESTINO (escritura/guardado)
+    trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
+    seguridad:        '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
+    despachos:         '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',
     logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
     recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
     facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
     inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
+    rotacion:          '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
     backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
   },
-  conductores: ['CONDUCTOR 1 - CAMION', 'CONDUCTOR 2 - FURGON', 'MENSAJERO 1 - MOTO', 'MENSAJERO 2 - MOTO'],
-  /* Perfiles de archivos por tarjeta: nombre del archivo y hoja en Drive */
   perfiles: {
-    despachos:   { file: 'BD_PLANILLA_ENTREGA_DESPACHOS', sheet: 'DATOS' },
-    logistica:   { file: 'BD_LOGISTICA_DESPACHOS',         sheet: 'DATOS' },
-    recepcion:   { file: 'BD_RECEPCION_TECNICA',           sheet: 'DATOS' },
-    facturacion: { file: 'BD_FACTURA_TRANSPORTE',         sheet: 'DATOS' },
-    inventario:  { file: 'BD_VERIFICACION_INVENTARIO',     sheet: 'DATOS' }
-  }
+    seguridad:   { file: 'BD_SEGURIDAD_DESPACHOS',         sheet: 'DATOS' },
+    despachos:   { file: 'BD_PLANILLA_ENTREGA_DESPACHOS',  sheet: 'DATOS' },
+    logistica:   { file: 'BD_LOGISTICA_DESPACHOS',        sheet: 'DATOS' },
+    recepcion:   { file: 'BD_RECEPCION_TECNICA',          sheet: 'DATOS' },
+    facturacion: { file: 'BD_CARGUE_FACTURA_TRANSPORTE',  sheet: 'DATOS' },
+    inventario:  { file: 'BD_VERIFICACION_INVENTARIO',    sheet: 'DATOS' },
+    novedades:   { file: 'BD_NOVEDADES_MODIFICACIONES',   sheet: 'DATOS' },
+    rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' }
+  },
+  conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS']
 };
 
-let CONFIG = cargarConfig();
-
-/** Datos registrados en la sesion; alimentan el backup de seguridad. */
-let SESION = cargarSesion();
-
-/** Items en memoria antes de guardar (tarjetas 3 y 5). */
-let itemsRecepcion = [];
-let itemsInventario = [];
-
-/* ---------------------------------------------------------------------------
- * 1b. CREDENCIALES DE USUARIO (LOGIN)
- * ------------------------------------------------------------------------- */
-const CREDENCIALES = {
-  // Perfiles institucionales
-  administrador:       'Medis2024Admin',
-  lider:              'Medis2024Lider',
-  auxiliar_entrega:   'Medis2024Aux',
+/* ═════════════════════════════════════════════════════════════════════════════════
+   2. CREDENCIALES Y PERFILES DE ACCESO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var CREDENCIALES = {
+  administrador: 'Medis2024Admin',
+  lider: 'Medis2024Lider',
+  auxiliar_entrega: 'Medis2024Aux',
   recibido_logistica: 'Medis2024Recib',
-  planillar_logistica:'Medis2024Plan',
-  // Usuarios individuales (Auxiliares — ven T1, T2, T3)
-  yuri:    'Yuri2024',
-  julio:   'Julio2024',
-  hernan:  'Hernan2024',
-  diego:   'Diego2024',
-  brian:   'Brian2024',
-  karina:  'Karina2024',
-  jhony:   'Jhony2024',
-  natalia: 'Natalia2024',
-  manuel:  'Manuel2024',
-  claudia: 'Claudia2024',
-  daniela: 'Daniela2024',
-  juan:    'Juan2024',
-  luzl:    'LuzL2024',
-  liz:     'Liz2024',
-  ana:     'Ana2024',
-  leidy:   'Leidy2024',
-  bivian:  'Bivian2024',
-  vaneza:  'Vaneza2024',
-  brayan:  'Brayan2024',
-  nicoll:  'Nicoll2024',
-  luis:    'Luis2024',
-  estefania:'Estefania2024',
-  angela:  'Angela2024',
-  camila:  'Camila2024',
-  angie:   'Angie2024',
-  mayra:   'Mayra2024',
-  derly:   'Derly2024',
-  luisa:   'Luisa2024',
-  luzn:    'LuzN2024',
-  andrea:  'Andrea2024',
-  andres:  'Andres2024',
-  diegoe:  'DiegoE2024'
-};
-const LS_LOGIN = 'MF_LOGIN_OK';
-
-/** Verifica las credenciales y, si son validas, oculta el overlay de login. */
-function verificarLogin() {
-  const usuario = val('loginUsuario');
-  const clave   = val('loginContrasena');
-  const errDiv  = $('loginError');
-
-  if (!usuario) {
-    errDiv.style.display = 'block';
-    errDiv.textContent = 'Seleccione un perfil.'; return;
-  }
-  if (CREDENCIALES[usuario] && CREDENCIALES[usuario].toLowerCase() === clave.toLowerCase()) {
-    const perfilAsignado = obtenerPerfilDeUsuario(usuario);
-    localStorage.setItem(LS_LOGIN, perfilAsignado);
-    PERFIL_ACTIVO = perfilAsignado;
-    localStorage.setItem(LS_PERFIL, perfilAsignado);
-    $('pantallaLogin').style.display = 'none';
-    document.body.classList.remove('mf-login-activo');
-    errDiv.style.display = 'none';
-    // Sincronizar selector de perfil en navbar
-    const sel = $('selPerfil');
-    if (sel) sel.value = perfilAsignado;
-    aplicarPerfil();
-    toast('Sesion iniciada como <strong>' + PERFILES[perfilAsignado].label + '</strong>', 'success');
-  } else {
-    errDiv.style.display = 'block';
-    errDiv.textContent = 'Usuario o contrasena incorrectos';
-    $('loginContrasena').value = '';
-    $('loginContrasena').focus();
-  }
-}
-
-/** Cierra la sesion: borra login, muestra el overlay de nuevo. */
-function cerrarSesion() {
-  localStorage.removeItem(LS_LOGIN);
-  localStorage.removeItem(LS_PERFIL);
-  PERFIL_ACTIVO = 'administrador';
-  $('pantallaLogin').style.display = 'flex';
-  document.body.classList.add('mf-login-activo');
-  $('loginUsuario').value = '';
-  $('loginContrasena').value = '';
-  $('loginError').style.display = 'none';
-  toast('Sesion cerrada.', 'info');
-}
-
-/* ---------------------------------------------------------------------------
- * 1c. SISTEMA DE PERFILES DE USUARIO
- * ------------------------------------------------------------------------- */
-
-/**
- * Definicion de los 5 perfiles del sistema.
- * Cada perfil define:
- *   - label: nombre visible
- *   - icon: emoji/icono
- *   - color: clase CSS para el badge
- *   - tarjetas: array de IDs de tarjeta que puede ver/usar ('t1'..'t5')
- *   - puedeCrearTraslado: si puede montar/relacionar traslados
- *   - exigePunto: si al registrar traslado exige captura automatica del punto
- *   - puntoExcepciones: destinos donde NO se exige el punto (lista normalizada)
- *   - puedeAsignarResponsable: si puede asignar responsable desde lista desplegable
- *   - camposObligatorios: campos adicionales obligatorios para este perfil
- *   - bloqueaAlRecibir: si al registrar recibido se bloquea edicion posterior
- *   - soloLectura: campos que este perfil solo ve (no edita)
- *   - puedeImprimir: si puede imprimir planillas
- *   - puedeBackup: si puede generar archivos de respaldo
- *   - puedeConfig: si puede acceder a configuracion general
- */
-const PERFILES = {
-  administrador: {
-    label: 'ADMINISTRADOR',
-    icon: '&#128081;',
-    color: 'bg-danger',
-    descripcion: 'Acceso total. Monta o relaciona los traslados en todas las tarjetas.',
-    tarjetas: ['t1', 't2', 't3', 't4', 't5'],
-    puedeCrearTraslado: true,
-    exigePunto: false,
-    puntoExcepciones: [],
-    puedeAsignarResponsable: true,
-    camposObligatorios: {},
-    bloqueaAlRecibir: false,
-    soloLectura: [],
-    puedeImprimir: true,
-    puedeBackup: true,
-    puedeConfig: true
-  },
-  lider: {
-    label: 'LIDER',
-    icon: '&#128104;&#8205;&#128188;',
-    color: 'bg-primary',
-    descripcion: 'Registra el traslado y le asigna un responsable (lista desplegable). ' +
-      'Captura automaticamente el punto. Para traslados NO CENDIS (243, URG, B05, ' +
-      'casos juridicos) NO exige el punto.',
-    tarjetas: ['t1', 't2'],
-    puedeCrearTraslado: true,
-    exigePunto: true,
-    puntoExcepciones: ['243', 'urg', 'b05', 'juridico', 'juridica', 'caso juridico', 'caso juridica'],
-    puedeAsignarResponsable: true,
-    camposObligatorios: {
-      t1: ['t1_traslado', 't1_responsable_entrega', 't1_quien_alista'],
-      t2: ['t2_traslado', 't2_fecha_envio', 't2_conductor', 't2_planilla']
-    },
-    bloqueaAlRecibir: false,
-    soloLectura: [],
-    puedeImprimir: true,
-    puedeBackup: false,
-    puedeConfig: false
-  },
-  auxiliar_entrega: {
-    label: 'AUXILIAR ENTREGA',
-    icon: '&#128230;',
-    color: 'bg-success',
-    descripcion: 'Debe llamar el traslado, la pantalla muestra el destino. ' +
-      'Registra unidades, cajas, urgencia y quien empaco. ' +
-      'Si no tiene informacion completa NO deja avanzar.',
-    tarjetas: ['t1'],
-    puedeCrearTraslado: false,
-    exigePunto: false,
-    puntoExcepciones: [],
-    puedeAsignarResponsable: false,
-    camposObligatorios: {
-      t1: ['t1_traslado', 't1_cantidad', 't1_tipo', 't1_urgente', 't1_quien_alista']
-    },
-    bloqueaAlRecibir: false,
-    soloLectura: ['t1_responsable_entrega', 't1_recomendado'],
-    puedeImprimir: false,
-    puedeBackup: false,
-    puedeConfig: false
-  },
-  recibido_logistica: {
-    label: 'RECIBIDO LOGISTICA',
-    icon: '&#9989;',
-    color: 'bg-info',
-    descripcion: 'Debe llamar el traslado y registrar quien recibe. ' +
-      'Una vez le den recibido NO pueden modificarlo. ' +
-      'Toma fecha y hora automatico. Opcion de observacion.',
-    tarjetas: ['t2'],
-    puedeCrearTraslado: false,
-    exigePunto: false,
-    puntoExcepciones: [],
-    puedeAsignarResponsable: false,
-    camposObligatorios: {
-      t2: ['t2_traslado', 't2_quien_recibe']
-    },
-    bloqueaAlRecibir: true,
-    soloLectura: ['t2_fecha_envio', 't2_conductor', 't2_placa', 't2_planilla'],
-    puedeImprimir: false,
-    puedeBackup: false,
-    puedeConfig: false
-  },
-  planillar_logistica: {
-    label: 'PLANILLAR LOGISTICA',
-    icon: '&#128203;',
-    color: 'bg-warning text-dark',
-    descripcion: 'Por validar. Acceso basico a logistica y despachos.',
-    tarjetas: ['t1', 't2'],
-    puedeCrearTraslado: false,
-    exigePunto: false,
-    puntoExcepciones: [],
-    puedeAsignarResponsable: false,
-    camposObligatorios: {
-      t1: ['t1_traslado'],
-      t2: ['t2_traslado']
-    },
-    bloqueaAlRecibir: false,
-    soloLectura: [],
-    puedeImprimir: true,
-    puedeBackup: false,
-    puedeConfig: false
-  },
-  auxiliar: {
-    label: 'AUXILIAR',
-    icon: '&#128119;',
-    color: 'bg-secondary',
-    descripcion: 'Personal auxiliar. Puede visualizar y registrar en Tarjetas 1, 2 y 3.',
-    tarjetas: ['t1', 't2', 't3'],
-    puedeCrearTraslado: false,
-    exigePunto: false,
-    puntoExcepciones: [],
-    puedeAsignarResponsable: false,
-    camposObligatorios: {
-      t1: ['t1_traslado', 't1_quien_alista'],
-      t2: ['t2_traslado'],
-      t3: ['t3_traslado']
-    },
-    bloqueaAlRecibir: false,
-    soloLectura: ['t1_responsable_entrega', 't1_recomendado'],
-    puedeImprimir: false,
-    puedeBackup: false,
-    puedeConfig: false
-  }
+  planillar_logistica: 'Medis2024Plan'
 };
 
-/** Perfil activo (persistido en localStorage). */
-let PERFIL_ACTIVO = localStorage.getItem(LS_PERFIL) || 'administrador';
-
-/** Usuarios individuales que usan el perfil AUXILIAR (ven T1, T2, T3). */
-const USUARIOS_AUXILIAR = [
+/* Nombres de los 32 auxiliares individuales */
+var AUXILIARES_INDIVIDUALES = [
   'yuri','julio','hernan','diego','brian','karina','jhony','natalia',
   'manuel','claudia','daniela','juan','luzl','liz','ana','leidy',
   'bivian','vaneza','brayan','nicoll','luis','estefania','angela','camila',
   'angie','mayra','derly','luisa','luzn','andrea','andres','diegoe'
 ];
 
-/** Devuelve el perfil que corresponde a un usuario dado. */
-function obtenerPerfilDeUsuario(usuario) {
-  if (PERFILES[usuario]) return usuario;  // Perfil institucional directo
-  if (USUARIOS_AUXILIAR.includes(usuario)) return 'auxiliar';
-  return 'administrador';  // Fallback
-}
+var LABELS_PERFIL = {
+  administrador: '&#128081; ADMINISTRADOR',
+  lider: '&#128104;&#8205;&#128188; LIDER',
+  auxiliar_entrega: '&#128230; AUXILIAR ENTREGA',
+  recibido_logistica: '&#9989; RECIBIDO LOGISTICA',
+  planillar_logistica: '&#128203; PLANILLAR LOGISTICA',
+  auxiliar: '&#128119; AUXILIAR'
+};
 
-/** Establece el perfil activo y refresca la interfaz. */
-function seleccionarPerfil(clave) {
-  if (!PERFILES[clave]) { toast('Perfil no reconocido.', 'danger'); return; }
-  PERFIL_ACTIVO = clave;
-  localStorage.setItem(LS_PERFIL, clave);
-  aplicarPerfil();
-  toast('Perfil activo: <strong>' + PERFILES[clave].label + '</strong>', 'success');
-}
+/* Perfiles y sus tarjetas visibles (reordenadas) */
+var PERFILES = {
+  administrador:           { label: 'Administrador',   tarjetas: ['t1','t2','t3','t4','t5','t6'] },
+  lider:                  { label: 'Lider',           tarjetas: ['t1','t3'] },
+  auxiliar_entrega:       { label: 'Auxiliar Entrega', tarjetas: ['t3'] },
+  recibido_logistica:     { label: 'Recibido Log',     tarjetas: ['t4'] },
+  planillar_logistica:    { label: 'Planillar Log',    tarjetas: ['t3','t4'] },
+  auxiliar:               { label: 'Auxiliar',         tarjetas: ['t1','t2','t3'] }
+};
 
-/**
- * Aplica las restricciones del perfil activo a toda la interfaz:
- *   - Muestra/oculta tarjetas
- *   - Habilita/deshabilita botones
- *   - Pone campos en solo lectura segun el perfil
- *   - Despliega la lista de responsables si el perfil puede asignar
- *   - Muestra info del perfil activo en la barra
- */
-function aplicarPerfil() {
-  const p = PERFILES[PERFIL_ACTIVO] || PERFILES.administrador;
+/* Modulos (orden de carpetas/backend) */
+var MODULOS = ['seguridad','recepcion','despachos','logistica','facturacion','inventario'];
 
-  // 1. Mostrar/ocultar pestanas de tarjetas
-  document.querySelectorAll('#tabsCargue .nav-item').forEach(li => {
-    const btn = li.querySelector('.nav-link');
-    const target = btn ? btn.getAttribute('data-bs-target') : '';
-    const tarjetaId = target.replace('#', '');
-    li.style.display = p.tarjetas.includes(tarjetaId) ? '' : 'none';
-  });
-
-  // Si la pestana activa no esta permitida, forzar la primera permitida
-  const pestanaActiva = document.querySelector('#tabsCargue .nav-link.active');
-  if (pestanaActiva) {
-    const target = pestanaActiva.getAttribute('data-bs-target');
-    const tarjetaId = target.replace('#', '');
-    if (!p.tarjetas.includes(tarjetaId)) {
-      const primeraPermitida = p.tarjetas[0];
-      const tab = document.querySelector('#tabsCargue .nav-link[data-bs-target="#' + primeraPermitida + '"]');
-      if (tab) { tab.click(); }
-    }
-  }
-
-  // 2. Botones segun permisos
-  const btnBackupTop = $('btnBackupTop');
-  const btnBackupFloat = $('btnBackupFloat');
-  const btnConfig = $('btnConfigApi');
-  if (btnBackupTop) btnBackupTop.style.display = p.puedeBackup ? '' : 'none';
-  if (btnBackupFloat) btnBackupFloat.style.display = p.puedeBackup ? '' : 'none';
-  if (btnConfig) btnConfig.style.display = p.puedeConfig ? '' : 'none';
-
-  // Tarjeta 1 — Validar/Crear traslado
-  const t1Validar = $('t1_btnValidar');
-  const t1Guardar = $('t1_btnGuardar');
-
-  // Perfiles que pueden ver el boton Validar: todos los que tienen t1
-  if (t1Validar) t1Validar.style.display = p.tarjetas.includes('t1') ? '' : 'none';
-
-  // Auxiliar (solo lectura): puede buscar/visualizar traslados pero NO guardar ni crear
-  if (PERFIL_ACTIVO === 'auxiliar') {
-    if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Buscar traslado'; }
-    if (t1Guardar) { t1Guardar.style.display = 'none'; }
-  // Auxiliar Entrega: puede llamar traslado (validar) Y registrar entrega (guardar)
-  } else if (PERFIL_ACTIVO === 'auxiliar_entrega') {
-    if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Llamar traslado'; }
-    if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Registrar entrega'; }
-  } else if (p.puedeCrearTraslado) {
-    if (t1Validar) t1Validar.innerHTML = '&#128269; Validar y traer datos';
-    if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Guardar en Drive'; }
-  } else {
-    // Otros perfiles con t1 (planillar_logistica): ven el boton pero con texto generico
-    if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Llamar traslado'; }
-    if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Guardar en Drive'; }
-  }
-
-  // Auxiliar (solo lectura): ocultar botones de guardar e imprimir en T2/T3
-  if (PERFIL_ACTIVO === 'auxiliar') {
-    const t2Guardar = $('t2_btnGuardar');
-    const t2Imprimir = $('t2_btnImprimir');
-    const t3Guardar = $('t3_btnGuardar');
-    const t3Imprimir = $('t3_btnImprimir');
-    if (t2Guardar) t2Guardar.style.display = 'none';
-    if (t2Imprimir) t2Imprimir.style.display = 'none';
-    if (t3Guardar) t3Guardar.style.display = 'none';
-    if (t3Imprimir) t3Imprimir.style.display = 'none';
-  }
-
-  // Recibido Logistica: en T2 muestra solo boton de recibido
-  if (PERFIL_ACTIVO === 'recibido_logistica') {
-    const t2Guardar = $('t2_btnGuardar');
-    const t2Imprimir = $('t2_btnImprimir');
-    if (t2Guardar) { t2Guardar.innerHTML = '&#9989; Registrar Recibido'; t2Guardar.style.display = ''; }
-    if (t2Imprimir) t2Imprimir.style.display = 'none';
-  }
-
-  // 3. Campos en solo lectura segun perfil
-  (p.soloLectura || []).forEach(id => {
-    const el = $(id);
-    if (el) { el.readOnly = true; el.classList.add('campo-bloqueado'); }
-  });
-  // Restaurar campos que NO estan en soloLectura del perfil actual
-  Object.values(PERFILES).forEach(pf => {
-    (pf.soloLectura || []).forEach(id => {
-      if (!(p.soloLectura || []).includes(id)) {
-        const el = $(id);
-        if (el && !el.id.startsWith('t1_bodega') && !el.id.startsWith('t1_destino') &&
-            !el.id.startsWith('t1_zona') && !el.id.startsWith('t1_cantidad') &&
-            !el.id.startsWith('t1_tipo') && !el.id.startsWith('t1_urgente') &&
-            !el.id.startsWith('t2_bodega') && !el.id.startsWith('t2_destino') &&
-            !el.id.startsWith('t2_zona') && !el.id.startsWith('t2_cantidad') &&
-            !el.id.startsWith('t2_urgente') && !el.id.startsWith('t2_responsable') &&
-            !el.id.startsWith('t2_quien_alista') && !el.id.startsWith('t2_marca')) {
-          el.readOnly = false;
-          el.classList.remove('campo-bloqueado');
-        }
-      }
-    });
-  });
-
-  // 4. Lista desplegable de responsables (si el perfil puede asignar)
-  if (p.puedeAsignarResponsable) {
-    const sel = $('t1_responsable_entrega');
-    if (sel && sel.tagName === 'INPUT') {
-      // Convertir input a select si no existe ya
-      const parent = sel.parentNode;
-      const newSel = document.createElement('select');
-      newSel.className = 'form-select';
-      newSel.id = 't1_responsable_entrega';
-      newSel.innerHTML = '<option value="">Seleccione responsable...</option>' +
-        (CONFIG.conductores || []).map(c => '<option>' + esc(c) + '</option>').join('') +
-        '<option>OTRO</option>';
-      parent.replaceChild(newSel, sel);
-    } else if (sel && sel.tagName === 'SELECT') {
-      // Ya es select, actualizar opciones
-      sel.innerHTML = '<option value="">Seleccione responsable...</option>' +
-        (CONFIG.conductores || []).map(c => '<option>' + esc(c) + '</option>').join('') +
-        '<option>OTRO</option>';
-    }
-  }
-
-  // 5. Mostrar panel de perfil activo en la barra
-  const badge = $('perfilBadge');
-  if (badge) {
-    badge.innerHTML = p.icon + ' ' + esc(p.label);
-    badge.className = 'badge ' + p.color + ' mf-perfil-badge';
-  }
-
-  // 6. Pintar info de perfiles en modal
-  pintarPerfiles();
-  pintarIdsCarpetas();
-  pintarPerfilesUsuario();
-}
-
-/** Verifica si el destino del traslado exige captura de punto segun el perfil. */
-function destinoExigePunto(destino) {
-  const p = PERFILES[PERFIL_ACTIVO];
-  if (!p.exigePunto) return false; // Admin, Auxiliar, etc. no exigen
-  const d = normalizarCabecera(destino);
-  return !(p.puntoExcepciones || []).some(exc => d.indexOf(exc) !== -1);
-}
-
+/* ═════════════════════════════════════════════════════════════════════════════════
+   3. CONFIGURACION EN MEMORIA + GUARDADO EN LOCALSTORAGE
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var CONFIG = {};
 function cargarConfig() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    const cfg = raw ? Object.assign({}, CONFIG_DEFAULT, JSON.parse(raw)) : Object.assign({}, CONFIG_DEFAULT);
-    /* Forzar URL de Web App fija (nunca permitir vacia o distinta) */
-    cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
-    /* Forzar IDs de carpetas de Drive (valores oficiales) */
-    cfg.folders = Object.assign({}, CONFIG_DEFAULT.folders, cfg.folders || {});
-    cfg.folders.trasladosConsulta = CONFIG_DEFAULT.folders.trasladosConsulta; // TRASLADOS — ORIGEN fijo (lectura)
-    // despachos = carpeta DESTINO (escritura) — editable por el usuario
-    cfg.folders.logistica = CONFIG_DEFAULT.folders.logistica;   // 1_e8ycbz...  (carpeta LOGISTICA)
-    cfg.folders.recepcion = CONFIG_DEFAULT.folders.recepcion;
-    cfg.folders.facturacion = CONFIG_DEFAULT.folders.facturacion;
-    cfg.folders.inventario = CONFIG_DEFAULT.folders.inventario;
-    cfg.folders.backup = CONFIG_DEFAULT.folders.backup;
-    /* Si la URL esta configurada, modo local debe estar desactivado */
-    if (cfg.apiUrl && cfg.apiUrl.trim() !== '' && cfg.modoLocal) {
-      cfg.modoLocal = false;
+  var saved = localStorage.getItem('MF_CARGUE_CONFIG');
+  CONFIG = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(CONFIG_DEFAULT));
+  if (!CONFIG.folders.seguridad) CONFIG.folders.seguridad = CONFIG_DEFAULT.folders.seguridad;
+  if (!CONFIG.folders.rotacion)  CONFIG.folders.rotacion  = CONFIG_DEFAULT.folders.rotacion;
+  if (!CONFIG.conductores || !CONFIG.conductores.length) CONFIG.conductores = CONFIG_DEFAULT.conductores.slice();
+  var el = $('cfg_api_url'); if (el) el.value = CONFIG.api_url;
+  var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
+  var cc = $('cfg_conductores'); if (cc) cc.value = (CONFIG.conductores || []).join('\n');
+}
+function guardarConfig() {
+  var el = $('cfg_api_url'); if (el) CONFIG.api_url = el.value.trim();
+  var fb = $('cfg_folder_backup'); if (fb) CONFIG.folders.backup = fb.value.trim();
+  var cc = $('cfg_conductores'); if (cc) CONFIG.conductores = cc.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+  localStorage.setItem('MF_CARGUE_CONFIG', JSON.stringify(CONFIG));
+  showToast('Configuracion guardada en el navegador.', 'success');
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   4. SESION Y PERFILES
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function perfilActivo() {
+  return localStorage.getItem('MF_PERFIL_ACTIVO') || 'administrador';
+}
+
+function esAdministrador() {
+  var p = perfilActivo();
+  return p === 'administrador';
+}
+
+function nombreUsuario() {
+  var p = perfilActivo();
+  if (AUXILIARES_INDIVIDUALES.indexOf(p) >= 0) {
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  }
+  return LABELS_PERFIL[p] || p;
+}
+
+function aplicarPerfil() {
+  var perfil = perfilActivo();
+  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0) perfil = 'auxiliar';
+  var def = PERFILES[perfil] || PERFILES.administrador;
+  var visibles = def.tarjetas;
+  var todas = ['t1','t2','t3','t4','t5','t6'];
+  todas.forEach(function (tid) {
+    var pane = $(tid);
+    var tab = document.querySelector('[data-bs-target="#' + tid + '"]');
+    if (visibles.indexOf(tid) >= 0) {
+      if (pane) pane.classList.remove('d-none');
+      if (tab) { tab.classList.remove('d-none'); tab.style.display = ''; }
+    } else {
+      if (pane) pane.classList.add('d-none');
+      if (tab) { tab.classList.add('d-none'); tab.style.display = 'none'; }
     }
-    return cfg;
-  } catch (e) { return Object.assign({}, CONFIG_DEFAULT); }
-}
-function guardarConfig() { localStorage.setItem(LS_KEY, JSON.stringify(CONFIG)); }
-
-function cargarSesion() {
-  try {
-    const raw = localStorage.getItem(LS_DATA);
-    return raw ? JSON.parse(raw) : { despachos: [], logistica: [], recepcion: [], facturacion: [], inventario: [] };
-  } catch (e) {
-    return { despachos: [], logistica: [], recepcion: [], facturacion: [], inventario: [] };
-  }
-}
-function guardarSesion() { localStorage.setItem(LS_DATA, JSON.stringify(SESION)); }
-
-/* ---------------------------------------------------------------------------
- * 2. LECTURA DINAMICA POR NOMBRE DE CABECERA (nunca por indice)
- * ------------------------------------------------------------------------- */
-
-/** Normaliza cabeceras: minusculas, sin acentos, sin signos, espacios simples. */
-function normalizarCabecera(texto) {
-  if (texto === null || texto === undefined) return '';
-  return String(texto)
-    .replace(/\u00A0/g, ' ')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Obtiene un valor de una fila/objeto buscando la columna por NOMBRE.
- * @param {Object|Array} fila  Objeto {cabecera: valor} o arreglo de celdas.
- * @param {string|string[]} nombreColumna Nombre o alias aceptados.
- * @param {Object} [mapa] Mapa {cabeceraNormalizada: indice} si fila es arreglo.
- */
-function obtenerValorPorNombreColumna(fila, nombreColumna, mapa) {
-  const alias = Array.isArray(nombreColumna) ? nombreColumna : [nombreColumna];
-  if (Array.isArray(fila)) {
-    for (const a of alias) {
-      const idx = mapa ? mapa[normalizarCabecera(a)] : undefined;
-      if (idx !== undefined) return fila[idx] ?? '';
-    }
-    return '';
-  }
-  // Objeto: se construye un indice normalizado de sus propias claves.
-  const indice = {};
-  Object.keys(fila || {}).forEach(k => { indice[normalizarCabecera(k)] = fila[k]; });
-  for (const a of alias) {
-    const k = normalizarCabecera(a);
-    if (indice[k] !== undefined && indice[k] !== '') return indice[k];
-  }
-  return '';
-}
-
-/** Construye el mapa de cabeceras de una matriz leida de Sheets. */
-function construirMapaCabeceras(headers) {
-  const mapa = {};
-  (headers || []).forEach((h, i) => {
-    const k = normalizarCabecera(h);
-    if (k && mapa[k] === undefined) mapa[k] = i;
   });
-  return mapa;
-}
-
-/* Alias oficiales de cada campo: tolera variaciones de nombre en las hojas. */
-const ALIAS = {
-  traslado:      ['Documento TRASLADO', 'TRASLADO', 'Numero Traslado', 'Documento de Traslado', 'Traslado', 'TRASLADO'],
-  fecha:         ['Fecha', 'FECHA', 'Fecha Traslado', 'Fecha del Traslado'],
-  bodegaOrigen:  ['Bodega Origen', 'BODEGA ORIGEN', 'BODEGA ORIGEN DEL TRASLADO', 'Bodega Origen Emisora', 'Bodega Origen Extrema'],
-  destino:       ['DESTINO', 'Destino', 'BODEGA DESTINO DEL TRASLADO', 'Bodega Destino', 'Bodega Destino'],
-  recibido:      ['Recibido', 'RECIBIDO', 'Recibido Por'],
-  codigo:        ['Codigo', 'CODIGO', 'Codigo Producto', 'Cod'],
-  descripcion:   ['Descripcion', 'DESCRIPCION', 'Descripcion Producto', 'Producto'],
-  unidades:      ['Unidades', 'UNIDADES', 'Cantidad', 'CANTIDAD', 'Cantidad Enviada'],
-  usuario:       ['Usuario', 'USUARIO', 'Usuario Registro'],
-  lote:          ['Lote', 'LOTE', 'Lote Producto'],
-  fechaVencLote: ['Fecha Vencimiento Lote', 'FECHA VENCIMIENTO LOTE', 'Fecha Vencimiento', 'Vencimiento'],
-  observaciones: ['Observaciones', 'OBSERVACIONES', 'Observacion'],
-  cantidad:      ['Cantidad', 'CANTIDAD', 'Cantidad Enviada', 'Unidades', 'UNIDADES'],
-  tipo:          ['TIPO', 'Tipo'],
-  urgente:       ['Urgente', 'URGENTE', 'PRIORIDAD'],
-  zona:          ['ZONA', 'Zona'],
-  quienAlista:   ['QUIEN ALISTA', 'Responsable de Empacar / Rotular', 'Responsable de Empacar'],
-  respEntrega:   ['RESPONSABLE DE ENTREGA CENDIS', 'Responsable de Entrega'],
-  marcaTemporal: ['Marca temporal', 'Fecha Inicial', 'Timestamp'],
-  fEntregaLog:   ['FECHA ENTREGA LOGISTICA', 'Fecha y Hora de Registro Logistico'],
-  fPlanillaEnvio:['FECHA PLANILLA ENVIO LOGISTICA', 'Fecha de Envio del Traslado'],
-  fRecibidoPunto:['FECHA RECIBIDO EN PUNTO'],
-  conductor:     ['CONDUCTOR', 'Responsable de Envio'],
-  planilla:      ['PLANILLA', 'Planilla'],
-  seguimiento:   ['SEGUIMIENTO', 'Estado Seguimiento']
-};
-
-/* ==========================================================================
- * MAPA DE BODEGAS → ZONAS (desde archivo BODEGAS Y ZONAS.xlsx)
- * Permite auto-calcular la zona cuando no viene en los datos de Drive
- * pero se conoce la bodega destino.
- * ========================================================================== */
-const BODEGA_ZONA_MAP = {
-  'M07 UBATE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M102 IPIALES NARIÑO': 'ZONA NARIÑO',
-  'M103 SANDONA NARIÑO': 'ZONA NARIÑO',
-  'M104 LEIVA NARIÑO': 'ZONA NARIÑO',
-  'M111 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
-  'M112 BOLIVAR CAUCA': 'ZONA CAUCA SUR',
-  'M116 TIMBIQUI CAUCA': 'ZONA CAUCA SUR',
-  'M117 EL BORDO CAUCA': 'ZONA CAUCA SUR',
-  'M118 MERCADERES CAUCA': 'ZONA CAUCA SUR',
-  'M119 CORINTO CAUCA': 'ZONA CAUCA NORTE',
-  'M120 ROSAS CAUCA': 'ZONA CAUCA SUR',
-  'M123 MONIQUIRA BOYACA': 'ZONA BOYACA',
-  'M124 CARTAGENA DEL CHAIRA CAQUETA': 'ZONA CAQUETA',
-  'M125 SAN VICENTE DEL CAGUAN CAQUETA': 'ZONA CAQUETA',
-  'M126 PUERTO RICO CAQUETA': 'ZONA CAQUETA',
-  'M130 EL DONCELLO CAQUETA': 'ZONA CAQUETA',
-  'M133 SAN JOSE DE FRAGUA CAQUETA': 'ZONA CAQUETA',
-  'M137 BALBOA CAUCA': 'ZONA CAUCA SUR',
-  'M138 BUENOS AIRES CAUCA CAUCA': 'ZONA CAUCA NORTE',
-  'M139 BUENOS AIRES - TIMBA CAUCA': 'ZONA CAUCA NORTE',
-  'M140 CAJIBIO CAUCA': 'ZONA CAUCA CENTRO',
-  'M141 CAJIBIO ROSARIO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
-  'M143 INZA CAUCA': 'ZONA CAUCA CENTRO',
-  'M144 VEGA CAUCA': 'ZONA CAUCA SUR',
-  'M145 LA VEGA - SAN MIGUEL CAUCA': 'ZONA CAUCA SUR',
-  'M146 LOPEZ DE MICAY CAUCA CAUCA': 'ZONA CAUCA SUR',
-  'M147 MIRANDA CAUCA': 'ZONA CAUCA NORTE',
-  'M148 MORALES CAUCA': 'ZONA CAUCA CENTRO',
-  'M149 PADILLA CAUCA': 'ZONA CAUCA NORTE',
-  'M15 IBAGUE TOLIMA': 'ZONA TOLIMA',
-  'M151 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
-  'M152 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
-  'M153 PURACE COCONUCO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
-  'M154 PURACE SANTA LETICIA CAUCA CAUCA': 'ZONA CAUCA CENTRO',
-  'M156 SANTANDER QUILICHAO CAUCA CAUCA': 'ZONA CAUCA NORTE',
-  'M157 SUAREZ CAUCA': 'ZONA CAUCA NORTE',
-  'M158 SUCRE CAUCA': 'ZONA CAUCA SUR',
-  'M159 TIMBIO CAUCA': 'ZONA CAUCA CENTRO',
-  'M16 MEDELLIN ANTIOQUIA': 'ZONA EJE CAFETERO',
-  'M160 ALVARADO TOLIMA': 'ZONA TOLIMA',
-  'M161 AMBALEMA TOLIMA': 'ZONA TOLIMA',
-  'M162 ANZOATEGUI TOLIMA': 'ZONA TOLIMA',
-  'M163 ARMERO TOLIMA': 'ZONA TOLIMA',
-  'M164 ATACO TOLIMA': 'ZONA TOLIMA',
-  'M165 CAJAMARCA TOLIMA': 'ZONA TOLIMA',
-  'M166 CARMEN DE APICALA TOLIMA': 'ZONA TOLIMA',
-  'M167 CASABIANCA TOLIMA': 'ZONA TOLIMA',
-  'M168 CHAPARRAL TOLIMA': 'ZONA TOLIMA',
-  'M169 COYAIMA TOLIMA': 'ZONA TOLIMA',
-  'M17 ALVERNIA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M170 CUNDAY TOLIMA': 'ZONA TOLIMA',
-  'M171 GUAMO TOLIMA': 'ZONA TOLIMA',
-  'M172 HONDA TOLIMA': 'ZONA TOLIMA',
-  'M173 ICONONZO TOLIMA': 'ZONA TOLIMA',
-  'M174 LERIDA TOLIMA': 'ZONA TOLIMA',
-  'M175 LIBANO TOLIMA': 'ZONA TOLIMA',
-  'M176 MARIQUITA TOLIMA': 'ZONA TOLIMA',
-  'M177 PALOCABILDO TOLIMA': 'ZONA TOLIMA',
-  'M178 PRADO TOLIMA': 'ZONA TOLIMA',
-  'M179 PURIFICACION TOLIMA': 'ZONA TOLIMA',
-  'M180 RIOBLANCO TOLIMA': 'ZONA TOLIMA',
-  'M181 ROVIRA TOLIMA': 'ZONA TOLIMA',
-  'M182 SAN ANTONIO TOLIMA TOLIMA': 'ZONA TOLIMA',
-  'M183 VILLAHERMOSA TOLIMA': 'ZONA TOLIMA',
-  'M184 EL TAMBO CAUCA CAUCA': 'ZONA CAUCA SUR',
-  'M188 PAEZ CAUCA': 'ZONA CAUCA CENTRO',
-  'M189 CALDONO CAUCA': 'ZONA CAUCA NORTE',
-  'M190 ALMAGUER CAUCA': 'ZONA CAUCA SUR',
-  'M193 FLORENCIA CAUCA': 'ZONA CAUCA SUR',
-  'M194 GUACHENE CAUCA': 'ZONA CAUCA NORTE',
-  'M195 LA SIERRA CAUCA CAUCA': 'ZONA CAUCA SUR',
-  'M197 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
-  'M21 CARTAGO VALLE DEL CAUCA': 'ZONA VALLE',
-  'M211 QUINCHIA RISARALDA': 'ZONA EJE CAFETERO',
-  'M212 PUEBLO RICO RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
-  'M214 PEREIRA CUBA RISARALDA': 'ZONA EJE CAFETERO',
-  'M108 DOSQUEBRADAS RISARALDA': 'ZONA EJE CAFETERO',
-  'M218 SAN SEBASTIAN CAUCA CAUCA': 'ZONA CAUCA SUR',
-  'M223 CALI VALLE DEL CAUCA': 'ZONA VALLE',
-  'M225 BUGA VALLE DEL CAUCA': 'ZONA VALLE',
-  'SM226 ORTEGA TOLIMA': 'ZONA TOLIMA',
-  'M235 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
-  'M239 PARATEBUENO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M240 SAN JUAN DEL CESAR GUAJIRA': 'ZONA COSTA NORTE',
-  'M241 FONSECA GUAJIRA': 'ZONA COSTA NORTE',
-  'M244 TOCANCIPA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M250 MITU VAUPES': 'ZONA CUNDINAMARCA',
-  'M251 ANAPOIMA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M253 PURACE CAUCA': 'ZONA CAUCA CENTRO',
-  'SM256 MANAURE GUAJIRA': 'ZONA COSTA NORTE',
-  'M259 FUSAGASUGA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M266 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
-  'M267 PEREIRA GARZAS RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
-  'M268 URIBIA LA GUAJIRA GUAJIRA': 'ZONA COSTA NORTE',
-  'M27 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M270 SANTA ROSA CAUCA CAUCA': 'ZONA CAUCA SUR',
-  'M283 DUITAMA BOYACA': 'ZONA BOYACA',
-  'M286 CHIQUINQUIRÁ BOYACA': 'ZONA BOYACA',
-  'M29 FLORIDA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M291 LA HERRADURA CAUCA': 'ZONA CAUCA SUR',
-  'M292 GARAGOA BOYACA': 'ZONA BOYACA',
-  'SM299 MAICAO GUAJIRA': 'ZONA COSTA NORTE',
-  'SM300 BARRANCAS GUAJIRA': 'ZONA COSTA NORTE',
-  'SM301 HATONUEVO GUAJIRA': 'ZONA COSTA NORTE',
-  'SM302 VILLANUEVA GUAJIRA': 'ZONA COSTA NORTE',
-  'SM303 URUMITA GUAJIRA': 'ZONA COSTA NORTE',
-  'SM304 DIBULLA GUAJIRA': 'ZONA COSTA NORTE',
-  'M305 VILLETA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M306 GUADUAS CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M307 RICAURTE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M308 BOJACA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M309 TENJO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M31 SAN VICENTE TULUA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M310 VILLA DE LEYVA BOYACA': 'ZONA BOYACA',
-  'M311 GUICAN BOYACA': 'ZONA BOYACA',
-  'M313 MIRAFLORES MIRAFLORES BOYACA': 'ZONA BOYACA',
-  'M32 PASTO NARIÑO': 'ZONA NARIÑO',
-  'M33 CALI VALLE DEL CAUCA': 'ZONA VALLE',
-  'M34 TUNJA BOYACA': 'ZONA BOYACA',
-  'M42 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
-  'M43 MANIZALES CALDAS': 'ZONA EJE CAFETERO',
-  'M46 ARMENIA QUINDIO': 'ZONA EJE CAFETERO',
-  'M65 SOATA BOYACA': 'ZONA BOYACA',
-  'M73 SOGAMOSO BOYACA': 'ZONA BOYACA',
-  'M75 RIOHACHA GUAJIRA': 'ZONA COSTA NORTE',
-  'M76 PUERTO BOYACA': 'ZONA BOYACA',
-  'M77 SILVIA CAUCA': 'ZONA CAUCA CENTRO',
-  'M78 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
-  'M79 CALOTO CAUCA': 'ZONA CAUCA NORTE',
-  'M82 SANTANDER QUILICHAO CAUCA': 'ZONA CAUCA NORTE',
-  'M84 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
-  'M87 YUMBO VALLE DEL CAUCA': 'ZONA VALLE',
-  'M88 GUACARI VALLE DEL CAUCA': 'ZONA VALLE',
-  'M89 GINEBRA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M90 CERRITO VALLE DEL CAUCA': 'ZONA VALLE',
-  'M92 CANDELARIA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M93 PRADERA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M94 CALI VALLE DEL CAUCA': 'ZONA VALLE',
-  'M95 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
-  'M96 SANTANDER CAUCA': 'ZONA CAUCA NORTE',
-  'N31 MDF. SURTIDROGAS POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
-  'BOD. N40 BOGOTÁ MEDISFARMA SURTIDROGAS CUNDINAMARCA': 'BODEGA VIRTUAL',
-  'M107 BELEN DE UMBRIA RISARALDA': 'ZONA EJE CAFETERO',
-  'M209 LA VIRGINIA RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
-  'M210 GUATICA RISARALDA': 'ZONA EJE CAFETERO',
-  'M231 BOGOTA UNICENTRO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
-  'M243 BOD. NUEVA EPS': 'BODEGA VIRTUAL',
-  'BOD. N11 MEDISFARMA SURTIDROGAS CALI VALLE DEL CAUCA': 'ZONA VALLE',
-  'B10 BODEGA BOGOTA': 'BODEGA VIRTUAL',
-  'M20 JAMUNDI VALLE DEL CAUCA': 'ZONA VALLE',
-  'M314 GUATEQUE GUATEQUE BOYACA': 'ZONA BOYACA',
-  'M03 NEIVA HUILA': 'ZONA CAQUETA',
-  '35 YOPAL CASANARE': 'CERRADA',
-  'M217 TULUA E.D VALLE DEL CAUCA': 'BODEGA VIRTUAL',
-  'M220 POPAYAN CAUCA': 'CERRADA',
-  'M24 POPAYAN CAUCA': 'CERRADA',
-  'CASOS JURIDICOS': 'BODEGA VIRTUAL',
-  'BOD. 80 FACTURACION': 'BODEGA VIRTUAL',
-  'M213 CALI VALLE DEL CAUCA': 'ZONA VALLE',
-  'CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL': 'BODEGA VALLE',
-  'B05 ALTO COSTO': 'BODEGA VALLE',
-  'ST28 BODEGA LOGISTICA': 'BODEGA VIRTUAL',
-  'M155 ROSAS CAUCA (CERRADA)': 'CERRADA',
-  'ST07 MDF. POPAYAN SANTA RITA LA VEGA CAUCA': 'CERRADA',
-  'M61 PASTO NARIÑO': 'CERRADA',
-  'M18 BUENAVENTURA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M185 SAN AGUSTIN HUILA HUILA': 'ZONA CAQUETA',
-  'M249 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M91 CALIMA VALLE DEL CAUCA': 'ZONA VALLE',
-  'M337 CARTAGENA DE INDIAS BOLIVAR': 'CERRADA',
-  'M85 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
-  'M219 POPAYAN PARQUE INDUSTRIAL CAUCA': 'ZONA CAUCA CENTRO',
-  'M257 PEREIRA PINARES RISARALDA RISARALDA': 'LOCAL Y ACTIVOS',
-  'M260 LA MESA CUNDINAMARCA': 'CERRADA',
-  '02M FLORENCIA CAQUETA': 'ZONA CAQUETA',
-  'B9 POPAYAN PARQUE INDUSTRIAL CAUCA': 'BODEGA',
-  'M100 TUMACO NARIÑO': 'ZONA NARIÑO',
-  'M245 BUCARAMANGA SANTANDER SANTANDER': 'ZONA CUNDINAMARCA',
-  'URG01 MDF. URGENCIAS TULUA VALLE DEL CAUCA': 'BODEGA VIRTUAL',
-  /* Entradas adicionales heredadas (compatibilidad con datos historicos) */
-  'B1 BODEGA PRINCIPAL POPAYAN CAUCA': 'BODEGA',
-  'B2 BODEGA PRINCIPAL CALI VALLE': 'BODEGA VALLE',
-  'B3 BODEGA PRINCIPAL PALMIRA VALLE': 'BODEGA VALLE',
-  'B4 BODEGA PRINCIPAL TULUA VALLE': 'BODEGA VALLE',
-  'B5 BODEGA PRINCIPAL BUGA VALLE': 'BODEGA VALLE',
-  'B6 BODEGA PRINCIPAL CARTAGO VALLE': 'BODEGA VALLE',
-  'B7 BODEGA PRINCIPAL IBAGUE TOLIMA': 'BODEGA',
-  'B8 BODEGA PRINCIPAL MANIZALES CALDAS': 'BODEGA',
-  '01M VIRTUAL NACIONAL': 'BODEGA VIRTUAL'
-};
-
-/** Lista de todas las zonas unicas para selects/filtros. */
-const ZONAS_LISTA = [
-  'ZONA CUNDINAMARCA', 'ZONA NARIÑO', 'ZONA CAUCA NORTE', 'ZONA CAUCA SUR',
-  'ZONA CAUCA CENTRO', 'ZONA BOYACA', 'ZONA CAQUETA', 'ZONA VALLE',
-  'ZONA EJE CAFETERO', 'ZONA TOLIMA', 'ZONA COSTA NORTE', 'BODEGA',
-  'BODEGA VALLE', 'BODEGA VIRTUAL', 'CERRADA', 'LOCAL Y ACTIVOS'
-];
-
-/** Busca la zona correspondiente a una bodega por nombre parcial o exacto. */
-function zonaDeBodega(nombreBodega) {
-  if (!nombreBodega) return '';
-  const nb = String(nombreBodega).trim();
-  // Busqueda exacta
-  if (BODEGA_ZONA_MAP[nb]) return BODEGA_ZONA_MAP[nb];
-  // Busqueda parcial (normalizada)
-  const nbNorm = normalizarCabecera(nb);
-  for (const [bodega, zona] of Object.entries(BODEGA_ZONA_MAP)) {
-    if (normalizarCabecera(bodega) === nbNorm) return zona;
-  }
-  // Busqueda por inicio del codigo (e.g. "M111" o "B2")
-  for (const [bodega, zona] of Object.entries(BODEGA_ZONA_MAP)) {
-    if (bodega.toUpperCase().startsWith(nb.substring(0, 4).toUpperCase())) return zona;
-  }
-  return '';
-}
-
-/* ---------------------------------------------------------------------------
- * 3. CLIENTE API (Google Apps Script Web App)
- * ------------------------------------------------------------------------- */
-
-/** POST JSON via text/plain para evitar preflight CORS en Apps Script. */
-async function api(action, payload = {}) {
-  if (!CONFIG.apiUrl) throw new Error('No se ha configurado la URL de la Web App.');
-  try {
-    const res = await fetch(CONFIG.apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(Object.assign({ action }, payload))
+  var badge = $('perfilBadge');
+  if (badge) badge.innerHTML = LABELS_PERFIL[perfil] || perfil;
+  var sel = $('selPerfil'); if (sel) sel.value = perfilActivo();
+  if (esAdministrador()) {
+    todas.forEach(function (tid) {
+      var pane = $(tid); var tab = document.querySelector('[data-bs-target="#' + tid + '"]');
+      if (pane) pane.classList.remove('d-none');
+      if (tab) { tab.classList.remove('d-none'); tab.style.display = ''; }
     });
-    /* Si la respuesta es HTML (Google login redirect), detectarlo */
-    const ct = res.headers.get('Content-Type') || '';
-    if (ct.includes('text/html')) {
-      throw new Error('La Web App requiere autenticacion. Redespliegue con acceso "Cualquier usuario" (publico).');
-    }
-    const data = await res.json();
-    if (data.ok === false) throw new Error(data.error || 'Error del backend');
-    return data;
-  } catch (e) {
-    if (e.message && e.message.includes('Failed to fetch')) {
-      throw new Error('No se pudo conectar a la Web App. Verifique: 1) La URL es correcta, 2) La Web App esta desplegada como "Cualquier usuario" (acceso publico), 3) No hay redireccion a login de Google.');
-    }
-    throw e;
   }
+  pintarPerfiles();
 }
 
-/* ---------------------------------------------------------------------------
- * 4. UTILIDADES DE INTERFAZ
- * ------------------------------------------------------------------------- */
-const $ = id => document.getElementById(id);
-const val = id => ($(id) ? String($(id).value || '').trim() : '');
-const setVal = (id, v) => { if ($(id)) $(id).value = (v === undefined || v === null) ? '' : v; };
-
-function ahora() {
-  const d = new Date(), p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-function stamp() {
-  const d = new Date(), p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+function seleccionarPerfil(perfil) {
+  localStorage.setItem('MF_LOGIN_OK', perfil);
+  localStorage.setItem('MF_PERFIL_ACTIVO', perfil);
+  aplicarPerfil();
+  showToast('Perfil cambiado a <strong>' + (LABELS_PERFIL[perfil] || perfil) + '</strong>', 'success');
 }
 
-function toast(msg, tipo = 'primary') {
-  const wrap = $('toastWrap');
-  const el = document.createElement('div');
-  el.className = `alert alert-${tipo} shadow-sm py-2 px-3 small`;
-  el.innerHTML = msg;
-  wrap.appendChild(el);
-  setTimeout(() => el.remove(), 5000);
-}
-
-/** Marca en rojo los campos obligatorios vacios. Devuelve true si todo esta ok. */
-function validarObligatorios(ids) {
-  let ok = true;
-  ids.forEach(id => {
-    const el = $(id);
-    if (!el) return;
-    if (!String(el.value || '').trim()) { el.classList.add('is-invalid-mf'); ok = false; }
-    else el.classList.remove('is-invalid-mf');
-  });
-  if (!ok) toast('Complete los campos obligatorios resaltados en rojo.', 'danger');
-  return ok;
-}
-
-/* ---------------------------------------------------------------------------
- * 5. CONFIGURACION DE CARPETAS DE DRIVE POR TARJETA
- * ------------------------------------------------------------------------- */
-const MODULOS = ['despachos', 'logistica', 'recepcion', 'facturacion', 'inventario'];
-
-/** Valida contra Drive el ID de carpeta de la tarjeta y lo persiste. */
-async function validarFolder(modulo) {
-  const id = val('folder_' + modulo);
-  const est = $('estado_folder_' + modulo);
-  if (!id) { est.innerHTML = '<span class="text-danger">Ingrese el ID de la carpeta.</span>'; return; }
-  // Si es "despachos", el usuario está configurando la carpeta DESTINO (escritura)
-  // Validar carpeta Traslados (origen fijo)
-  CONFIG.folders[modulo] = id;
-  guardarConfig();
-
-  // Sincronizar folder_despachos_t2 si se actualizo despachos
-  if (modulo === 'despachos') {
-    const t2input = $('folder_despachos_t2');
-    if (t2input) { t2input.value = id; }
-    const estT2 = $('estado_folder_despachos_t2');
-    if (estT2 && est.innerHTML) { estT2.innerHTML = est.innerHTML; }
+function pintarPerfiles() {
+  var info = $('perfilesUsuarioInfo');
+  if (info) {
+    var perfil = perfilActivo();
+    var real = AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 ? 'auxiliar' : perfil;
+    var def = PERFILES[real] || PERFILES.administrador;
+    var h = '<strong>Perfil activo:</strong> ' + (LABELS_PERFIL[real] || perfil) + '<br>';
+    h += '<strong>Tarjetas visibles:</strong> ' + def.tarjetas.join(', ') + '<br>';
+    var nombres = { t1:'Seguridad', t2:'Recepcion Tecnica', t3:'Planilla Entrega', t4:'Logistica y Despachos', t5:'Factura Transporte', t6:'Verificacion Inventario' };
+    h += '<strong>Detalle:</strong><ul>';
+    def.tarjetas.forEach(function (t) { h += '<li>' + t.toUpperCase() + ' = ' + nombres[t] + '</li>'; });
+    h += '</ul>';
+    info.innerHTML = h;
   }
-
-  if (CONFIG.modoLocal || !CONFIG.apiUrl) {
-    est.innerHTML = '<span class="text-secondary">Guardado (modo local, sin verificar en Drive).</span>';
-    if (modulo === 'despachos') {
-      const estT2b = $('estado_folder_despachos_t2');
-      if (estT2b) estT2b.innerHTML = est.innerHTML;
-    }
-    return;
-  }
-  est.innerHTML = 'Verificando...';
-  try {
-    const r = await api('validarCarpeta', { folderId: id });
-    est.innerHTML = `<span class="text-success">&#10004; ${r.nombre}</span>`;
-    if (modulo === 'despachos') {
-      const estT2c = $('estado_folder_despachos_t2');
-      if (estT2c) estT2c.innerHTML = est.innerHTML;
-    }
-  } catch (e) {
-    est.innerHTML = `<span class="text-danger">&#10006; ${e.message}</span>`;
-    if (modulo === 'despachos') {
-      const estT2d = $('estado_folder_despachos_t2');
-      if (estT2d) estT2d.innerHTML = est.innerHTML;
-    }
-  }
-}
-
-/* ---------------------------------------------------------------------------
- * 6. TARJETA 1 | PLANILLA ENTREGA DESPACHOS (validacion estricta por perfil)
- * ------------------------------------------------------------------------- */
-const CAMPOS_OBLIGATORIOS_DRIVE = ['bodegaOrigen', 'destino', 'zona', 'cantidad', 'tipo', 'urgente'];
-
-/** Busca el traslado en Drive (carpeta TRASLADOS — ORIGEN fija trasladosConsulta) o en la sesion local, y valida su integridad. */
-async function t1ValidarTraslado() {
-  const traslado = val('t1_traslado');
-  const est = $('t1_estadoTraslado');
-  $('t1_btnGuardar').disabled = true;
-  if (!traslado) { est.innerHTML = '<span class="text-danger">Indique el numero de traslado.</span>'; return; }
-
-  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta Traslados: ' + (CONFIG.folders.trasladosConsulta || '???').substring(0,8) + '...)</small>...';
-  let registro = null;
-  try {
-    if (CONFIG.modoLocal || !CONFIG.apiUrl) {
-      registro = buscarTrasladoLocal('despachos', traslado) || buscarTrasladoLocal('logistica', traslado);
-    } else {
-      const r = await api('buscarTraslado', {
-        folderId: CONFIG.folders.trasladosConsulta,
-        modulo: 'despachos', traslado
-      });
-      registro = r.encontrado ? r.registro : null;
-    }
-  } catch (e) {
-    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta Traslados: ${CONFIG.folders.trasladosConsulta || '(vacia)'}</small>`;
-    return;
-  }
-
-  if (!registro) {
-    est.innerHTML = `<span class="text-danger">&#10006; Traslado <b>${esc(traslado)}</b> NO encontrado en la carpeta de Despachos. Verifique el numero o la base de datos en Drive.</span>`;
-    limpiarAutocompletadosT1();
-    return;
-  }
-
-  // Autocompletado por NOMBRE de cabecera (no por posicion).
-  const datos = {
-    traslado:     obtenerValorPorNombreColumna(registro, ALIAS.traslado),
-    fecha:        obtenerValorPorNombreColumna(registro, ALIAS.fecha),
-    bodegaOrigen: obtenerValorPorNombreColumna(registro, ALIAS.bodegaOrigen),
-    destino:      obtenerValorPorNombreColumna(registro, ALIAS.destino),
-    recibido:     obtenerValorPorNombreColumna(registro, ALIAS.recibido),
-    codigo:       obtenerValorPorNombreColumna(registro, ALIAS.codigo),
-    descripcion:  obtenerValorPorNombreColumna(registro, ALIAS.descripcion),
-    unidades:     obtenerValorPorNombreColumna(registro, ALIAS.unidades),
-    usuario:      obtenerValorPorNombreColumna(registro, ALIAS.usuario),
-    lote:         obtenerValorPorNombreColumna(registro, ALIAS.lote),
-    fechaVenc:    obtenerValorPorNombreColumna(registro, ALIAS.fechaVencLote),
-    observaciones:obtenerValorPorNombreColumna(registro, ALIAS.observaciones),
-    cantidad:     obtenerValorPorNombreColumna(registro, ALIAS.cantidad),
-    tipo:         obtenerValorPorNombreColumna(registro, ALIAS.tipo),
-    urgente:      obtenerValorPorNombreColumna(registro, ALIAS.urgente) || 'NO',
-    zona:         obtenerValorPorNombreColumna(registro, ALIAS.zona)
-  };
-
-  // Auto-calcular zona si no viene en Drive: usar Bodega Destino como clave
-  if (!String(datos.zona).trim() && String(datos.destino).trim()) {
-    datos.zona = zonaDeBodega(datos.destino);
-    if (datos.zona) {
-      toast('Zona auto-calculada desde Bodega Destino: <b>' + datos.zona + '</b>', 'info');
-    }
-  }
-  // Si aun no hay zona, intentar con Bodega Origen
-  if (!String(datos.zona).trim() && String(datos.bodegaOrigen).trim()) {
-    datos.zona = zonaDeBodega(datos.bodegaOrigen);
-    if (datos.zona) {
-      toast('Zona inferida desde Bodega Origen: <b>' + datos.zona + '</b>', 'warning');
-    }
-  }
-
-  setVal('t1_traslado_mostrar', datos.traslado);
-  setVal('t1_fecha', datos.fecha);
-  setVal('t1_bodega_origen', datos.bodegaOrigen);
-  setVal('t1_destino', datos.destino);
-  setVal('t1_recibido', datos.recibido);
-  setVal('t1_codigo', datos.codigo);
-  setVal('t1_descripcion', datos.descripcion);
-  setVal('t1_unidades', datos.unidades);
-  setVal('t1_usuario', datos.usuario);
-  setVal('t1_lote', datos.lote);
-  setVal('t1_fechaVenc', datos.fechaVenc);
-  setVal('t1_observaciones_drive', datos.observaciones);
-  setVal('t1_cantidad', datos.cantidad);
-  setVal('t1_tipo', datos.tipo);
-  setVal('t1_urgente', datos.urgente);
-  setVal('t1_zona', datos.zona);
-
-  // Validacion estricta: si falta informacion requerida, NO permite avanzar.
-  // Nota: zona se considera completo si se pudo auto-calcular
-  const camposAValidar = CAMPOS_OBLIGATORIOS_DRIVE.filter(k => k !== 'zona');
-  const faltantes = camposAValidar.filter(k => !String(datos[k]).trim());
-  if (faltantes.length) {
-    est.innerHTML = `<span class="text-danger">&#10006; Informacion incompleta en Drive (${faltantes.join(', ')}). No es posible continuar.</span>`;
-    $('t1_btnGuardar').disabled = true;
-    return;
-  }
-  // Verificar zona por separado: advertir si no se pudo calcular pero no bloquear
-  if (!String(datos.zona).trim()) {
-    est.innerHTML += ' <span class="text-warning">&#9888; No se pudo determinar la zona. Verifique manualmente.</span>';
-  }
-
-  // Perfil LIDER: verificar si el destino exige punto
-  const puntoRow = $('t1_punto_row');
-  if (PERFILES[PERFIL_ACTIVO].exigePunto) {
-    if (puntoRow) puntoRow.style.display = '';
-    if (destinoExigePunto(datos.destino)) {
-      const puntoAuto = ahora();
-      setVal('t1_punto_captura', puntoAuto);
-      $('t1_punto_info').innerHTML = '<span class="text-info">&#128205; Punto capturado automaticamente: ' + puntoAuto + '</span>';
-    } else {
-      setVal('t1_punto_captura', '');
-      $('t1_punto_info').innerHTML = '<span class="text-warning">&#9888; Traslado NO CENDIS — punto no exigido.</span>';
-    }
-  } else {
-    if (puntoRow) puntoRow.style.display = 'none';
-  }
-
-  $('t1_badgeUrgente').innerHTML =
-    normalizarCabecera(datos.urgente) === 'si' ? '<span class="mf-badge-urgente">TRASLADO URGENTE</span>' : '';
-  est.innerHTML = '<span class="text-success">&#10004; Traslado valido y completo. Puede continuar.</span>';
-  $('t1_btnGuardar').disabled = false;
-}
-
-function limpiarAutocompletadosT1() {
-  ['t1_traslado_mostrar', 't1_fecha', 't1_bodega_origen', 't1_destino', 't1_recibido',
-   't1_codigo', 't1_descripcion', 't1_unidades', 't1_usuario', 't1_lote', 't1_fechaVenc',
-   't1_observaciones_drive', 't1_cantidad', 't1_tipo', 't1_urgente', 't1_zona'
-  ].forEach(id => setVal(id, ''));
-  $('t1_badgeUrgente').innerHTML = '';
-}
-
-/** Busqueda local (modo sin conexion) por nombre de columna. */
-function buscarTrasladoLocal(modulo, traslado) {
-  const objetivo = normalizarCabecera(traslado);
-  return (SESION[modulo] || []).find(r =>
-    normalizarCabecera(obtenerValorPorNombreColumna(r, ALIAS.traslado)) === objetivo
-  ) || null;
-}
-
-/** Guarda la planilla de entrega de despachos. */
-async function t1Guardar() {
-  if (PERFIL_ACTIVO === 'auxiliar') { toast('Su perfil solo permite visualizar, no guardar.', 'warning'); return; }
-  const p = PERFILES[PERFIL_ACTIVO];
-  // Campos obligatorios segun perfil
-  const obligT1 = (p.camposObligatorios && p.camposObligatorios.t1) ||
-    ['t1_traslado', 't1_responsable_entrega', 't1_quien_alista', 't1_recomendado'];
-  if (!validarObligatorios(obligT1)) return;
-
-  const registro = {
-    'Marca temporal': ahora(),
-    'Documento TRASLADO': val('t1_traslado'),
-    'Bodega Origen': val('t1_bodega_origen'),
-    'DESTINO': val('t1_destino'),
-    'Cantidad': val('t1_cantidad'),
-    'TIPO': val('t1_tipo'),
-    'Urgente': val('t1_urgente'),
-    'ZONA': val('t1_zona'),
-    'RESPONSABLE DE ENTREGA CENDIS': val('t1_responsable_entrega'),
-    'QUIEN ALISTA': val('t1_quien_alista'),
-    'Recomendado': val('t1_recomendado'),
-    'Observaciones': val('t1_observaciones'),
-    'SEGUIMIENTO': p.puedeCrearTraslado ? 'ALISTADO EN CENDIS' : 'REGISTRADO POR ' + p.label,
-    'PERFIL REGISTRO': p.label
-  };
-
-  // LIDER: agregar punto capturado si aplica
-  if (p.exigePunto && val('t1_punto_captura')) {
-    registro['PUNTO CAPTURA AUTOMATICA'] = val('t1_punto_captura');
-  }
-
-  // RECIBIDO LOGISTICA / AUXILIAR: sellar fecha/hora automatica
-  if (PERFIL_ACTIVO === 'auxiliar_entrega' || PERFIL_ACTIVO === 'recibido_logistica') {
-    registro['FECHA Y HORA REGISTRO PERFIL'] = ahora();
-  }
-
-  await persistir('despachos', registro, 't1');
-}
-
-/* ---------------------------------------------------------------------------
- * 7. TARJETA 2 | LOGISTICA Y DESPACHOS
- * ------------------------------------------------------------------------- */
-async function t2Buscar() {
-  const traslado = val('t2_traslado');
-  const est = $('t2_estadoTraslado');
-  $('t2_btnGuardar').disabled = true;
-  $('t2_btnImprimir').disabled = true;
-  if (!traslado) { est.innerHTML = '<span class="text-danger">Indique el traslado.</span>'; return; }
-
-  est.innerHTML = 'Consultando informacion de la Tarjeta 1...';
-  let registro = null;
-  try {
-    if (CONFIG.modoLocal || !CONFIG.apiUrl) {
-      registro = buscarTrasladoLocal('despachos', traslado);
-    } else {
-      // T2 lee de la carpeta DESTINO (donde T1 guardó)
-      const folderT2 = val('folder_despachos_t2') || CONFIG.folders.despachos;
-      const r = await api('buscarTraslado', {
-        folderId: folderT2,
-        modulo: 'despachos', traslado
-      });
-      registro = r.encontrado ? r.registro : null;
-    }
-  } catch (e) { est.innerHTML = `<span class="text-danger">${e.message}</span>`; return; }
-
-  if (!registro) {
-    est.innerHTML = '<span class="text-danger">&#10006; El traslado no tiene planilla de entrega registrada.</span>';
-    return;
-  }
-  const t2Destino = obtenerValorPorNombreColumna(registro, ALIAS.destino);
-  const t2BodegaOrigen = obtenerValorPorNombreColumna(registro, ALIAS.bodegaOrigen);
-  let t2Zona = obtenerValorPorNombreColumna(registro, ALIAS.zona);
-  // Auto-calcular zona si no viene en Drive
-  if (!String(t2Zona).trim() && String(t2Destino).trim()) {
-    t2Zona = zonaDeBodega(t2Destino);
-    if (t2Zona) toast('T2 Zona auto-calculada: <b>' + t2Zona + '</b>', 'info');
-  }
-  if (!String(t2Zona).trim() && String(t2BodegaOrigen).trim()) {
-    t2Zona = zonaDeBodega(t2BodegaOrigen);
-    if (t2Zona) toast('T2 Zona inferida desde Origen: <b>' + t2Zona + '</b>', 'warning');
-  }
-  setVal('t2_bodega_origen', t2BodegaOrigen);
-  setVal('t2_destino', t2Destino);
-  setVal('t2_zona', t2Zona);
-  setVal('t2_cantidad', obtenerValorPorNombreColumna(registro, ALIAS.cantidad));
-  setVal('t2_urgente', obtenerValorPorNombreColumna(registro, ALIAS.urgente));
-  setVal('t2_responsable_entrega', obtenerValorPorNombreColumna(registro, ALIAS.respEntrega));
-  setVal('t2_quien_alista', obtenerValorPorNombreColumna(registro, ALIAS.quienAlista));
-  setVal('t2_marca_temporal', obtenerValorPorNombreColumna(registro, ALIAS.marcaTemporal));
-  est.innerHTML = '<span class="text-success">&#10004; Informacion cargada.</span>';
-  $('t2_btnGuardar').disabled = false;
-  $('t2_btnImprimir').disabled = !PERFILES[PERFIL_ACTIVO].puedeImprimir;
-}
-
-/** Guardar de logistica: sella automaticamente FECHA ENTREGA LOGISTICA. */
-async function t2Guardar() {
-  if (PERFIL_ACTIVO === 'auxiliar') { toast('Su perfil solo permite visualizar, no guardar.', 'warning'); return; }
-  const p = PERFILES[PERFIL_ACTIVO];
-  const obligT2 = (p.camposObligatorios && p.camposObligatorios.t2) ||
-    ['t2_traslado', 't2_fecha_envio', 't2_conductor', 't2_placa', 't2_planilla'];
-  if (!validarObligatorios(obligT2)) return;
-
-  // RECIBIDO LOGISTICA: sella automaticamente y bloquea
-  const esRecibidoLog = PERFIL_ACTIVO === 'recibido_logistica';
-
-  const registro = {
-    'Marca temporal': val('t2_marca_temporal') || ahora(),
-    'Documento TRASLADO': val('t2_traslado'),
-    'Bodega Origen': val('t2_bodega_origen'),
-    'DESTINO': val('t2_destino'),
-    'ZONA': val('t2_zona'),
-    'Cantidad': val('t2_cantidad'),
-    'Urgente': val('t2_urgente'),
-    'RESPONSABLE DE ENTREGA CENDIS': val('t2_responsable_entrega'),
-    'QUIEN ALISTA': val('t2_quien_alista'),
-    'FECHA ENTREGA LOGISTICA': esRecibidoLog ? ahora() : ahora(),
-    'QUIEN RECIBE LOGISTICA': val('t2_quien_recibe'),
-    'FECHA RECIBIDO LOGISTICA': esRecibidoLog ? ahora() : '',
-    'FECHA PLANILLA ENVIO LOGISTICA': val('t2_fecha_envio').replace('T', ' '),
-    'CONDUCTOR': val('t2_conductor'),
-    'PLACA': val('t2_placa').toUpperCase(),
-    'PLANILLA': val('t2_planilla'),
-    'Observaciones': val('t2_observaciones'),
-    'PERFIL REGISTRO': p.label,
-    'mes': new Date().toLocaleDateString('es-CO', { month: 'long' }).toUpperCase()
-  };
-
-  if (esRecibidoLog) {
-    registro['SEGUIMIENTO'] = 'RECIBIDO LOGISTICA';
-    registro['FECHA Y HORA RECIBIDO AUTOMATICO'] = ahora();
-    registro['BLOQUEADO'] = 'SI';  // Marca para que no se pueda modificar
-    toast('Registro de recibido sellado. Una vez recibido NO se puede modificar.', 'info');
-  } else {
-    registro['SEGUIMIENTO'] = 'DESPACHADO A LOGISTICA';
-  }
-
-  await persistir('logistica', registro, 't2');
-
-  // Si es perfil recibido_logistica, bloquear campos despues de guardar
-  if (esRecibidoLog && p.bloqueaAlRecibir) {
-    const pane = $('t2');
-    if (pane) {
-      pane.querySelectorAll('input, select, textarea').forEach(el => {
-        if (el.id.indexOf('folder_') === 0) return;
-        el.readOnly = true;
-        el.disabled = true;
-        el.classList.add('campo-bloqueado');
-      });
-    }
-    $('t2_btnGuardar').disabled = true;
-    $('t2_estadoTraslado').innerHTML = '<span class="text-secondary">&#128274; Registro bloqueado. No se puede modificar.</span>';
-  }
-}
-
-/** Imprime la planilla y registra la fecha y hora REAL de salida a ruta. */
-async function t2Imprimir() {
-  if (!PERFILES[PERFIL_ACTIVO].puedeImprimir) {
-    toast('Su perfil no tiene permiso para imprimir.', 'danger'); return;
-  }
-  const traslado = val('t2_traslado');
-  if (!traslado) { toast('Indique el traslado antes de imprimir.', 'danger'); return; }
-  const salida = ahora();
-
-  $('t2_areaImpresion').innerHTML = `
-    <div class="text-center mb-3">
-      <img src="assets/logo.jpeg" style="height:60px" alt="Medisfarma"><h4>PLANILLA DE ENVIO DE TRASLADO</h4>
-    </div>
-    <table class="table table-bordered">
-      <tr><th>Traslado</th><td>${esc(traslado)}</td><th>Bodega Origen</th><td>${esc(val('t2_bodega_origen'))}</td></tr>
-      <tr><th>Destino</th><td>${esc(val('t2_destino'))}</td><th>Zona</th><td>${esc(val('t2_zona'))}</td></tr>
-      <tr><th>Cantidad</th><td>${esc(val('t2_cantidad'))}</td><th>Urgente</th><td>${esc(val('t2_urgente'))}</td></tr>
-      <tr><th>Conductor</th><td>${esc(val('t2_conductor'))}</td><th>Placa</th><td>${esc(val('t2_placa').toUpperCase())}</td></tr>
-      <tr><th>Planilla</th><td>${esc(val('t2_planilla'))}</td><th>Fecha y hora real de salida</th><td>${salida}</td></tr>
-      <tr><th>Observaciones</th><td colspan="3">${esc(val('t2_observaciones'))}</td></tr>
-    </table>
-    <p class="mt-4">Firma quien entrega: ______________________ &nbsp;&nbsp; Firma quien recibe: ______________________</p>`;
-
-  try {
-    if (!CONFIG.modoLocal && CONFIG.apiUrl) {
-      await api('marcarImpresion', { folderId: CONFIG.folders.logistica, modulo: 'logistica', traslado });
-    }
-    registrarLocal('logistica', {
-      'Documento TRASLADO': traslado,
-      'FECHA Y HORA REAL DE SALIDA': salida,
-      'SEGUIMIENTO': 'EN RUTA'
+  var pf = $('perfilesInfo');
+  if (pf) {
+    var h2 = '<table class="table table-sm mb-0"><thead><tr><th>Modulo</th><th>Archivo</th><th>Hoja</th></tr></thead><tbody>';
+    Object.keys(CONFIG.perfiles || CONFIG_DEFAULT.perfiles).forEach(function (m) {
+      var c = (CONFIG.perfiles || CONFIG_DEFAULT.perfiles)[m];
+      h2 += '<tr><td>' + m + '</td><td>' + c.file + '</td><td>' + c.sheet + '</td></tr>';
     });
-    toast('Salida real registrada: ' + salida, 'success');
-  } catch (e) { toast('No se pudo registrar la salida en Drive: ' + e.message, 'warning'); }
-
-  window.print();
-}
-
-/** Escapa texto para insertarlo como HTML de forma segura. */
-function esc(txt) {
-  return String(txt === undefined || txt === null ? '' : txt)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-/* ---------------------------------------------------------------------------
- * 8. TARJETA 3 | RECEPCION TECNICA (A: factura proveedor / B: traslado externo)
- * ------------------------------------------------------------------------- */
-function tipoRecepcionActual() {
-  return document.querySelector('input[name="tipoRecepcion"]:checked').value;
-}
-
-function alternarBloquesRecepcion() {
-  const esA = tipoRecepcionActual() === 'FACTURA_PROVEEDOR';
-  $('bloque_rec_a').classList.toggle('d-none', !esA);
-  $('bloque_rec_b').classList.toggle('d-none', esA);
-  itemsRecepcion = [];
-  pintarTablaItems('t3', itemsRecepcion);
-}
-
-/** Construye el registro de recepcion segun la opcion activa. */
-function t3ConstruirRegistro() {
-  if (tipoRecepcionActual() === 'FACTURA_PROVEEDOR') {
-    if (!validarObligatorios(['a_factura', 'a_proveedor', 'a_fecha_recepcion', 'a_codigo', 'a_descripcion',
-                              'a_lote', 'a_vencimiento', 'a_cantidad', 'a_recepcionista'])) return null;
-    return {
-      'Marca temporal': ahora(),
-      'Tipo de Recepcion': 'FACTURA PROVEEDOR',
-      'Factura': val('a_factura'),
-      'Proveedor': val('a_proveedor'),
-      'Fecha Recepcion Tecnica': val('a_fecha_recepcion'),
-      'Codigo Producto': val('a_codigo'),
-      'Descripcion': val('a_descripcion'),
-      'Presentacion por Caja': val('a_presentacion'),
-      'Laboratorio': val('a_laboratorio'),
-      'Registro INVIMA': val('a_invima'),
-      'Lote': val('a_lote'),
-      'Fecha Vencimiento': val('a_vencimiento'),
-      'Cantidad Unidades Recibidas': val('a_cantidad'),
-      'Nombre Recepcionista': val('a_recepcionista'),
-      'Presenta Novedad': val('a_novedad'),
-      'Observaciones': val('a_observaciones'),
-      'PERFIL REGISTRO': PERFILES[PERFIL_ACTIVO].label
-    };
+    h2 += '</tbody></table>';
+    pf.innerHTML = h2;
   }
-  // Opcion B: traslado externo
-  if (!validarObligatorios(['b_traslado', 'b_origen', 'b_destino', 'b_fecha_recepcion',
-                            'b_codigo', 'b_descripcion', 'b_lote', 'b_vencimiento',
-                            'b_enviada', 'b_recibida', 'b_responsable'])) return null;
-  return {
-    'Marca temporal': ahora(),
-    'Tipo de Recepcion': 'TRASLADO EXTERNO',
-    'Documento TRASLADO': val('b_traslado'),
-    'Bodega Origen Emisora': val('b_origen'),
-    'Bodega Destino': val('b_destino'),
-    'Fecha Recepcion Tecnica': val('b_fecha_recepcion'),
-    'Codigo Producto / Molecula': val('b_codigo'),
-    'Descripcion': val('b_descripcion'),
-    'Laboratorio': val('b_laboratorio'),
-    'Lote': val('b_lote'),
-    'Fecha Vencimiento': val('b_vencimiento'),
-    'Cantidad Enviada': val('b_enviada'),
-    'Cantidad Recibida': val('b_recibida'),
-    'Diferencia': Number(val('b_recibida') || 0) - Number(val('b_enviada') || 0),
-    'Responsable de Recepcion': val('b_responsable'),
-    'Estado Recepcion Tecnica': val('b_estado'),
-    'Observaciones': val('b_observaciones'),
-    'PERFIL REGISTRO': PERFILES[PERFIL_ACTIVO].label
-  };
+  var ids = $('idsCarpetasInfo');
+  if (ids) {
+    var h3 = '<table class="table table-sm mb-0"><thead><tr><th>Carpeta</th><th>ID</th></tr></thead><tbody>';
+    Object.keys(CONFIG.folders).forEach(function (k) {
+      h3 += '<tr><td>' + k + '</td><td class="text-break">' + CONFIG.folders[k] + '</td></tr>';
+    });
+    h3 += '</tbody></table>';
+    ids.innerHTML = h3;
+  }
 }
 
-/* ---------------------------------------------------------------------------
- * 9. TARJETA 4 | CARGUE DE FACTURA (TRANSPORTE)
- * ------------------------------------------------------------------------- */
-function t4Guardar() {
-  if (!validarObligatorios(['f_transporte', 'f_guia', 'f_fecha', 'f_factura',
-                            'f_proveedor', 'f_orden', 'f_ingreso', 'f_valor'])) return;
-  const registro = {
-    'Marca temporal': ahora(),
-    'Transporte': val('f_transporte'),
-    'Guia': val('f_guia'),
-    'Fecha': val('f_fecha'),
-    'Factura': val('f_factura'),
-    'Proveedor': val('f_proveedor'),
-    'Orden de Compra': val('f_orden'),
-    'Ingreso': val('f_ingreso'),
-    'Valor': val('f_valor'),
-    'A Quien se Entrega': val('f_entregado_a'),
-    'Fecha de Entrega': val('f_fecha_entrega'),
-    'Observacion': val('f_observacion'),
-    'PERFIL REGISTRO': PERFILES[PERFIL_ACTIVO].label
-  };
-  return persistir('facturacion', registro, 't4');
+/* ═════════════════════════════════════════════════════════════════════════════════
+   5. API — COMUNICACION CON GOOGLE APPS SCRIPT
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function apiGet(params) {
+  var url = CONFIG.api_url + '?' + new URLSearchParams(params).toString();
+  return fetch(url, { redirect: 'follow' }).then(function (r) { return r.json(); });
 }
 
-/* ---------------------------------------------------------------------------
- * 10. TARJETA 5 | VERIFICACION DE INVENTARIO
- * ------------------------------------------------------------------------- */
-function calcularDiferenciaInventario() {
-  const teorica = Number(val('i_teorica') || 0);
-  const fisica = Number(val('i_fisica') || 0);
-  const dif = fisica - teorica;
-  setVal('i_diferencia', dif);
-  setVal('i_estado', dif === 0 ? 'CONFORME' : 'NOVEDAD');
+function apiPost(payload) {
+  return fetch(CONFIG.api_url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    redirect: 'follow',
+    body: JSON.stringify(payload)
+  }).then(function (r) { return r.json(); });
 }
 
-function t5ConstruirRegistro() {
-  if (!validarObligatorios(['i_bodega', 'i_responsable', 'i_fecha', 'i_molecula',
-                            'i_codigo', 'i_lote', 'i_vencimiento', 'i_teorica', 'i_fisica'])) return null;
-  return {
-    'Marca temporal': ahora(),
-    'Bodega (CENDIS / B05)': val('i_bodega'),
-    'Responsable Asignado': val('i_responsable'),
-    'Fecha Verificacion': val('i_fecha'),
-    'Molecula / Medicamento': val('i_molecula'),
-    'Codigo Producto': val('i_codigo'),
-    'Lote': val('i_lote'),
-    'Fecha Vencimiento': val('i_vencimiento'),
-    'Cantidad Teorica': val('i_teorica'),
-    'Cantidad Fisica': val('i_fisica'),
-    'Diferencia': val('i_diferencia'),
-    'Estado / Novedad': val('i_estado'),
-    'Observaciones': val('i_observaciones'),
-    'PERFIL REGISTRO': PERFILES[PERFIL_ACTIVO].label
-  };
-}
-
-/* ---------------------------------------------------------------------------
- * 11. TABLA DE ITEMS EN MEMORIA
- * ------------------------------------------------------------------------- */
-function pintarTablaItems(prefijo, items) {
-  const head = $(prefijo + '_tablaHead');
-  const body = $(prefijo + '_tablaBody');
-  head.innerHTML = ''; body.innerHTML = '';
-  if (!items.length) return;
-  const cols = Object.keys(items[0]);
-  head.innerHTML = cols.map(c => `<th>${esc(c)}</th>`).join('') + '<th>Accion</th>';
-  items.forEach((it, i) => {
-    const tr = document.createElement('tr');
-    cols.forEach(c => {
-      const td = document.createElement('td');
-      td.textContent = it[c];
-      if (normalizarCabecera(c) === 'diferencia') {
-        const d = Number(it[c] || 0);
-        td.className = d === 0 ? 'mf-dif-cero' : (d < 0 ? 'mf-dif-negativa' : 'mf-dif-positiva');
+function probarApi() {
+  apiGet({ action: 'ping' })
+    .then(function (r) {
+      var e = $('estadoApi');
+      if (r && r.ok) {
+        if (e) { e.textContent = 'API OK'; e.className = 'badge bg-success'; }
+        showToast('Conexion exitosa con Google Drive. <strong>API activa.</strong>', 'success');
+      } else {
+        if (e) { e.textContent = 'API ERROR'; e.className = 'badge bg-danger'; }
+        showToast('Error en la respuesta del servidor.', 'danger');
       }
-      tr.appendChild(td);
+    })
+    .catch(function (err) {
+      var e = $('estadoApi');
+      if (e) { e.textContent = 'SIN CONEXION'; e.className = 'badge bg-danger'; }
+      showToast('No se pudo conectar al servidor: ' + err.message, 'danger');
     });
-    const tdA = document.createElement('td');
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-sm btn-outline-danger';
-    btn.textContent = 'Quitar';
-    btn.addEventListener('click', () => {
-      items.splice(i, 1);
-      pintarTablaItems(prefijo, items);
+}
+
+function validarFolder(modulo) {
+  var folderId = '';
+  var el = $('folder_' + modulo);
+  if (el) folderId = el.value.trim();
+  if (!folderId && CONFIG.folders[modulo]) folderId = CONFIG.folders[modulo];
+  if (!folderId) { showToast('ID de carpeta vacio para ' + modulo, 'danger'); return; }
+  apiGet({ action: 'validarCarpeta', folderId: folderId })
+    .then(function (r) {
+      var e = $('estado_folder_' + modulo);
+      if (r && r.ok) {
+        if (e) e.innerHTML = '<span class="badge bg-success">&#9989; ' + r.nombre + '</span>';
+        showToast('Carpeta <strong>' + r.nombre + '</strong> validada correctamente.', 'success');
+      } else {
+        if (e) e.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+        showToast('Error al validar carpeta: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('No se pudo validar: ' + err.message, 'danger');
     });
-    tdA.appendChild(btn);
-    tr.appendChild(tdA);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   6. TARJETA 1 — SEGURIDAD (NUEVA)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function t1Guardar() {
+  var guia = $('s_guia') ? $('s_guia').value.trim() : '';
+  var factura = $('s_factura') ? $('s_factura').value.trim() : '';
+  var proveedor = $('s_proveedor') ? $('s_proveedor').value.trim() : '';
+  var unidades = $('s_unidades') ? $('s_unidades').value.trim() : '';
+  var quienRecibe = $('s_quien_recibe') ? $('s_quien_recibe').value : '';
+  var observacion = $('s_observacion') ? $('s_observacion').value.trim() : '';
+
+  if (!guia || !factura || !proveedor || !unidades || !quienRecibe) {
+    showToast('Complete todos los campos obligatorios (*).', 'danger');
+    return;
+  }
+
+  var folderId = $('folder_seguridad') ? $('folder_seguridad').value.trim() : CONFIG.folders.seguridad;
+  if (!folderId) { showToast('Configure la carpeta Drive de Seguridad.', 'danger'); return; }
+
+  var registro = {
+    'Guia': guia,
+    'Factura': factura,
+    'Proveedor': proveedor,
+    'Unidades': unidades,
+    'Quien Recibe': quienRecibe,
+    'Fecha Registro': hoy(),
+    'Hora Registro': ahora(),
+    'Observacion': observacion,
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'seguridad', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; Registro de <strong>Seguridad</strong> guardado correctamente en Drive.', 'success');
+        limpiarCampos('s_');
+      } else {
+        showToast('Error al guardar Seguridad: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion al guardar Seguridad: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   7. TARJETA 2 — RECEPCION TECNICA
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var t2Items = [];
+
+function t2AgregarItem() {
+  var tipo = document.querySelector('input[name="tipoRecepcion"]:checked');
+  tipo = tipo ? tipo.value : 'EXTERNA';
+  var traslado = $('b_traslado') ? $('b_traslado').value.trim() : '';
+  var bodegaOrigen = $('b_bodega_origen') ? $('b_bodega_origen').value : '';
+  var destino = $('b_destino') ? $('b_destino').value : '';
+  var fechaRecep = $('b_fecha_recepcion') ? $('b_fecha_recepcion').value : '';
+  var codigo = $('b_codigo') ? $('b_codigo').value.trim() : '';
+  var descripcion = $('b_descripcion') ? $('b_descripcion').value.trim() : '';
+  var laboratorio = $('b_laboratorio') ? $('b_laboratorio').value.trim() : '';
+  var lote = $('b_lote') ? $('b_lote').value.trim() : '';
+  var vencimiento = $('b_vencimiento') ? $('b_vencimiento').value : '';
+  var enviada = $('b_enviada') ? $('b_enviada').value : '';
+  var recibida = $('b_recibida') ? $('b_recibida').value : '';
+  var diferencia = $('b_diferencia') ? $('b_diferencia').value : '';
+  var responsable = $('b_responsable') ? $('b_responsable').value.trim() : '';
+  var estado = $('b_estado') ? $('b_estado').value : '';
+  var observaciones = $('b_observaciones') ? $('b_observaciones').value.trim() : '';
+
+  if (!traslado || !codigo || !descripcion || !lote || !vencimiento || !enviada || !recibida || !responsable) {
+    showToast('Complete los campos obligatorios de recepcion.', 'danger');
+    return;
+  }
+
+  var item = {
+    'Tipo Recepcion': tipo, 'Traslado': traslado, 'Bodega Origen': bodegaOrigen,
+    'Bodega Destino': destino, 'Fecha Recepcion': fechaRecep, 'Codigo Producto': codigo,
+    'Descripcion': descripcion, 'Laboratorio': laboratorio, 'Lote': lote,
+    'Fecha Vencimiento': vencimiento, 'Cantidad Enviada': enviada, 'Cantidad Recibida': recibida,
+    'Diferencia': diferencia, 'Responsable Recepcion': responsable,
+    'Estado Recepcion Tecnica': estado, 'Observaciones': observaciones
+  };
+  t2Items.push(item);
+  t2PintarTabla();
+  showToast('Item agregado a la lista de recepcion.', 'success');
+}
+
+function t2PintarTabla() {
+  var head = $('t2_tablaHead');
+  var body = $('t2_tablaBody');
+  if (!head || !body) return;
+  var cols = ['Tipo', 'Traslado', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
+  head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
+  body.innerHTML = '';
+  t2Items.forEach(function (item, idx) {
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + (item['Tipo Recepcion'] || '') + '</td>' +
+      '<td>' + (item['Traslado'] || '') + '</td>' +
+      '<td>' + (item['Codigo Producto'] || '') + '</td>' +
+      '<td>' + (item['Descripcion'] || '') + '</td>' +
+      '<td>' + (item['Lote'] || '') + '</td>' +
+      '<td>' + (item['Fecha Vencimiento'] || '') + '</td>' +
+      '<td>' + (item['Cantidad Enviada'] || '') + '</td>' +
+      '<td>' + (item['Cantidad Recibida'] || '') + '</td>' +
+      '<td>' + (item['Diferencia'] || '') + '</td>' +
+      '<td>' + (item['Estado Recepcion Tecnica'] || '') + '</td>' +
+      '<td><button class="btn btn-sm btn-outline-danger" onclick="t2EliminarItem(' + idx + ')">X</button></td>';
     body.appendChild(tr);
   });
 }
 
-/* ---------------------------------------------------------------------------
- * 12. PERSISTENCIA (Drive + copia local para el backup)
- * ------------------------------------------------------------------------- */
-function registrarLocal(modulo, registro) {
-  if (!SESION[modulo]) SESION[modulo] = [];
-  SESION[modulo].push(registro);
-  guardarSesion();
+function t2EliminarItem(idx) {
+  t2Items.splice(idx, 1);
+  t2PintarTabla();
 }
 
-/** Guarda un registro (o lista) en Drive y siempre en la sesion local.
- *  Para T1 (despachos) usa CONFIG.folders.despachos = carpeta DESTINO (escritura)
- *  Para T2 (logistica) usa CONFIG.folders.logistica
- *  etc.
- */
-async function persistir(modulo, registro, prefijoLimpieza) {
-  const lista = Array.isArray(registro) ? registro : [registro];
-  const folderId = CONFIG.folders[modulo] || val('folder_' + modulo);
-
-  lista.forEach(r => registrarLocal(modulo, r));
-
-  if (!CONFIG.apiUrl) {
-    toast(`⚠ Sin URL de Web App. Dato guardado localmente (${lista.length} registro/s). Configure la URL en Ajustes.`, 'warning');
-    if (prefijoLimpieza) limpiarTarjeta(Number(prefijoLimpieza.replace('t', '')));
-    return;
-  }
-  if (CONFIG.modoLocal) {
-    toast(`Guardado localmente (${lista.length} registro/s). Desactive \"Modo local\" para sincronizar con Drive.`, 'secondary');
-    if (prefijoLimpieza) limpiarTarjeta(Number(prefijoLimpieza.replace('t', '')));
-    return;
-  }
-  if (!folderId) { toast('Configure el ID de carpeta de Drive de esta tarjeta.', 'danger'); return; }
-
-  try {
-    for (const r of lista) {
-      await api('guardarRegistro', { folderId, modulo, registro: r });
-    }
-    toast(`&#10004; ${lista.length} registro/s guardado/s en Google Drive.`, 'success');
-    if (prefijoLimpieza) limpiarTarjeta(Number(prefijoLimpieza.replace('t', '')));
-  } catch (e) {
-    toast('Error al guardar en Drive: ' + e.message + '. La informacion quedo respaldada localmente.', 'danger');
-  }
-}
-
-/** Limpia los campos editables de una tarjeta. */
-function limpiarTarjeta(n) {
-  const pane = $('t' + n);
-  if (!pane) return;
-  pane.querySelectorAll('input, select, textarea').forEach(el => {
-    if (el.id.indexOf('folder_') === 0 || el.type === 'radio') return;
-    el.value = '';
-    el.classList.remove('is-invalid-mf');
-    // Desbloquear si el perfil lo habia bloqueado
-    if (PERFIL_ACTIVO !== 'recibido_logistica') {
-      el.readOnly = false;
-      el.disabled = false;
-      el.classList.remove('campo-bloqueado');
-    }
+function t2Guardar() {
+  if (!t2Items.length) { showToast('Agregue al menos un item antes de guardar.', 'danger'); return; }
+  var folderId = $('folder_recepcion') ? $('folder_recepcion').value.trim() : CONFIG.folders.recepcion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Recepcion.', 'danger'); return; }
+  var okCount = 0;
+  var errCount = 0;
+  var total = t2Items.length;
+  t2Items.forEach(function (item) {
+    item['Marca temporal'] = ahora();
+    item['Perfil'] = perfilActivo();
+    item['Usuario'] = nombreUsuario();
+    apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'recepcion', registro: item })
+      .then(function (r) {
+        if (r && r.ok) okCount++; else errCount++;
+        if (okCount + errCount === total) {
+          if (errCount === 0) {
+            showToast('&#128190; <strong>' + total + '</strong> registros de Recepcion guardados en Drive.', 'success');
+            t2Items = []; t2PintarTabla();
+          } else {
+            showToast('Guardados ' + okCount + '/' + total + '. Errores: ' + errCount, 'danger');
+          }
+        }
+      })
+      .catch(function () { errCount++; });
   });
-  if (n === 1) {
-    $('t1_badgeUrgente').innerHTML = '';
-    $('t1_estadoTraslado').innerHTML = '';
-    $('t1_btnGuardar').disabled = true;
-    const puntoRow = $('t1_punto_row');
-    if (puntoRow) puntoRow.style.display = 'none';
-    $('t1_punto_info').innerHTML = '';
-  }
-  if (n === 2) { $('t2_estadoTraslado').innerHTML = ''; $('t2_btnGuardar').disabled = true; $('t2_btnImprimir').disabled = true; }
-  if (n === 3) { itemsRecepcion = []; pintarTablaItems('t3', itemsRecepcion); }
-  if (n === 5) { itemsInventario = []; pintarTablaItems('t5', itemsInventario); }
 }
 
-/* ---------------------------------------------------------------------------
- * 13. ARCHIVO DE RESPALDO DE SEGURIDAD (BACKUP)
- * ------------------------------------------------------------------------- */
-async function generarBackup(formato = 'xlsx') {
-  if (!PERFILES[PERFIL_ACTIVO].puedeBackup) {
-    toast('Su perfil no tiene permiso para generar respaldos.', 'danger'); return;
-  }
-  const consolidado = {};
-  MODULOS.forEach(m => { consolidado[m] = (SESION[m] || []).slice(); });
+/* ═════════════════════════════════════════════════════════════════════════════════
+   8. TARJETA 3 — PLANILLA ENTREGA DESPACHOS (ENRIQUECIDA)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var t3TrasladoValidado = null;
+var t3RotacionHoy = null;
 
-  if (!CONFIG.modoLocal && CONFIG.apiUrl) {
-    toast('Descargando informacion remota de Drive para el respaldo...', 'primary');
-    for (const m of MODULOS) {
-      const fid = CONFIG.folders[m];
-      if (!fid) continue;
-      try {
-        const r = await api('leerHoja', { folderId: fid, modulo: m });
-        (r.rows || []).forEach(row => { delete row.__fila; consolidado[m].push(row); });
-      } catch (e) { /* se conserva al menos la informacion local */ }
+/** Carga la rotacion del dia desde el backend para pre-llenar campos */
+function t3CargarRotacion() {
+  var folderId = CONFIG.folders.rotacion;
+  var fecha = hoy();
+  apiGet({ action: 'leerRotacion', folderId: folderId, fecha: fecha })
+    .then(function (r) {
+      if (r && r.ok && r.asignaciones && r.asignaciones.length) {
+        t3RotacionHoy = r.asignaciones;
+        t3AplicarRotacion();
+      } else {
+        t3RotacionHoy = null;
+      }
+    })
+    .catch(function () { t3RotacionHoy = null; });
+}
+
+/** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca segun la rotacion del dia */
+function t3AplicarRotacion() {
+  if (!t3RotacionHoy) return;
+  var alistar = t3RotacionHoy.filter(function (a) { return a.rol === 'Alistar'; });
+  var pitar = t3RotacionHoy.filter(function (a) { return a.rol === 'Pitar'; });
+  var empacar = t3RotacionHoy.filter(function (a) { return a.rol === 'Empacar'; });
+  if (alistar.length) {
+    var sel = $('t3_quien_alista');
+    if (sel) {
+      var opts = sel.options;
+      for (var i = 0; i < opts.length; i++) {
+        if (opts[i].textContent.trim() === alistar[0].nombre) { sel.selectedIndex = i; break; }
+      }
     }
   }
+  if (pitar.length) {
+    var sel2 = $('t3_quien_pita');
+    if (sel2) {
+      var opts2 = sel2.options;
+      for (var j = 0; j < opts2.length; j++) {
+        if (opts2[j].textContent.trim() === pitar[0].nombre) { sel2.selectedIndex = j; break; }
+      }
+    }
+  }
+  if (empacar.length) {
+    var sel3 = $('t3_quien_empaca');
+    if (sel3) {
+      var opts3 = sel3.options;
+      for (var k = 0; k < opts3.length; k++) {
+        if (opts3[k].textContent.trim() === empacar[0].nombre) { sel3.selectedIndex = k; break; }
+      }
+    }
+  }
+}
 
-  const nombreBase = `Backup_Cargue_Logistico_${stamp()}`;
+function t3ValidarTraslado() {
+  var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  var folderId = CONFIG.folders.trasladosConsulta;
+  var estado = $('t3_estadoTraslado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
-  if (formato === 'json') {
-    const blob = new Blob([JSON.stringify({
-      empresa: 'MEDISFARMA', generado: ahora(), carpetas: CONFIG.folders, perfil: PERFILES[PERFIL_ACTIVO].label, datos: consolidado
-    }, null, 2)], { type: 'application/json' });
-    descargarBlob(blob, nombreBase + '.json');
-    toast('Respaldo JSON generado.', 'success');
-    return;
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
+    .then(function (r) {
+      if (r && r.encontrado && r.registro) {
+        t3TrasladoValidado = r.registro;
+        var reg = r.registro;
+        var campos = {
+          't3_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
+          't3_fecha': ['Fecha', 'Marca temporal'],
+          't3_bodega_origen': ['Bodega Origen', 'Bodega'],
+          't3_destino': ['Bodega Destino', 'Destino'],
+          't3_zona': ['Zona'],
+          't3_cantidad': ['Cantidad', 'Unidades'],
+          't3_tipo': ['Tipo'],
+          't3_urgente': ['Urgente'],
+          't3_codigo': ['Codigo', 'Codigo Producto'],
+          't3_descripcion': ['Descripcion'],
+          't3_unidades': ['Unidades'],
+          't3_recibido': ['Recibido', 'Quien Recibe'],
+          't3_usuario': ['Usuario', 'Correo'],
+          't3_lote': ['Lote'],
+          't3_fechaVenc': ['Fecha Vencimiento', 'Vencimiento'],
+          't3_observaciones_drive': ['Observacion', 'Observaciones']
+        };
+        Object.keys(campos).forEach(function (elId) {
+          var el = $(elId);
+          if (el) {
+            for (var i = 0; i < campos[elId].length; i++) {
+              if (reg[campos[elId][i]] !== undefined && reg[campos[elId][i]] !== '') {
+                el.value = reg[campos[elId][i]]; break;
+              }
+            }
+          }
+        });
+
+        if ($('t3_punto_captura')) $('t3_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
+        if ($('t3_punto_row')) $('t3_punto_row').style.display = '';
+        if ($('t3_punto_info')) $('t3_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Punto capturado</span>';
+
+        if (reg['Urgente'] === 'SI' || reg['Urgente'] === 'Si' || reg['Urgente'] === 'si' || reg['urgente'] === 'SI') {
+          if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE</span>';
+        } else {
+          if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '';
+        }
+
+        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Traslado encontrado</span>';
+        showToast('Traslado <strong>' + traslado + '</strong> encontrado en Drive.', 'success');
+
+        t3CargarRotacion();
+      } else {
+        t3TrasladoValidado = null;
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+        showToast('Traslado <strong>' + traslado + '</strong> no encontrado.', 'danger');
+      }
+    })
+    .catch(function (err) {
+      t3TrasladoValidado = null;
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al buscar traslado: ' + err.message, 'danger');
+    });
+}
+
+function t3Guardar() {
+  var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
+  if (!traslado) { showToast('Primero valide un traslado.', 'danger'); return; }
+  if (!t3TrasladoValidado) { showToast('Valide el traslado antes de guardar.', 'danger'); return; }
+
+  var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
+  if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
+
+  var responsableEntrega = $('t3_responsable_entrega') ? $('t3_responsable_entrega').value.trim() : '';
+  var quienAlista = $('t3_quien_alista') ? $('t3_quien_alista').value : '';
+  var quienPita = $('t3_quien_pita') ? $('t3_quien_pita').value : '';
+  var quienEmpaca = $('t3_quien_empaca') ? $('t3_quien_empaca').value : '';
+  var tipoCarga = $('t3_tipo_carga') ? $('t3_tipo_carga').value : '';
+  var concepto = $('t3_concepto') ? $('t3_concepto').value.trim() : '';
+  var recomendado = $('t3_recomendado') ? $('t3_recomendado').value.trim() : '';
+
+  if (!responsableEntrega) { showToast('Ingrese el Responsable de Entrega.', 'danger'); return; }
+  if (!quienAlista || !quienPita || !quienEmpaca) { showToast('Seleccione Quien Alista, Quien Pita y Quien Empaca.', 'danger'); return; }
+  if (!tipoCarga) { showToast('Seleccione el Tipo de Carga.', 'danger'); return; }
+
+  var registro = {
+    'Documento Traslado': traslado,
+    'Fecha': $('t3_fecha') ? $('t3_fecha').value : '',
+    'Bodega Origen': $('t3_bodega_origen') ? $('t3_bodega_origen').value : '',
+    'Bodega Destino': $('t3_destino') ? $('t3_destino').value : '',
+    'Zona': $('t3_zona') ? $('t3_zona').value : '',
+    'Cantidad': $('t3_cantidad') ? $('t3_cantidad').value : '',
+    'Tipo': $('t3_tipo') ? $('t3_tipo').value : '',
+    'Urgente': $('t3_urgente') ? $('t3_urgente').value : '',
+    'Codigo': $('t3_codigo') ? $('t3_codigo').value : '',
+    'Descripcion': $('t3_descripcion') ? $('t3_descripcion').value : '',
+    'Unidades': $('t3_unidades') ? $('t3_unidades').value : '',
+    'Lote': $('t3_lote') ? $('t3_lote').value : '',
+    'Fecha Vencimiento': $('t3_fechaVenc') ? $('t3_fechaVenc').value : '',
+    'Recibido': $('t3_recibido') ? $('t3_recibido').value : '',
+    'Responsable Entrega CENDIS': responsableEntrega,
+    'Quien Alisto': quienAlista,
+    'Quien Pito': quienPita,
+    'Quien Empaco': quienEmpaca,
+    'Tipo Carga': tipoCarga,
+    'Concepto': concepto,
+    'Recomendado': recomendado,
+    'Observacion Drive': $('t3_observaciones_drive') ? $('t3_observaciones_drive').value : '',
+    'Marca temporal': ahora(),
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'despachos', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Planilla Entrega</strong> guardada en Drive (con datos de rotacion).', 'success');
+        t3TrasladoValidado = null;
+        limpiarCampos('t3_');
+        if ($('t3_punto_row')) $('t3_punto_row').style.display = 'none';
+        if ($('t3_estadoTraslado')) $('t3_estadoTraslado').innerHTML = '';
+      } else {
+        showToast('Error al guardar Planilla: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   9. TARJETA 4 — LOGISTICA Y DESPACHOS
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function t4Buscar() {
+  var traslado = $('t4_traslado') ? $('t4_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  var folderId = CONFIG.folders.trasladosConsulta;
+  var estado = $('t4_estadoTraslado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
+
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
+    .then(function (r) {
+      if (r && r.encontrado && r.registro) {
+        var reg = r.registro;
+        if ($('t4_bodega_origen')) $('t4_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
+        if ($('t4_destino')) $('t4_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        if ($('t4_zona')) $('t4_zona').value = reg['Zona'] || '';
+        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
+        showToast('Traslado <strong>' + traslado + '</strong> encontrado.', 'success');
+      } else {
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+        showToast('Traslado no encontrado.', 'danger');
+      }
+    })
+    .catch(function (err) {
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al buscar: ' + err.message, 'danger');
+    });
+}
+
+function t4Guardar() {
+  var traslado = $('t4_traslado') ? $('t4_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
+  if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
+
+  var registro = {
+    'Documento Traslado': traslado,
+    'Bodega Origen': $('t4_bodega_origen') ? $('t4_bodega_origen').value : '',
+    'Bodega Destino': $('t4_destino') ? $('t4_destino').value : '',
+    'Zona': $('t4_zona') ? $('t4_zona').value : '',
+    'Fecha Envio': $('t4_fecha_envio') ? $('t4_fecha_envio').value : '',
+    'Conductor / Mensajero': $('t4_conductor') ? $('t4_conductor').value : '',
+    'Placa': $('t4_placa') ? $('t4_placa').value : '',
+    'Planilla': $('t4_planilla') ? $('t4_planilla').value : '',
+    'Quien Recibe': $('t4_quien_recibe') ? $('t4_quien_recibe').value.trim() : '',
+    'Observacion': $('t4_observacion') ? $('t4_observacion').value.trim() : '',
+    'Marca temporal': ahora(),
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'logistica', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Logistica</strong> guardada en Drive.', 'success');
+        limpiarCampos('t4_');
+      } else {
+        showToast('Error al guardar Logistica: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+function t4Imprimir() {
+  var traslado = $('t4_traslado') ? $('t4_traslado').value.trim() : '';
+  if (!traslado) { showToast('Busque un traslado primero.', 'danger'); return; }
+  var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
+
+  apiPost({ action: 'marcarImpresion', folderId: folderId, modulo: 'logistica', traslado: traslado })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128424; Planilla impresa y marcada EN RUTA.', 'success');
+        window.print();
+      } else {
+        showToast('Error al marcar impresion: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   10. TARJETA 5 — CARGUE DE FACTURA
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function t5Guardar() {
+  var transporte = $('f_transporte') ? $('f_transporte').value.trim() : '';
+  var guia = $('f_guia') ? $('f_guia').value.trim() : '';
+  var fecha = $('f_fecha') ? $('f_fecha').value : '';
+  var factura = $('f_factura') ? $('f_factura').value.trim() : '';
+  var proveedor = $('f_proveedor') ? $('f_proveedor').value.trim() : '';
+  if (!transporte || !guia || !fecha || !factura || !proveedor) {
+    showToast('Complete los campos obligatorios de Factura.', 'danger'); return;
+  }
+  var folderId = $('folder_facturacion') ? $('folder_facturacion').value.trim() : CONFIG.folders.facturacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Facturacion.', 'danger'); return; }
+
+  var registro = {
+    'Transporte': transporte, 'Guia': guia, 'Fecha': fecha, 'Factura': factura,
+    'Proveedor': proveedor, 'Orden de Compra': $('f_orden') ? $('f_orden').value.trim() : '',
+    'Ingreso': $('f_ingreso') ? $('f_ingreso').value.trim() : '',
+    'Valor': $('f_valor') ? $('f_valor').value : '',
+    'A Quien se Entrega': $('f_entregado_a') ? $('f_entregado_a').value.trim() : '',
+    'Fecha de Entrega': $('f_fecha_entrega') ? $('f_fecha_entrega').value : '',
+    'Observacion': $('f_observacion') ? $('f_observacion').value.trim() : '',
+    'Marca temporal': ahora(), 'Perfil': perfilActivo(), 'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'facturacion', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Factura</strong> guardada en Drive.', 'success');
+        limpiarCampos('f_');
+      } else {
+        showToast('Error al guardar Factura: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   11. TARJETA 6 — VERIFICACION DE INVENTARIO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var t6Items = [];
+
+function t6AgregarItem() {
+  var bodega = $('i_bodega') ? $('i_bodega').value : '';
+  var responsable = $('i_responsable') ? $('i_responsable').value.trim() : '';
+  var fecha = $('i_fecha') ? $('i_fecha').value : '';
+  var molecula = $('i_molecula') ? $('i_molecula').value.trim() : '';
+  var codigo = $('i_codigo') ? $('i_codigo').value.trim() : '';
+  var lote = $('i_lote') ? $('i_lote').value.trim() : '';
+  var vencimiento = $('i_vencimiento') ? $('i_vencimiento').value : '';
+  var teorica = $('i_teorica') ? $('i_teorica').value : '';
+  var fisica = $('i_fisica') ? $('i_fisica').value : '';
+
+  if (!bodega || !responsable || !fecha || !molecula || !lote || !teorica || !fisica) {
+    showToast('Complete los campos obligatorios de Inventario.', 'danger'); return;
   }
 
-  const wb = XLSX.utils.book_new();
-  const HOJAS = {
-    despachos: 'PLANILLA DESPACHOS', logistica: 'LOGISTICA', recepcion: 'RECEPCION TECNICA',
-    facturacion: 'FACTURA TRANSPORTE', inventario: 'INVENTARIO'
+  var dif = Number(fisica) - Number(teorica);
+  var estado = dif === 0 ? 'CONFORME' : 'NOVEDAD';
+
+  var item = {
+    'Bodega': bodega, 'Responsable': responsable, 'Fecha Verificacion': fecha,
+    'Molecula': molecula, 'Codigo': codigo, 'Lote': lote,
+    'Fecha Vencimiento': vencimiento, 'Cantidad Teorica': teorica,
+    'Cantidad Fisica': fisica, 'Diferencia': dif, 'Estado Verificacion': estado
   };
-  let totalFilas = 0;
-  MODULOS.forEach(m => {
-    const filas = consolidado[m];
-    const cabeceras = [];
-    filas.forEach(f => Object.keys(f).forEach(k => { if (!cabeceras.includes(k)) cabeceras.push(k); }));
-    const matriz = [cabeceras.length ? cabeceras : ['Sin registros']];
-    filas.forEach(f => matriz.push(cabeceras.map(c => (f[c] !== undefined ? f[c] : ''))));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(matriz), HOJAS[m]);
-    totalFilas += filas.length;
+  t6Items.push(item);
+  t6PintarTabla();
+  showToast('Item de inventario agregado.', 'success');
+}
+
+function t6PintarTabla() {
+  var head = $('t6_tablaHead');
+  var body = $('t6_tablaBody');
+  if (!head || !body) return;
+  var cols = ['Bodega', 'Molecula', 'Lote', 'Venc.', 'Teorica', 'Fisica', 'Dif.', 'Estado', 'Acc'];
+  head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
+  body.innerHTML = '';
+  t6Items.forEach(function (item, idx) {
+    var tr = document.createElement('tr');
+    var cls = item['Estado Verificacion'] === 'NOVEDAD' ? 'table-danger' : '';
+    tr.className = cls;
+    tr.innerHTML =
+      '<td>' + item['Bodega'] + '</td>' +
+      '<td>' + item['Molecula'] + '</td>' +
+      '<td>' + item['Lote'] + '</td>' +
+      '<td>' + item['Fecha Vencimiento'] + '</td>' +
+      '<td>' + item['Cantidad Teorica'] + '</td>' +
+      '<td>' + item['Cantidad Fisica'] + '</td>' +
+      '<td>' + item['Diferencia'] + '</td>' +
+      '<td>' + item['Estado Verificacion'] + '</td>' +
+      '<td><button class="btn btn-sm btn-outline-danger" onclick="t6EliminarItem(' + idx + ')">X</button></td>';
+    body.appendChild(tr);
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['MEDISFARMA - Respaldo de seguridad del modulo de Cargue'],
-    ['Generado', ahora()], ['Total registros', totalFilas],
-    [], ['Modulo', 'ID Carpeta Drive'],
-    ...MODULOS.map(m => [m, CONFIG.folders[m] || '(sin configurar)'])
-  ]), 'RESUMEN');
-
-  XLSX.writeFile(wb, nombreBase + '.xlsx');
-  toast(`&#10004; Respaldo generado: ${nombreBase}.xlsx (${totalFilas} registros).`, 'success');
-
-  if (!CONFIG.modoLocal && CONFIG.apiUrl && CONFIG.folders.backup) {
-    try {
-      const r = await api('backupRemoto', { folderIds: CONFIG.folders, carpetaBackupId: CONFIG.folders.backup });
-      toast('Copia remota creada en Drive: ' + r.archivo, 'success');
-    } catch (e) { toast('No se pudo crear la copia remota: ' + e.message, 'warning'); }
-  }
 }
 
-function descargarBlob(blob, nombre) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = nombre;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+function t6EliminarItem(idx) {
+  t6Items.splice(idx, 1);
+  t6PintarTabla();
 }
 
-/* ---------------------------------------------------------------------------
- * 14. INICIALIZACION Y EVENTOS
- * ------------------------------------------------------------------------- */
-function pintarConfig() {
-  MODULOS.forEach(m => {
-    setVal('folder_' + m, CONFIG.folders[m] || '');
-    if (m === 'despachos') {
-      const t2input = $('folder_despachos_t2');
-      if (t2input) t2input.value = CONFIG.folders[m] || '';
-    }
+function t6Guardar() {
+  if (!t6Items.length) { showToast('Agregue al menos un item de inventario.', 'danger'); return; }
+  var folderId = $('folder_inventario') ? $('folder_inventario').value.trim() : CONFIG.folders.inventario;
+  if (!folderId) { showToast('Configure la carpeta Drive de Inventario.', 'danger'); return; }
+  var okCount = 0, errCount = 0, total = t6Items.length;
+  t6Items.forEach(function (item) {
+    item['Marca temporal'] = ahora();
+    item['Perfil'] = perfilActivo();
+    item['Usuario'] = nombreUsuario();
+    apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'inventario', registro: item })
+      .then(function (r) {
+        if (r && r.ok) okCount++; else errCount++;
+        if (okCount + errCount === total) {
+          if (errCount === 0) {
+            showToast('&#128190; <strong>' + total + '</strong> registros de Inventario guardados.', 'success');
+            t6Items = []; t6PintarTabla();
+          } else {
+            showToast('Guardados ' + okCount + '/' + total + '. Errores: ' + errCount, 'danger');
+          }
+        }
+      })
+      .catch(function () { errCount++; });
   });
-  // Mostrar carpeta de consulta (origen) fija en la UI
-  const consultaEl = $('folder_traslados_consulta');
-  if (consultaEl) consultaEl.value = CONFIG.folders.trasladosConsulta || '';
-  const consultaEst = $('estado_folder_traslados_consulta');
-  if (consultaEst) consultaEst.innerHTML = '<span class="text-info">&#128218; Carpeta Traslados (lectura fija)</span>';
-
-  setVal('cfg_api_url', CONFIG.apiUrl);
-  setVal('cfg_folder_backup', CONFIG.folders.backup || '');
-  setVal('cfg_conductores', (CONFIG.conductores || []).join('\n'));
-  $('cfg_modo_local').checked = !!CONFIG.modoLocal;
-
-  const sel = $('t2_conductor');
-  sel.innerHTML = '<option value="">Seleccione...</option>' +
-    (CONFIG.conductores || []).map(c => `<option>${esc(c)}</option>`).join('');
-
-  $('estadoApi').className = 'badge ' + (CONFIG.modoLocal ? 'bg-secondary' : 'bg-light text-dark');
-  $('estadoApi').textContent = CONFIG.modoLocal ? 'Modo local' : (CONFIG.apiUrl ? 'API configurada' : 'API sin configurar');
-
-  pintarPerfiles();
-  pintarIdsCarpetas();
 }
 
-/** Muestra los perfiles de archivos configurados para cada tarjeta. */
-function pintarPerfiles() {
-  const perfiles = CONFIG.perfiles || {};
-  const MODULOS_LABEL = {
-    despachos: 'Tarjeta 1 — Planilla Entrega Despachos',
-    logistica: 'Tarjeta 2 — Logistica y Despachos',
-    recepcion: 'Tarjeta 3 — Recepcion Tecnica',
-    facturacion: 'Tarjeta 4 — Factura Transporte',
-    inventario: 'Tarjeta 5 — Verificacion de Inventario'
-  };
-  const cont = $('perfilesInfo');
-  if (!cont) return;
-  cont.innerHTML = MODULOS.map(m => {
-    const p = perfiles[m] || {};
-    return '<div class="row g-1 mb-1">' +
-      '<div class="col-md-4"><strong>' + esc(MODULOS_LABEL[m]) + '</strong></div>' +
-      '<div class="col-md-4"><span class="text-muted">Archivo:</span> ' + esc(p.file || '(sin asignar)') + '</div>' +
-      '<div class="col-md-4"><span class="text-muted">Hoja:</span> ' + esc(p.sheet || '(sin asignar)') + '</div>' +
-      '</div>';
-  }).join('');
-}
-
-/** Muestra un resumen visual de los IDs de carpeta ya configurados. */
-function pintarIdsCarpetas() {
-  const cont = $('idsCarpetasInfo');
-  if (!cont) return;
-  const MODULOS_LABEL = {
-    trasladosConsulta: 'T1 — Traslados (lectura)',
-    despachos:         'T1 — Destino (escritura)',
-    logistica:         'Tarjeta 2',
-    recepcion:         'Tarjeta 3',
-    facturacion:       'Tarjeta 4',
-    inventario:        'Tarjeta 5',
-    backup:            'Respaldos'
-  };
-  cont.innerHTML = Object.keys(CONFIG.folders).map(k => {
-    const id = CONFIG.folders[k] || '';
-    const ok = id ? 'text-success' : 'text-danger';
-    const icon = id ? '&#10004;' : '&#10006;';
-    const extra = k === 'trasladosConsulta' ? ' <span class="text-info">&#128218; fija</span>' : '';
-    return '<div class="row g-1 mb-1">' +
-      '<div class="col-md-3"><strong>' + esc(MODULOS_LABEL[k] || k) + '</strong></div>' +
-      '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span>' + extra + '</div>' +
-      '</div>';
-  }).join('');
-}
-
-/** Pinta la seccion de perfiles de usuario en el modal. */
-function pintarPerfilesUsuario() {
-  const cont = $('perfilesUsuarioInfo');
-  if (!cont) return;
-  cont.innerHTML = Object.keys(PERFILES).map(k => {
-    const pf = PERFILES[k];
-    const activo = k === PERFIL_ACTIVO;
-    const borde = activo ? 'border-primary' : 'border-light';
-    const check = activo ? '&#10004; ACTIVO' : '';
-    return '<div class="row g-1 mb-1 border ' + borde + ' rounded p-1">' +
-      '<div class="col-md-2"><span class="badge ' + pf.color + '">' + pf.icon + ' ' + esc(pf.label) + '</span></div>' +
-      '<div class="col-md-7"><small>' + esc(pf.descripcion) + '</small></div>' +
-      '<div class="col-md-2"><small>Tarjetas: ' + pf.tarjetas.map(t => t.replace('t','')).join(',') + '</small></div>' +
-      '<div class="col-md-1">' + (activo ? '<span class="text-primary fw-bold">' + check + '</span>' : '') + '</div>' +
-      '</div>';
-  }).join('');
-}
-
-async function verificarApi() {
-  if (!CONFIG.apiUrl) {
-    $('estadoApi').className = 'badge bg-warning text-dark';
-    $('estadoApi').textContent = 'Sin URL configurada';
-    return;
-  }
-  if (CONFIG.modoLocal) return;
-  try {
-    await api('ping');
-    $('estadoApi').className = 'badge bg-success';
-    $('estadoApi').textContent = 'Conectado a Drive';
-  } catch (e) {
-    $('estadoApi').className = 'badge bg-danger';
-    $('estadoApi').textContent = 'Sin conexion';
-    console.error('Error verificacion API:', e.message);
-    toast('Error de conexion: ' + e.message, 'danger');
-  }
-}
-
-async function probarConexion() {
-  const btn = $('btnProbarApi');
-  const badge = $('estadoApi');
-  if (btn) { btn.disabled = true; btn.innerHTML = '&\#8987; Probando...'; }
-  badge.className = 'badge bg-warning text-dark';
-  badge.textContent = 'Probando conexion...';
-  try {
-    await api('ping');
-    badge.className = 'badge bg-success';
-    badge.textContent = 'Conectado a Drive';
-    toast('Conexion exitosa con Google Drive', 'success');
-  } catch (e) {
-    badge.className = 'badge bg-danger';
-    badge.textContent = 'Sin conexion';
-    let msg = e.message || 'Error desconocido';
-    if (msg.includes('Failed to fetch') || msg.includes('No se pudo conectar')) {
-      msg = 'La Web App requiere acceso publico. Vaya a Apps Script > Implementar > Nueva implementacion > Quien tiene acceso: Cualquier usuario.';
-    }
-    toast('Error: ' + msg, 'danger');
-    console.error('Prueba de conexion fallida:', e);
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '&\#127760; Probar Conexion'; }
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  // ----- SISTEMA DE LOGIN -----
-  // Si ya inicio sesion, ocultar el overlay; si no, mostrarlo y bloquear scroll
-  const loginPrevio = localStorage.getItem(LS_LOGIN);
-  if (loginPrevio) {
-    const perfilPrevio = PERFILES[loginPrevio] ? loginPrevio : obtenerPerfilDeUsuario(loginPrevio);
-    PERFIL_ACTIVO = perfilPrevio;
-    localStorage.setItem(LS_PERFIL, perfilPrevio);
-    $('pantallaLogin').style.display = 'none';
-    document.body.classList.remove('mf-login-activo');
+/* ═════════════════════════════════════════════════════════════════════════════════
+   12. BACKUP / DESCARGA DE ARCHIVO DE SEGURIDAD
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function generarBackup() {
+  var backupLocal = { _meta: { generado: ahora(), perfil: perfilActivo(), version: '3.0' } };
+  MODULOS.forEach(function (m) {
+    backupLocal[m] = { folder: CONFIG.folders[m], registros: [] };
+  });
+  if (typeof XLSX !== 'undefined') {
+    var wb = XLSX.utils.book_new();
+    MODULOS.forEach(function (m) {
+      var data = [['Marca temporal', 'Perfil', 'Usuario', 'Modulo', 'Datos...']];
+      var ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, m);
+    });
+    XLSX.writeFile(wb, 'Backup_MEDISFARMA_' + hoy() + '.xlsx');
+    showToast('&#128190; Archivo de seguridad XLSX descargado.', 'success');
   } else {
-    $('pantallaLogin').style.display = 'flex';
-    document.body.classList.add('mf-login-activo');
+    showToast('Libreria XLSX no cargada. Intente mas tarde.', 'danger');
   }
+}
 
-  // Eventos del login
-  $('btnLogin').addEventListener('click', verificarLogin);
-  $('loginContrasena').addEventListener('keydown', e => { if (e.key === 'Enter') verificarLogin(); });
-  $('btnCerrarSesion').addEventListener('click', cerrarSesion);
-  if ($('btnProbarApi')) $('btnProbarApi').addEventListener('click', probarConexion);
-
-  pintarConfig();
-  verificarApi();
-
-  // Alerta si no hay URL de Web App configurada
-  if (!CONFIG.apiUrl) {
-    const alerta = document.createElement('div');
-    alerta.id = 'alertaNoApi';
-    alerta.className = 'alert alert-warning alert-dismissible fade show position-fixed';
-    alerta.style.cssText = 'top:10px;left:50%;transform:translateX(-50%);z-index:99999;max-width:90vw;font-size:14px;';
-    alerta.innerHTML = '⚠ <strong>Sin conexion a Drive</strong> — Configure la URL de la Web App en <em>Ajustes</em> para guardar datos en Google Drive. <a href="#" onclick="document.getElementById(\'t6\').click();this.closest(\'.alert\').remove();return false;">Ir a Ajustes</a> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-    document.body.appendChild(alerta);
-    setTimeout(() => { if (alerta.parentNode) alerta.remove(); }, 15000);
-  }
-
-  // Aplicar perfil activo al cargar
+/* ═════════════════════════════════════════════════════════════════════════════════
+   13. INICIALIZACION
+   ═════════════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function () {
+  cargarConfig();
   aplicarPerfil();
 
-  // Selector de perfil en la barra
-  $('selPerfil').addEventListener('change', () => {
-    seleccionarPerfil($('selPerfil').value);
-  });
+  // Botones de tarjeta
+  var btn;
+  btn = $('t1_btnGuardar'); if (btn) btn.addEventListener('click', t1Guardar);
+  btn = $('t2_btnAgregar'); if (btn) btn.addEventListener('click', t2AgregarItem);
+  btn = $('t2_btnGuardar'); if (btn) btn.addEventListener('click', t2Guardar);
+  btn = $('t3_btnValidar'); if (btn) btn.addEventListener('click', t3ValidarTraslado);
+  btn = $('t3_btnGuardar'); if (btn) btn.addEventListener('click', t3Guardar);
+  btn = $('t4_btnBuscar');  if (btn) btn.addEventListener('click', t4Buscar);
+  btn = $('t4_btnGuardar'); if (btn) btn.addEventListener('click', t4Guardar);
+  btn = $('t4_btnImprimir'); if (btn) btn.addEventListener('click', t4Imprimir);
+  btn = $('t5_btnGuardar'); if (btn) btn.addEventListener('click', t5Guardar);
+  btn = $('t6_btnAgregar'); if (btn) btn.addEventListener('click', t6AgregarItem);
+  btn = $('t6_btnGuardar'); if (btn) btn.addEventListener('click', t6Guardar);
 
-  // Configuracion general
-  $('cfg_guardar').addEventListener('click', () => {
-    CONFIG.apiUrl = val('cfg_api_url');
-    CONFIG.folders.backup = val('cfg_folder_backup');
-    CONFIG.modoLocal = $('cfg_modo_local').checked;
-    CONFIG.conductores = val('cfg_conductores').split('\n').map(s => s.trim()).filter(Boolean);
-    guardarConfig();
-    pintarConfig();
-    verificarApi();
-    aplicarPerfil();
-    toast('Configuracion guardada.', 'success');
-  });
+  // API / config
+  btn = $('btnProbarApi'); if (btn) btn.addEventListener('click', probarApi);
+  btn = $('cfg_guardar'); if (btn) btn.addEventListener('click', guardarConfig);
+  btn = $('btnBackupTop'); if (btn) btn.addEventListener('click', generarBackup);
+  btn = $('btnBackupFloat'); if (btn) btn.addEventListener('click', generarBackup);
 
-  // Persistencia inmediata del Folder ID al escribirlo
-  MODULOS.forEach(m => {
-    const el = $('folder_' + m);
-    if (el) el.addEventListener('change', () => {
-      CONFIG.folders[m] = el.value.trim();
-      guardarConfig();
-      // Sincronizar folder_despachos_t2
-      if (m === 'despachos') {
-        const t2inp = $('folder_despachos_t2');
-        if (t2inp) t2inp.value = el.value.trim();
-      }
-    });
-  });
-  // Sincronizar folder_despachos_t2 -> despachos cuando se edita desde T2
-  const t2f = $('folder_despachos_t2');
-  if (t2f) {
-    t2f.addEventListener('change', () => {
-      CONFIG.folders.despachos = t2f.value.trim();
-      const t1inp = $('folder_despachos');
-      if (t1inp) t1inp.value = t2f.value.trim();
-      guardarConfig();
+  // Perfil selector
+  var sel = $('selPerfil');
+  if (sel) sel.addEventListener('change', function () { seleccionarPerfil(sel.value); });
+
+  // Conductores dropdown
+  var condSel = $('t4_conductor');
+  if (condSel) {
+    condSel.innerHTML = '<option value="">Seleccione...</option>';
+    (CONFIG.conductores || CONFIG_DEFAULT.conductores).forEach(function (c) {
+      condSel.innerHTML += '<option>' + c + '</option>';
     });
   }
 
-  // Tarjeta 1
-  $('t1_btnValidar').addEventListener('click', t1ValidarTraslado);
-  $('t1_traslado').addEventListener('keydown', e => { if (e.key === 'Enter') t1ValidarTraslado(); });
-  $('t1_btnGuardar').addEventListener('click', t1Guardar);
+  // Diferencia automatica en Recepcion
+  var bEnv = $('b_enviada'), bRec = $('b_recibida'), bDif = $('b_diferencia');
+  function calcDif() { if (bDif) bDif.value = Number(bRec.value || 0) - Number(bEnv.value || 0); }
+  if (bEnv) bEnv.addEventListener('input', calcDif);
+  if (bRec) bRec.addEventListener('input', calcDif);
 
-  // Tarjeta 2
-  $('t2_btnBuscar').addEventListener('click', t2Buscar);
-  $('t2_traslado').addEventListener('keydown', e => { if (e.key === 'Enter') t2Buscar(); });
-  $('t2_btnGuardar').addEventListener('click', t2Guardar);
-  $('t2_btnImprimir').addEventListener('click', t2Imprimir);
+  // Diferencia automatica en Inventario
+  var iT = $('i_teorica'), iF = $('i_fisica'), iD = $('i_diferencia'), iE = $('i_estado');
+  function calcInv() {
+    if (iD) iD.value = Number(iF.value || 0) - Number(iT.value || 0);
+    if (iE) iE.value = (Number(iF.value || 0) === Number(iT.value || 0)) ? 'CONFORME' : 'NOVEDAD';
+  }
+  if (iT) iT.addEventListener('input', calcInv);
+  if (iF) iF.addEventListener('input', calcInv);
 
-  // Tarjeta 3
-  document.querySelectorAll('input[name="tipoRecepcion"]').forEach(r =>
-    r.addEventListener('change', alternarBloquesRecepcion));
-  ['b_enviada', 'b_recibida'].forEach(id => $(id).addEventListener('input', () => {
-    setVal('b_diferencia', Number(val('b_recibida') || 0) - Number(val('b_enviada') || 0));
-  }));
-  $('t3_btnAgregar').addEventListener('click', () => {
-    const r = t3ConstruirRegistro();
-    if (!r) return;
-    itemsRecepcion.push(r);
-    pintarTablaItems('t3', itemsRecepcion);
-    toast('Item agregado a la lista de recepcion.', 'primary');
-  });
-  $('t3_btnGuardar').addEventListener('click', async () => {
-    if (PERFIL_ACTIVO === 'auxiliar') { toast('Su perfil solo permite visualizar, no guardar.', 'warning'); return; }
-    let lista = itemsRecepcion.slice();
-    if (!lista.length) {
-      const r = t3ConstruirRegistro();
-      if (!r) return;
-      lista = [r];
-    }
-    await persistir('recepcion', lista, 't3');
-  });
-
-  // Tarjeta 4
-  $('t4_btnGuardar').addEventListener('click', t4Guardar);
-
-  // Tarjeta 5
-  ['i_teorica', 'i_fisica'].forEach(id => $(id).addEventListener('input', calcularDiferenciaInventario));
-  $('t5_btnAgregar').addEventListener('click', () => {
-    const r = t5ConstruirRegistro();
-    if (!r) return;
-    itemsInventario.push(r);
-    pintarTablaItems('t5', itemsInventario);
-    toast('Item agregado al conteo de inventario.', 'primary');
-  });
-  $('t5_btnGuardar').addEventListener('click', async () => {
-    let lista = itemsInventario.slice();
-    if (!lista.length) {
-      const r = t5ConstruirRegistro();
-      if (!r) return;
-      lista = [r];
-    }
-    await persistir('inventario', lista, 't5');
-  });
-
-  // Respaldo de seguridad
-  const backup = () => generarBackup('xlsx');
-  $('btnBackupTop').addEventListener('click', backup);
-  $('btnBackupFloat').addEventListener('click', backup);
-  document.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'j') { e.preventDefault(); generarBackup('json'); }
-  });
+  // Probar API al inicio
+  probarApi();
 });
