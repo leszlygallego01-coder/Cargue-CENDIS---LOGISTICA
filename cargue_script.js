@@ -608,8 +608,9 @@ function t3ValidarTraslado() {
       } else {
         t3TrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+        // Mostrar mensaje detallado del backend si existe
         var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
-        showToast(msgNo + ' Verifique el numero e intente de nuevo.', 'danger');
+        showToast(msgNo, 'danger');
       }
     })
     .catch(function (err) {
@@ -743,8 +744,9 @@ function logBuscar() {
       } else {
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-danger">Sin datos</span>';
-        var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
-        showToast(msgNo + ' Verifique el numero e intente de nuevo.', 'danger');
+        // Mostrar mensaje detallado del backend si existe
+        var msgNoLog = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        showToast(msgNoLog, 'danger');
       }
     })
     .catch(function (err) {
