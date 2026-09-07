@@ -26,7 +26,7 @@ const LS_PERFIL = 'MF_PERFIL_ACTIVO';
 
 const CONFIG_DEFAULT = {
   apiUrl: '',
-  modoLocal: true,
+  modoLocal: false,
   folders: {
     despachos:   '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
     logistica:   '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
@@ -1022,8 +1022,13 @@ async function persistir(modulo, registro, prefijoLimpieza) {
 
   lista.forEach(r => registrarLocal(modulo, r));
 
-  if (CONFIG.modoLocal || !CONFIG.apiUrl) {
-    toast(`Guardado localmente (${lista.length} registro/s). Active la conexion para sincronizar con Drive.`, 'secondary');
+  if (!CONFIG.apiUrl) {
+    toast(`⚠ Sin URL de Web App. Dato guardado localmente (${lista.length} registro/s). Configure la URL en Ajustes.`, 'warning');
+    if (prefijoLimpieza) limpiarTarjeta(Number(prefijoLimpieza.replace('t', '')));
+    return;
+  }
+  if (CONFIG.modoLocal) {
+    toast(`Guardado localmente (${lista.length} registro/s). Desactive \"Modo local\" para sincronizar con Drive.`, 'secondary');
     if (prefijoLimpieza) limpiarTarjeta(Number(prefijoLimpieza.replace('t', '')));
     return;
   }
@@ -1261,6 +1266,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   pintarConfig();
   verificarApi();
+
+  // Alerta si no hay URL de Web App configurada
+  if (!CONFIG.apiUrl) {
+    const alerta = document.createElement('div');
+    alerta.id = 'alertaNoApi';
+    alerta.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+    alerta.style.cssText = 'top:10px;left:50%;transform:translateX(-50%);z-index:99999;max-width:90vw;font-size:14px;';
+    alerta.innerHTML = '⚠ <strong>Sin conexion a Drive</strong> — Configure la URL de la Web App en <em>Ajustes</em> para guardar datos en Google Drive. <a href="#" onclick="document.getElementById(\'t6\').click();this.closest(\'.alert\').remove();return false;">Ir a Ajustes</a> <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    document.body.appendChild(alerta);
+    setTimeout(() => { if (alerta.parentNode) alerta.remove(); }, 15000);
+  }
 
   // Aplicar perfil activo al cargar
   aplicarPerfil();
