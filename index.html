@@ -43,6 +43,39 @@
           <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
           <option value="recibido_logistica">&#9989; Recibido Logistica</option>
           <option value="planillar_logistica">&#128203; Planillar Logistica</option>
+          <option disabled>────────── AUXILIARES ──────────</option>
+          <option value="yuri">&#128119; Yuri</option>
+          <option value="julio">&#128119; Julio</option>
+          <option value="hernan">&#128119; Hernan</option>
+          <option value="diego">&#128119; Diego</option>
+          <option value="brian">&#128119; Brian</option>
+          <option value="karina">&#128119; Karina</option>
+          <option value="jhony">&#128119; Jhony</option>
+          <option value="natalia">&#128119; Natalia</option>
+          <option value="manuel">&#128119; Manuel</option>
+          <option value="claudia">&#128119; Claudia</option>
+          <option value="daniela">&#128119; Daniela</option>
+          <option value="juan">&#128119; Juan</option>
+          <option value="luzl">&#128119; LuzL</option>
+          <option value="liz">&#128119; Liz</option>
+          <option value="ana">&#128119; Ana</option>
+          <option value="leidy">&#128119; Leidy</option>
+          <option value="bivian">&#128119; Bivian</option>
+          <option value="vaneza">&#128119; Vaneza</option>
+          <option value="brayan">&#128119; Brayan</option>
+          <option value="nicoll">&#128119; Nicoll</option>
+          <option value="luis">&#128119; Luis</option>
+          <option value="estefania">&#128119; Estefania</option>
+          <option value="angela">&#128119; Angela</option>
+          <option value="camila">&#128119; Camila</option>
+          <option value="angie">&#128119; Angie</option>
+          <option value="mayra">&#128119; Mayra</option>
+          <option value="derly">&#128119; Derly</option>
+          <option value="luisa">&#128119; Luisa</option>
+          <option value="luzn">&#128119; LuzN</option>
+          <option value="andrea">&#128119; Andrea</option>
+          <option value="andres">&#128119; Andres</option>
+          <option value="diegoe">&#128119; DiegoE</option>
         </select>
       </div>
       <div class="mb-3">
@@ -222,6 +255,7 @@
         <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
         <option value="recibido_logistica">&#9989; Recibido Logistica</option>
         <option value="planillar_logistica">&#128203; Planillar Logistica</option>
+        <option value="auxiliar">&#128119; Auxiliar</option>
       </select>
     </div>
     <span id="perfilBadge" class="badge bg-danger mf-perfil-badge">&#128081; ADMINISTRADOR</span>
@@ -266,16 +300,30 @@
         <div class="mf-card-header text-success">&#128230; TARJETA 1 &middot; PLANILLA ENTREGA DESPACHOS</div>
         <div class="mf-card-body">
 
-          <!-- Configuracion de carpeta Drive de la tarjeta -->
-          <div class="mf-drive-panel row g-2 align-items-end no-print">
-            <div class="col-md-7">
-              <label>ID Carpeta Drive Despachos</label>
-              <input type="text" class="form-control form-control-sm" id="folder_despachos"
-                     value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_">
+          <!-- Configuracion de carpetas Drive de la tarjeta -->
+          <div class="mf-drive-panel no-print">
+            <!-- Carpeta ORIGEN (lectura fija) -->
+            <div class="row g-2 align-items-end mb-2">
+              <div class="col-md-7">
+                <label class="text-info">&#128218; Carpeta Origen (solo lectura — fija)</label>
+                <input type="text" class="form-control form-control-sm campo-bloqueado" id="folder_despachos_consulta"
+                       value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_" readonly>
+              </div>
+              <div class="col-md-5">
+                <span class="mf-estado align-self-center" id="estado_folder_despachos_consulta"></span>
+              </div>
             </div>
-            <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
-              <span class="mf-estado align-self-center" id="estado_folder_despachos"></span>
+            <!-- Carpeta DESTINO (escritura — editable) -->
+            <div class="row g-2 align-items-end">
+              <div class="col-md-7">
+                <label>&#128190; Carpeta Destino (guardado de registros)</label>
+                <input type="text" class="form-control form-control-sm" id="folder_despachos"
+                       value="1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8">
+              </div>
+              <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
+                <span class="mf-estado align-self-center" id="estado_folder_despachos"></span>
+              </div>
             </div>
           </div>
 
@@ -370,8 +418,8 @@
 
           <div class="mf-drive-panel row g-2 align-items-end no-print">
             <div class="col-md-7">
-              <label>ID Carpeta Drive Despachos (Validacion y traer datos)</label>
-              <input type="text" class="form-control form-control-sm" id="folder_despachos_t2" value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_">
+              <label>ID Carpeta Drive Despachos (busca registros guardados por T1)</label>
+              <input type="text" class="form-control form-control-sm" id="folder_despachos_t2" value="1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8">
             </div>
             <div class="col-md-5 d-flex gap-2">
               <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
