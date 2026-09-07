@@ -376,3 +376,25 @@ body.mf-login-activo {
 }
 .log-subpanel-badge.urgente-si { background: #dc3545; }
 .log-subpanel-badge.urgente-no { background: var(--mf-verde); }
+
+/* ---------- Recepcion Tecnica: tipo badge dinamico ---------- */
+.rec-tipo-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-size: .78rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .5px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.rec-tipo-badge.externa { background: #dc3545; }
+.rec-tipo-badge.interna { background: var(--mf-azul); }
+.rec-doc-label {
+  font-weight: 700;
+  font-size: .95rem;
+  transition: color .2s;
+}
+.rec-doc-label.externa { color: #dc3545; }
+.rec-doc-label.interna { color: var(--mf-azul); }
