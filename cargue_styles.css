@@ -327,3 +327,52 @@ body.mf-login-activo {
   color: var(--mf-azul-osc);
   border-color: var(--mf-azul) !important;
 }
+/* ---------- Logistica: subpaneles Recepcion / Despacho ---------- */
+.log-subpanel {
+  border: 1.5px solid var(--mf-azul);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.log-subpanel-header {
+  background: linear-gradient(135deg, var(--mf-azul) 0%, #0a58ca 100%);
+  color: #fff;
+  padding: 8px 14px;
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.log-subpanel-header::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mf-verde);
+  flex-shrink: 0;
+}
+.log-subpanel-recepcion .log-subpanel-header {
+  background: linear-gradient(135deg, var(--mf-azul) 0%, #0a58ca 100%);
+}
+.log-subpanel-despacho .log-subpanel-header {
+  background: linear-gradient(135deg, var(--mf-verde) 0%, #1e8c3a 100%);
+}
+.log-subpanel-body {
+  padding: 12px 14px;
+}
+.log-subpanel-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: .7rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.log-subpanel-badge.urgente-si { background: #dc3545; }
+.log-subpanel-badge.urgente-no { background: var(--mf-verde); }
