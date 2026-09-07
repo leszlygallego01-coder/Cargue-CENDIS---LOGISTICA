@@ -28,7 +28,7 @@ const CONFIG_DEFAULT = {
   apiUrl: '',
   modoLocal: true,
   folders: {
-    despachos:   '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
+    despachos:   '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
     logistica:   '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
     recepcion:   '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
     facturacion: '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
@@ -56,7 +56,62 @@ let itemsRecepcion = [];
 let itemsInventario = [];
 
 /* ---------------------------------------------------------------------------
- * 1b. SISTEMA DE PERFILES DE USUARIO
+ * 1b. CREDENCIALES DE USUARIO (LOGIN)
+ * ------------------------------------------------------------------------- */
+const CREDENCIALES = {
+  administrador:       'Medis2024Admin',
+  lider:              'Medis2024Lider',
+  auxiliar_entrega:   'Medis2024Aux',
+  recibido_logistica: 'Medis2024Recib',
+  planillar_logistica:'Medis2024Plan'
+};
+const LS_LOGIN = 'MF_LOGIN_OK';
+
+/** Verifica las credenciales y, si son validas, oculta el overlay de login. */
+function verificarLogin() {
+  const usuario = val('loginUsuario');
+  const clave   = val('loginContrasena');
+  const errDiv  = $('loginError');
+
+  if (!usuario) {
+    errDiv.style.display = 'block';
+    errDiv.textContent = 'Seleccione un perfil.'; return;
+  }
+  if (CREDENCIALES[usuario] && CREDENCIALES[usuario].toLowerCase() === clave.toLowerCase()) {
+    localStorage.setItem(LS_LOGIN, usuario);
+    PERFIL_ACTIVO = usuario;
+    localStorage.setItem(LS_PERFIL, usuario);
+    $('pantallaLogin').style.display = 'none';
+    document.body.classList.remove('mf-login-activo');
+    errDiv.style.display = 'none';
+    // Sincronizar selector de perfil en navbar
+    const sel = $('selPerfil');
+    if (sel) sel.value = usuario;
+    aplicarPerfil();
+    toast('Sesion iniciada como <strong>' + PERFILES[usuario].label + '</strong>', 'success');
+  } else {
+    errDiv.style.display = 'block';
+    errDiv.textContent = 'Usuario o contrasena incorrectos';
+    $('loginContrasena').value = '';
+    $('loginContrasena').focus();
+  }
+}
+
+/** Cierra la sesion: borra login, muestra el overlay de nuevo. */
+function cerrarSesion() {
+  localStorage.removeItem(LS_LOGIN);
+  localStorage.removeItem(LS_PERFIL);
+  PERFIL_ACTIVO = 'administrador';
+  $('pantallaLogin').style.display = 'flex';
+  document.body.classList.add('mf-login-activo');
+  $('loginUsuario').value = '';
+  $('loginContrasena').value = '';
+  $('loginError').style.display = 'none';
+  toast('Sesion cerrada.', 'info');
+}
+
+/* ---------------------------------------------------------------------------
+ * 1c. SISTEMA DE PERFILES DE USUARIO
  * ------------------------------------------------------------------------- */
 
 /**
@@ -235,17 +290,21 @@ function aplicarPerfil() {
   // Tarjeta 1 — Validar/Crear traslado
   const t1Validar = $('t1_btnValidar');
   const t1Guardar = $('t1_btnGuardar');
-  if (t1Validar) t1Validar.style.display = p.puedeCrearTraslado ? '' : 'none';
-  // Auxiliar Entrega puede llamar traslado (validar) pero no crear
+
+  // Perfiles que pueden ver el boton Validar: todos los que tienen t1
+  if (t1Validar) t1Validar.style.display = p.tarjetas.includes('t1') ? '' : 'none';
+
+  // Auxiliar Entrega: puede llamar traslado (validar) Y registrar entrega (guardar)
   if (PERFIL_ACTIVO === 'auxiliar_entrega') {
     if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Llamar traslado'; }
-    if (t1Guardar) t1Guardar.innerHTML = '&#128190; Registrar entrega';
+    if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Registrar entrega'; }
   } else if (p.puedeCrearTraslado) {
     if (t1Validar) t1Validar.innerHTML = '&#128269; Validar y traer datos';
-    if (t1Guardar) t1Guardar.innerHTML = '&#128190; Guardar en Drive';
-  }
-  if (t1Guardar && !p.puedeCrearTraslado && PERFIL_ACTIVO !== 'auxiliar_entrega') {
-    t1Guardar.style.display = 'none';
+    if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Guardar en Drive'; }
+  } else {
+    // Otros perfiles con t1 (planillar_logistica): ven el boton pero con texto generico
+    if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Llamar traslado'; }
+    if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Guardar en Drive'; }
   }
 
   // Recibido Logistica: en T2 muestra solo boton de recibido
@@ -422,61 +481,4 @@ async function api(action, payload = {}) {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(Object.assign({ action }, payload))
-  });
-  const data = await res.json();
-  if (data.ok === false) throw new Error(data.error || 'Error del backend');
-  return data;
-}
-
-/* ---------------------------------------------------------------------------
- * 4. UTILIDADES DE INTERFAZ
- * ------------------------------------------------------------------------- */
-const $ = id => document.getElementById(id);
-const val = id => ($(id) ? String($(id).value || '').trim() : '');
-const setVal = (id, v) => { if ($(id)) $(id).value = (v === undefined || v === null) ? '' : v; };
-
-function ahora() {
-  const d = new Date(), p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-function stamp() {
-  const d = new Date(), p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
-}
-
-function toast(msg, tipo = 'primary') {
-  const wrap = $('toastWrap');
-  const el = document.createElement('div');
-  el.className = `alert alert-${tipo} shadow-sm py-2 px-3 small`;
-  el.innerHTML = msg;
-  wrap.appendChild(el);
-  setTimeout(() => el.remove(), 5000);
-}
-
-/** Marca en rojo los campos obligatorios vacios. Devuelve true si todo esta ok. */
-function validarObligatorios(ids) {
-  let ok = true;
-  ids.forEach(id => {
-    const el = $(id);
-    if (!el) return;
-    if (!String(el.value || '').trim()) { el.classList.add('is-invalid-mf'); ok = false; }
-    else el.classList.remove('is-invalid-mf');
-  });
-  if (!ok) toast('Complete los campos obligatorios resaltados en rojo.', 'danger');
-  return ok;
-}
-
-/* ---------------------------------------------------------------------------
- * 5. CONFIGURACION DE CARPETAS DE DRIVE POR TARJETA
- * ------------------------------------------------------------------------- */
-const MODULOS = ['despachos', 'logistica', 'recepcion', 'facturacion', 'inventario'];
-
-/** Valida contra Drive el ID de carpeta de la tarjeta y lo persiste. */
-async function validarFolder(modulo) {
-  const id = val('folder_' + modulo);
-  const est = $('estado_folder_' + modulo);
-  if (!id) { est.innerHTML = '<span class="text-danger">Ingrese el ID de la carpeta.</span>'; return; }
-  CONFIG.folders[modulo] = id;
-  guardarConfig();
-  if (CONFIG.modoLocal || !CONFIG.apiUrl) {
-    est.
+    
