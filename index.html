@@ -827,14 +827,28 @@
               <input class="form-control campo-bloqueado" id="t3_bodega_origen" readonly></div>
             <div class="col-md-4"><label class="form-label">Bodega Destino</label>
               <input class="form-control campo-bloqueado" id="t3_destino" readonly></div>
-            <div class="col-md-4"><label class="form-label">Zona</label>
-              <input class="form-control campo-bloqueado" id="t3_zona" readonly></div>
+            <div class="col-md-4"><label class="form-label">Ruta</label>
+              <input class="form-control campo-bloqueado" id="t3_ruta" readonly></div>
             <div class="col-md-2"><label class="form-label">Cantidad</label>
-              <input class="form-control campo-bloqueado" id="t3_cantidad" readonly></div>
-            <div class="col-md-2"><label class="form-label">Tipo</label>
-              <input class="form-control campo-bloqueado" id="t3_tipo" readonly></div>
-            <div class="col-md-2"><label class="form-label">Urgente</label>
-              <input class="form-control campo-bloqueado" id="t3_urgente" readonly></div>
+              <input type="number" class="form-control" id="t3_cantidad" min="1" step="1" placeholder="0"></div>
+            <div class="col-md-2"><label class="form-label">Tipo *</label>
+              <select class="form-select" id="t3_tipo">
+                <option value="">Seleccione...</option>
+                <option>Paquete</option>
+                <option>Caja</option>
+                <option>Electr&oacute;nico</option>
+                <option>Nevera</option>
+                <option>Nutriciones</option>
+                <option>Pa&ntilde;ales</option>
+                <option>Sobre</option>
+                <option>Caja y Pa&ntilde;al</option>
+                <option>Caja y Nutriciones</option>
+              </select></div>
+            <div class="col-md-2"><label class="form-label">Urgente *</label>
+              <select class="form-select" id="t3_urgente">
+                <option value="NO">NO</option>
+                <option value="SI">SI</option>
+              </select></div>
             <div class="col-md-2 d-flex align-items-end">
               <span id="t3_badgeUrgente"></span>
             </div>
@@ -859,38 +873,41 @@
             <div class="col-md-4"><label class="form-label">Quien Alista *</label>
               <select class="form-select" id="t3_quien_alista">
                 <option value="">Seleccione...</option>
-                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
-                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
-                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
-                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
-                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
-                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
-                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
-                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
+                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
               </select></div>
             <div class="col-md-4"><label class="form-label">Quien Pita *</label>
               <select class="form-select" id="t3_quien_pita">
                 <option value="">Seleccione...</option>
-                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
-                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
-                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
-                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
-                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
-                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
-                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
-                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
+                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
               </select></div>
             <div class="col-md-4"><label class="form-label">Quien Empaca *</label>
               <select class="form-select" id="t3_quien_empaca">
                 <option value="">Seleccione...</option>
-                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
-                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
-                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
-                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
-                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
-                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
-                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
-                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
+                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
               </select></div>
             <div class="col-md-3"><label class="form-label">Tipo Carga *</label>
               <select class="form-select" id="t3_tipo_carga">
@@ -977,8 +994,8 @@
                   <input class="form-control campo-bloqueado" id="log_bodega_origen" readonly></div>
                 <div class="col-md-3"><label class="form-label">Bodega Destino</label>
                   <input class="form-control campo-bloqueado" id="log_destino" readonly></div>
-                <div class="col-md-2"><label class="form-label">Zona</label>
-                  <input class="form-control campo-bloqueado" id="log_zona" readonly></div>
+                <div class="col-md-2"><label class="form-label">Ruta</label>
+                  <input class="form-control campo-bloqueado" id="log_ruta" readonly></div>
                 <div class="col-md-2"><label class="form-label">Urgente *</label>
                   <select class="form-select" id="log_urgente">
                     <option value="NO">NO</option>
@@ -1012,8 +1029,8 @@
                   <input class="form-control campo-bloqueado" id="log_d_bodega_origen" readonly></div>
                 <div class="col-md-3"><label class="form-label">Destino</label>
                   <input class="form-control campo-bloqueado" id="log_d_destino" readonly></div>
-                <div class="col-md-2"><label class="form-label">Zona</label>
-                  <input class="form-control campo-bloqueado" id="log_d_zona" readonly></div>
+                <div class="col-md-2"><label class="form-label">Ruta</label>
+                  <input class="form-control campo-bloqueado" id="log_d_ruta" readonly></div>
                 <div class="col-md-2"><label class="form-label">Cantidad</label>
                   <input class="form-control campo-bloqueado" id="log_d_cantidad" readonly></div>
                 <div class="col-md-2"><label class="form-label">Urgente</label>
