@@ -530,6 +530,7 @@ function t3ValidarTraslado() {
   var estado = $('t3_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
+  // Accion: buscarDatosTraslado — busqueda hibrida texto+numerica
   apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
@@ -537,7 +538,12 @@ function t3ValidarTraslado() {
         var reg = r.registro;
         var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
         var numCoincidencias = r.registro.__coincidencias || 1;
+        var numExactas = r.registro.__coincidenciasExactas || 0;
+        var digitosBuscados = r.registro.__buscadoDigitos || '';
 
+        // --- Mapeo y autocompletado por cabeceras ---
+        // Se recorren todas las cabeceras del registro retornado y se
+        // autocompletan los campos bloqueados del formulario T3.
         var campos = {
           't3_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
           't3_fecha': ['Fecha', 'Marca temporal'],
@@ -556,6 +562,8 @@ function t3ValidarTraslado() {
           't3_fechaVenc': ['Fecha Vencimiento', 'Vencimiento'],
           't3_observaciones_drive': ['Observacion', 'Observaciones']
         };
+
+        // Autocompletar campos bloqueados con datos del registro
         Object.keys(campos).forEach(function (elId) {
           var el = $(elId);
           if (el) {
@@ -567,21 +575,30 @@ function t3ValidarTraslado() {
           }
         });
 
+        // Punto de captura
         if ($('t3_punto_captura')) $('t3_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
         if ($('t3_punto_row')) $('t3_punto_row').style.display = '';
         if ($('t3_punto_info')) $('t3_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Punto capturado</span>';
 
+        // Badge urgente
         if (reg['Urgente'] === 'SI' || reg['Urgente'] === 'Si' || reg['Urgente'] === 'si' || reg['urgente'] === 'SI') {
           if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE</span>';
         } else {
           if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '';
         }
 
-        var msgMatch = tipoMatch === 'sufijo'
-          ? 'Coincidencia por sufijo (<strong>' + traslado + '</strong>). Se selecciono el primer resultado.'
-          : 'Traslado <strong>' + traslado + '</strong> encontrado.';
+        // --- Mensaje detallado del tipo de coincidencia ---
+        var msgMatch = '';
+        if (tipoMatch === 'exacta') {
+          msgMatch = 'Traslado <strong>' + traslado + '</strong> encontrado (coincidencia exacta).';
+        } else {
+          var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
+          msgMatch = 'Coincidencia numerica parcial (<strong>' + traslado + '</strong>).' + digitosInfo + ' Se selecciono el primer resultado.';
+        }
         if (numCoincidencias > 1) {
-          msgMatch += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias)</span>';
+          msgMatch += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias totales';
+          if (numExactas > 0) msgMatch += ', ' + numExactas + ' exacta(s)';
+          msgMatch += ')</span>';
         }
 
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
@@ -591,7 +608,8 @@ function t3ValidarTraslado() {
       } else {
         t3TrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-        showToast('Traslado no encontrado en la base de datos de origen. Verifique el numero e intente de nuevo.', 'danger');
+        var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        showToast(msgNo + ' Verifique el numero e intente de nuevo.', 'danger');
       }
     })
     .catch(function (err) {
@@ -678,12 +696,15 @@ function logBuscar() {
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
   if (despachoEstado) despachoEstado.textContent = '';
 
+  // Accion: buscarDatosTraslado — busqueda hibrida texto+numerica
   apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
         var reg = r.registro;
         var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
         var numCoincidencias = r.registro.__coincidencias || 1;
+        var numExactas = r.registro.__coincidenciasExactas || 0;
+        var digitosBuscados = r.registro.__buscadoDigitos || '';
 
         /* Auto-fill Recepcion y Entrega */
         if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
@@ -702,11 +723,18 @@ function logBuscar() {
         if ($('log_d_quien_alista')) $('log_d_quien_alista').value = reg['QUIEN ALISTA'] || reg['Quien Alista'] || reg['Quien Alisto'] || '';
         if ($('log_d_marca_temporal')) $('log_d_marca_temporal').value = reg['Marca temporal'] || reg['Fecha Inicial'] || reg['Timestamp'] || '';
 
-        var msgLog = tipoMatch === 'sufijo'
-          ? 'Coincidencia por sufijo (<strong>' + traslado + '</strong>).'
-          : 'Traslado <strong>' + traslado + '</strong> encontrado.';
+        /* Mensaje detallado del tipo de coincidencia */
+        var msgLog = '';
+        if (tipoMatch === 'exacta') {
+          msgLog = 'Traslado <strong>' + traslado + '</strong> encontrado (coincidencia exacta).';
+        } else {
+          var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
+          msgLog = 'Coincidencia numerica parcial (<strong>' + traslado + '</strong>).' + digitosInfo;
+        }
         if (numCoincidencias > 1) {
-          msgLog += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias)</span>';
+          msgLog += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias';
+          if (numExactas > 0) msgLog += ', ' + numExactas + ' exacta(s)';
+          msgLog += ')</span>';
         }
 
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
@@ -715,7 +743,8 @@ function logBuscar() {
       } else {
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-danger">Sin datos</span>';
-        showToast('Traslado no encontrado en la base de datos de origen. Verifique el numero e intente de nuevo.', 'danger');
+        var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        showToast(msgNo + ' Verifique el numero e intente de nuevo.', 'danger');
       }
     })
     .catch(function (err) {
