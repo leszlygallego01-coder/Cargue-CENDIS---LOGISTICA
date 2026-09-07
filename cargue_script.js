@@ -25,7 +25,7 @@ const LS_DATA = 'MF_DATOS_SESION';
 const LS_PERFIL = 'MF_PERFIL_ACTIVO';
 
 const CONFIG_DEFAULT = {
-  apiUrl: '',
+  apiUrl: 'https://script.google.com/macros/s/AKfycbzkMtCzR_HyVXE7YXiKuS8oHMIya0tXYhqTtU6dH_cX5FHecd4nMFs-FeZ1Oo338J4d/exec',
   modoLocal: false,
   folders: {
     despachos:   '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
