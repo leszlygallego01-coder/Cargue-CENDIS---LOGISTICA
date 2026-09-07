@@ -1633,7 +1633,7 @@ function pintarIdsCarpetas() {
     const id = CONFIG.folders[k] || '';
     const ok = id ? 'text-success' : 'text-danger';
     const icon = id ? '&#10004;' : '&#10006;';
-    const extra = k === 'trasladosConsulta' ? ' <span class="text-info">&#128218; fija</span>' :
+    const extra = k === 'trasladosConsulta' ? ' <span class="text-info">&#128218; fija</span>' : '';
     return '<div class="row g-1 mb-1">' +
       '<div class="col-md-3"><strong>' + esc(MODULOS_LABEL[k] || k) + '</strong></div>' +
       '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span>' + extra + '</div>' +
