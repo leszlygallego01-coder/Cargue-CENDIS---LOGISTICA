@@ -110,7 +110,6 @@
   var LS_LOGIN  = 'MF_LOGIN_OK';
   var LS_PERFIL = 'MF_PERFIL_ACTIVO';
 
-  /* ---------- LOGIN ---------- */
   function doLogin(){
     var u = document.getElementById('loginUsuario');
     var p = document.getElementById('loginContrasena');
@@ -125,11 +124,8 @@
       if(o) o.style.display='none';
       if(e) e.style.display='none';
       document.body.classList.remove('mf-login-activo');
-      /* Sincronizar selector de perfil en navbar si existe */
       var sel = document.getElementById('selPerfil'); if(sel) sel.value = uv;
-      /* Toast de bienvenida */
       showToast('Sesion iniciada como <strong>' + (LABELS[uv]||uv) + '</strong>', 'success');
-      /* Si el script externo ya cargo, invocar su aplicarPerfil */
       if(typeof aplicarPerfil === 'function') aplicarPerfil();
     } else {
       if(e){e.style.display='block';e.textContent='Usuario o contrasena incorrectos';}
@@ -137,7 +133,6 @@
     }
   }
 
-  /* ---------- CIERRE DE SESION ---------- */
   function doLogout(){
     localStorage.removeItem(LS_LOGIN);
     localStorage.removeItem(LS_PERFIL);
@@ -153,7 +148,6 @@
     showToast('Sesion cerrada correctamente.', 'info');
   }
 
-  /* ---------- TOAST SIMPLE ---------- */
   function showToast(msg, type){
     var tw = document.getElementById('toastWrap');
     if(!tw) return;
@@ -165,58 +159,44 @@
     setTimeout(function(){ if(d.parentNode) d.remove(); }, 5000);
   }
 
-  /* ---------- REGISTRAR EVENTOS INMEDIATAMENTE ---------- */
-  /* Boton INGRESAR (ya existe en el DOM) */
   var btn = document.getElementById('btnLogin');
   if(btn){
     btn.addEventListener('click', doLogin);
-    btn.addEventListener('touchend', function(ev){
-      ev.preventDefault(); doLogin();
-    },{passive:false});
+    btn.addEventListener('touchend', function(ev){ ev.preventDefault(); doLogin(); },{passive:false});
   }
-  /* Enter en contrasena */
   var pw = document.getElementById('loginContrasena');
   if(pw) pw.addEventListener('keydown', function(ev){ if(ev.key==='Enter') doLogin(); });
-  /* Boton CERRAR SESION (puede no existir aun si la navbar no se parseo) */
   function bindLogout(){
     var btnOut = document.getElementById('btnCerrarSesion');
     if(btnOut && !btnOut._mfLogoutBound){
       btnOut._mfLogoutBound = true;
       btnOut.addEventListener('click', doLogout);
-      btnOut.addEventListener('touchend', function(ev){
-        ev.preventDefault(); doLogout();
-      },{passive:false});
+      btnOut.addEventListener('touchend', function(ev){ ev.preventDefault(); doLogout(); },{passive:false});
     }
   }
   bindLogout();
-  /* Reintentar despues de que todo el HTML se parse */
   setTimeout(bindLogout, 100);
   setTimeout(bindLogout, 500);
   document.addEventListener('DOMContentLoaded', bindLogout);
 
-  /* ---------- VERIFICAR SESION PREVIA ---------- */
   var prev = localStorage.getItem(LS_LOGIN);
   var o = document.getElementById('pantallaLogin');
-  /* Verificar si viene sesion por URL desde el VISOR (cross-domain) */
   var urlParams = new URLSearchParams(window.location.search);
   var sesionURL = urlParams.get('sesion');
   if(sesionURL && CRED[sesionURL]){
     localStorage.setItem(LS_LOGIN, sesionURL);
     localStorage.setItem(LS_PERFIL, sesionURL);
     prev = sesionURL;
-    /* Limpiar la URL para no mostrar el parametro */
     window.history.replaceState({}, '', window.location.pathname);
   }
   if(prev && CRED[prev]){
     if(o) o.style.display = 'none';
     document.body.classList.remove('mf-login-activo');
-    /* Sincronizar selector */
     var sel = document.getElementById('selPerfil'); if(sel) sel.value = prev;
   } else {
     document.body.classList.add('mf-login-activo');
   }
 
-  /* ---------- INTERCEPTAR LINK AL VISOR PARA PASAR SESION ---------- */
   document.addEventListener('DOMContentLoaded', function(){
     var linkVisor = document.querySelector('a[href*="Informe-de-Operacional-de-CEDIS"]');
     if(linkVisor){
@@ -230,7 +210,6 @@
     }
   });
 
-  /* ---------- EXPORTAR A GLOBAL ---------- */
   window._doLoginEarly  = doLogin;
   window._doLogoutEarly = doLogout;
 })();
@@ -242,11 +221,10 @@
     <img src="assets/logo.jpeg" alt="Logo Medisfarma" class="mf-logo">
     <div>
       <div class="mf-titulo">Sistema Integral de Gestion Logistica</div>
-      <div class="mf-sub">Modulo CARGUE &middot; Recepcion Tecnica &middot; Facturacion &middot; Inventario</div>
+      <div class="mf-sub">Modulo CARGUE &middot; Seguridad &middot; Recepcion &middot; Facturacion &middot; Inventario</div>
     </div>
   </div>
   <div class="d-flex align-items-center gap-2 flex-wrap">
-    <!-- Selector de perfil -->
     <div class="d-flex align-items-center gap-1">
       <label class="text-white small fw-bold mb-0" for="selPerfil">Perfil:</label>
       <select class="form-select form-select-sm mf-sel-perfil" id="selPerfil">
@@ -276,33 +254,154 @@
 
 <div class="container-fluid py-3">
 
-  <!-- ============================ PESTANAS ============================ -->
+  <!-- ============================ PESTANAS (REORDENADAS) ============================ -->
   <ul class="nav nav-tabs mb-3 no-print" id="tabsCargue" role="tablist">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t1" type="button">
-      <span class="dot" style="background:#2fb457"></span>1. Planilla Entrega Despachos</button></li>
+      <span class="dot" style="background:#ffc107"></span>1. Seguridad</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t2" type="button">
-      <span class="dot" style="background:#0d6efd"></span>2. Logistica y Despachos</button></li>
+      <span class="dot" style="background:#dc3545"></span>2. Recepcion Tecnica</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t3" type="button">
-      <span class="dot" style="background:#dc3545"></span>3. Recepcion Tecnica</button></li>
+      <span class="dot" style="background:#2fb457"></span>3. Planilla Entrega Despachos</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t4" type="button">
-      <span class="dot" style="background:#ffc107"></span>4. Cargue de Factura (Transporte)</button></li>
+      <span class="dot" style="background:#0d6efd"></span>4. Logistica y Despachos</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t5" type="button">
-      <span class="dot" style="background:#8e44ad"></span>5. Verificacion de Inventario</button></li>
+      <span class="dot" style="background:#ffc107"></span>5. Cargue de Factura (Transporte)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t6" type="button">
+      <span class="dot" style="background:#8e44ad"></span>6. Verificacion de Inventario</button></li>
   </ul>
 
   <div class="tab-content">
 
     <!-- ==================================================================== -->
-    <!-- TARJETA 1: PLANILLA ENTREGA DESPACHOS                                -->
+    <!-- TARJETA 1: SEGURIDAD (NUEVA)                                        -->
     <!-- ==================================================================== -->
     <div class="tab-pane fade show active" id="t1">
       <div class="mf-card">
-        <div class="mf-card-header text-success">&#128230; TARJETA 1 &middot; PLANILLA ENTREGA DESPACHOS</div>
+        <div class="mf-card-header text-warning-emphasis">&#128274; TARJETA 1 &middot; SEGURIDAD</div>
         <div class="mf-card-body">
 
-          <!-- Configuracion de carpetas Drive de la tarjeta -->
           <div class="mf-drive-panel no-print">
-            <!-- Carpeta ORIGEN (lectura fija) -->
+            <div class="row g-2 align-items-end">
+              <div class="col-md-7">
+                <label>&#128193; Carpeta Drive Seguridad (guardado de registros)</label>
+                <input type="text" class="form-control form-control-sm" id="folder_seguridad"
+                       value="1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N">
+              </div>
+              <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('seguridad')">Validar carpeta</button>
+                <span class="mf-estado align-self-center" id="estado_folder_seguridad"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">Guia *</label><input class="form-control" id="s_guia" placeholder="Numero de guia"></div>
+            <div class="col-md-3"><label class="form-label">Factura *</label><input class="form-control" id="s_factura" placeholder="Numero de factura"></div>
+            <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="s_proveedor" placeholder="Nombre del proveedor"></div>
+            <div class="col-md-2"><label class="form-label">Unidades *</label><input type="number" class="form-control" id="s_unidades" placeholder="0"></div>
+            <div class="col-md-3"><label class="form-label">Quien Recibe *</label>
+              <select class="form-select" id="s_quien_recibe">
+                <option value="">Seleccione...</option>
+                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
+                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
+                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
+                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
+                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
+                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
+                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
+                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
+              </select>
+            </div>
+            <div class="col-12"><label class="form-label">Observacion</label><textarea class="form-control" id="s_observacion" rows="2"></textarea></div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4 no-print">
+            <button class="btn btn-mf-verde" id="t1_btnGuardar">&#128190; Guardar en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(1)">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TARJETA 2: RECEPCION TECNICA (era T3)                               -->
+    <!-- ==================================================================== -->
+    <div class="tab-pane fade" id="t2">
+      <div class="mf-card">
+        <div class="mf-card-header text-danger">&#129534; TARJETA 2 &middot; RECEPCION TECNICA</div>
+        <div class="mf-card-body">
+
+          <div class="mf-drive-panel no-print">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-7">
+                <label>ID Carpeta Drive Recepcion Tecnica</label>
+                <input type="text" class="form-control form-control-sm" id="folder_recepcion" value="1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0">
+              </div>
+              <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('recepcion')">Validar carpeta</button>
+                <span class="mf-estado align-self-center" id="estado_folder_recepcion"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label class="form-label">Tipo de Recepcion *</label>
+              <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_externa" value="EXTERNA" checked><label class="form-check-label" for="r_externa">Externa</label></div>
+              <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_interna" value="INTERNA"><label class="form-check-label" for="r_interna">Interna</label></div>
+            </div>
+            <div class="col-md-3"><label class="form-label">Traslado *</label><input class="form-control" id="b_traslado" placeholder="Numero de traslado"></div>
+            <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
+              <select class="form-select" id="b_bodega_origen">
+                <option value="">Seleccione...</option><option>CENDIS</option><option>B05</option><option>EXTERNA</option>
+              </select></div>
+            <div class="col-md-3"><label class="form-label">Bodega Destino *</label>
+              <select class="form-select" id="b_destino">
+                <option value="">Seleccione...</option><option>CENDIS PRINCIPAL</option><option>B05</option>
+              </select></div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="b_fecha_recepcion"></div>
+            <div class="col-md-3"><label class="form-label">Codigo Producto / Molecula *</label><input class="form-control" id="b_codigo"></div>
+            <div class="col-md-4"><label class="form-label">Descripcion *</label><input class="form-control" id="b_descripcion"></div>
+            <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="b_laboratorio"></div>
+            <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="b_lote"></div>
+            <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="b_vencimiento"></div>
+            <div class="col-md-2"><label class="form-label">Cantidad Enviada *</label><input type="number" class="form-control" id="b_enviada"></div>
+            <div class="col-md-2"><label class="form-label">Cantidad Recibida *</label><input type="number" class="form-control" id="b_recibida"></div>
+            <div class="col-md-2"><label class="form-label">Diferencia</label><input class="form-control campo-bloqueado" id="b_diferencia" readonly></div>
+            <div class="col-md-3"><label class="form-label">Responsable Recepcion *</label><input class="form-control" id="b_responsable"></div>
+            <div class="col-md-3"><label class="form-label">Estado Recepcion Tecnica *</label>
+              <select class="form-select" id="b_estado"><option>CONFORME</option><option>NOVEDAD</option></select></div>
+            <div class="col-12"><label class="form-label">Observaciones</label><input class="form-control" id="b_observaciones"></div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4 no-print">
+            <button class="btn btn-outline-primary" id="t2_btnAgregar">&#10133; Agregar item a la lista</button>
+            <button class="btn btn-mf-verde" id="t2_btnGuardar">&#128190; Guardar recepcion en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(2)">Limpiar</button>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-bordered mf-tabla-items">
+              <thead><tr id="t2_tablaHead"></tr></thead>
+              <tbody id="t2_tablaBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TARJETA 3: PLANILLA ENTREGA DESPACHOS (enriquecida, era T1)         -->
+    <!-- ==================================================================== -->
+    <div class="tab-pane fade" id="t3">
+      <div class="mf-card">
+        <div class="mf-card-header text-success">&#128230; TARJETA 3 &middot; PLANILLA ENTREGA DESPACHOS (Consolidado)</div>
+        <div class="mf-card-body">
+
+          <div class="mf-drive-panel no-print">
             <div class="row g-2 align-items-end mb-2">
               <div class="col-md-7">
                 <label class="text-info">&#128218; Carpeta Traslados (solo lectura — fija)</label>
@@ -313,7 +412,6 @@
                 <span class="mf-estado align-self-center" id="estado_folder_traslados_consulta"></span>
               </div>
             </div>
-            <!-- Carpeta DESTINO (escritura — editable) -->
             <div class="row g-2 align-items-end">
               <div class="col-md-7">
                 <label>&#128190; Carpeta Destino (guardado de registros)</label>
@@ -327,275 +425,207 @@
             </div>
           </div>
 
-          <!-- Validacion estricta del traslado -->
+          <!-- Validacion del traslado -->
           <div class="row g-3 align-items-end mb-3">
             <div class="col-md-4">
               <label class="form-label">Documento TRASLADO *</label>
-              <input type="text" class="form-control" id="t1_traslado" placeholder="Numero de traslado">
+              <input type="text" class="form-control" id="t3_traslado" placeholder="Numero de traslado">
             </div>
             <div class="col-md-3">
-              <button class="btn btn-mf-azul w-100" id="t1_btnValidar">&#128269; Validar y traer datos</button>
+              <button class="btn btn-mf-azul w-100" id="t3_btnValidar">&#128269; Validar y traer datos</button>
             </div>
             <div class="col-md-5">
-              <div id="t1_estadoTraslado" class="mf-estado"></div>
+              <div id="t3_estadoTraslado" class="mf-estado"></div>
             </div>
           </div>
 
-          <!-- Punto de captura automatica (perfil LIDER) -->
-          <div class="row g-3 mb-3" id="t1_punto_row" style="display:none">
+          <!-- Punto de captura automatica -->
+          <div class="row g-3 mb-3" id="t3_punto_row" style="display:none">
             <div class="col-md-4">
               <label class="form-label">&#128205; Punto de Captura Automatico</label>
-              <input class="form-control campo-bloqueado" id="t1_punto_captura" readonly>
+              <input class="form-control campo-bloqueado" id="t3_punto_captura" readonly>
             </div>
             <div class="col-md-8">
-              <span id="t1_punto_info" class="mf-estado"></span>
+              <span id="t3_punto_info" class="mf-estado"></span>
             </div>
           </div>
 
           <!-- Campos autocompletados (SOLO LECTURA) -->
-          <h6 class="text-primary fw-bold">Datos traídos desde Google Drive (bloqueados)</h6>
+          <h6 class="text-primary fw-bold">Datos traidos desde Google Drive (bloqueados)</h6>
           <div class="row g-3 mb-3">
-            <!-- ═══ VISIBLES (6 casillas requeridas) ═══ -->
             <div class="col-md-4"><label class="form-label">Bodega Origen</label>
-              <input class="form-control campo-bloqueado" id="t1_bodega_origen" readonly></div>
+              <input class="form-control campo-bloqueado" id="t3_bodega_origen" readonly></div>
             <div class="col-md-4"><label class="form-label">Bodega Destino</label>
-              <input class="form-control campo-bloqueado" id="t1_destino" readonly></div>
+              <input class="form-control campo-bloqueado" id="t3_destino" readonly></div>
             <div class="col-md-4"><label class="form-label">Zona</label>
-              <input class="form-control campo-bloqueado" id="t1_zona" readonly></div>
+              <input class="form-control campo-bloqueado" id="t3_zona" readonly></div>
             <div class="col-md-2"><label class="form-label">Cantidad</label>
-              <input class="form-control campo-bloqueado" id="t1_cantidad" readonly></div>
+              <input class="form-control campo-bloqueado" id="t3_cantidad" readonly></div>
             <div class="col-md-2"><label class="form-label">Tipo</label>
-              <input class="form-control campo-bloqueado" id="t1_tipo" readonly></div>
+              <input class="form-control campo-bloqueado" id="t3_tipo" readonly></div>
             <div class="col-md-2"><label class="form-label">Urgente</label>
-              <input class="form-control campo-bloqueado" id="t1_urgente" readonly></div>
+              <input class="form-control campo-bloqueado" id="t3_urgente" readonly></div>
             <div class="col-md-2 d-flex align-items-end">
-              <span id="t1_badgeUrgente"></span>
+              <span id="t3_badgeUrgente"></span>
             </div>
-
-            <!-- ═══ OCULTOS (datos internos, se cargan igualmente) ═══ -->
-            <div class="d-none"><input id="t1_traslado_mostrar" readonly></div>
-            <div class="d-none"><input id="t1_fecha" readonly></div>
-            <div class="d-none"><input id="t1_recibido" readonly></div>
-            <div class="d-none"><input id="t1_codigo" readonly></div>
-            <div class="d-none"><input id="t1_descripcion" readonly></div>
-            <div class="d-none"><input id="t1_unidades" readonly></div>
-            <div class="d-none"><input id="t1_usuario" readonly></div>
-            <div class="d-none"><input id="t1_lote" readonly></div>
-            <div class="d-none"><input id="t1_fechaVenc" readonly></div>
-            <div class="d-none"><input id="t1_observaciones_drive" readonly></div>
+            <!-- Ocultos -->
+            <div class="d-none"><input id="t3_traslado_mostrar" readonly></div>
+            <div class="d-none"><input id="t3_fecha" readonly></div>
+            <div class="d-none"><input id="t3_recibido" readonly></div>
+            <div class="d-none"><input id="t3_codigo" readonly></div>
+            <div class="d-none"><input id="t3_descripcion" readonly></div>
+            <div class="d-none"><input id="t3_unidades" readonly></div>
+            <div class="d-none"><input id="t3_usuario" readonly></div>
+            <div class="d-none"><input id="t3_lote" readonly></div>
+            <div class="d-none"><input id="t3_fechaVenc" readonly></div>
+            <div class="d-none"><input id="t3_observaciones_drive" readonly></div>
           </div>
 
-          <!-- Campos nuevos (EDITABLES) -->
+          <!-- Campos editables originales -->
           <h6 class="text-success fw-bold">Informacion a suministrar</h6>
           <div class="row g-3">
             <div class="col-md-4"><label class="form-label">Responsable de Entrega CENDIS *</label>
-              <input class="form-control" id="t1_responsable_entrega"></div>
-            <div class="col-md-4"><label class="form-label">Responsable de Empacar / Rotular *</label>
-              <input class="form-control" id="t1_quien_alista"></div>
-            <div class="col-md-4"><label class="form-label">Recomendado *</label>
-              <select class="form-select" id="t1_recomendado">
-                <option value="">Seleccione...</option><option>SI</option><option>NO</option>
+              <input class="form-control" id="t3_responsable_entrega"></div>
+            <div class="col-md-4"><label class="form-label">Quien Alista *</label>
+              <select class="form-select" id="t3_quien_alista">
+                <option value="">Seleccione...</option>
+                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
+                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
+                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
+                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
+                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
+                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
+                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
+                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
               </select></div>
-            <div class="col-12"><label class="form-label">Observaciones</label>
-              <textarea class="form-control" id="t1_observaciones" rows="2"></textarea></div>
+            <div class="col-md-4"><label class="form-label">Quien Pita *</label>
+              <select class="form-select" id="t3_quien_pita">
+                <option value="">Seleccione...</option>
+                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
+                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
+                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
+                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
+                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
+                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
+                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
+                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
+              </select></div>
+            <div class="col-md-4"><label class="form-label">Quien Empaca *</label>
+              <select class="form-select" id="t3_quien_empaca">
+                <option value="">Seleccione...</option>
+                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
+                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
+                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
+                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
+                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
+                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
+                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
+                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
+              </select></div>
+            <div class="col-md-3"><label class="form-label">Tipo Carga *</label>
+              <select class="form-select" id="t3_tipo_carga">
+                <option value="">Seleccione...</option>
+                <option>Nevera</option><option>Carga Seca</option>
+              </select></div>
+            <div class="col-md-3"><label class="form-label">Concepto</label>
+              <input class="form-control" id="t3_concepto" placeholder="Concepto del traslado"></div>
+            <div class="col-md-2"><label class="form-label">Recomendado</label>
+              <input class="form-control" id="t3_recomendado"></div>
+          </div>
+
+          <!-- Rotacion del dia (auto-rellenado) -->
+          <div class="row g-3 mt-3" id="t3_rotacion_info">
+            <div class="col-12">
+              <div class="alert alert-info py-2 small">
+                &#128337; <strong>Rotacion del dia:</strong> Los campos Quien Alista / Pita / Empaca se pre-llenaran
+                con la asignacion de la <em>Apertura del Dia</em> del Visor. Si no hay rotacion activa, seleccione manualmente.
+              </div>
+            </div>
           </div>
 
           <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="t1_btnGuardar" disabled>&#128190; Guardar en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(1)">Limpiar</button>
+            <button class="btn btn-mf-azul" id="t3_btnGuardar">&#128190; Guardar en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(3)">Limpiar</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ==================================================================== -->
-    <!-- TARJETA 2: LOGISTICA Y DESPACHOS                                     -->
+    <!-- TARJETA 4: LOGISTICA Y DESPACHOS (era T2)                           -->
     <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t2">
+    <div class="tab-pane fade" id="t4">
       <div class="mf-card">
-        <div class="mf-card-header text-primary">&#128666; TARJETA 2 &middot; LOGISTICA Y DESPACHOS (ENVIOS Y RUTAS)</div>
+        <div class="mf-card-header text-primary">&#128666; TARJETA 4 &middot; LOGISTICA Y DESPACHOS</div>
         <div class="mf-card-body">
 
-          <div class="mf-drive-panel row g-2 align-items-end no-print">
-            <div class="col-md-7">
-              <label>ID Carpeta Drive Despachos (busca registros guardados por T1)</label>
-              <input type="text" class="form-control form-control-sm" id="folder_despachos_t2" value="1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8">
+          <div class="mf-drive-panel no-print">
+            <div class="row g-2 align-items-end mb-2">
+              <div class="col-md-7">
+                <label>ID Carpeta Drive Logistica</label>
+                <input type="text" class="form-control form-control-sm" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
+              </div>
+              <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('logistica')">Validar carpeta</button>
+                <span class="mf-estado align-self-center" id="estado_folder_logistica"></span>
+              </div>
             </div>
-            <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
-              <span class="mf-estado align-self-center" id="estado_folder_despachos_t2"></span>
-            </div>
-          </div>
-
-          <!-- Carpeta donde se guarda la informacion de logistica -->
-          <div class="row g-2 mb-2 no-print">
-            <div class="col-md-7">
-              <label class="text-secondary small">ID Carpeta Drive Logistica (Guardado)</label>
-              <input type="text" class="form-control form-control-sm text-secondary" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
-            </div>
-            <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-sm btn-outline-secondary" onclick="validarFolder('logistica')">Validar carpeta guardado</button>
-              <span class="mf-estado align-self-center" id="estado_folder_logistica"></span>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-7">
+                <label>Carpeta Destino (escritura — misma de Planilla)</label>
+                <input type="text" class="form-control form-control-sm" id="folder_despachos_t4" value="1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8">
+              </div>
+              <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
+                <span class="mf-estado align-self-center" id="estado_folder_despachos_t4"></span>
+              </div>
             </div>
           </div>
 
           <div class="row g-3 align-items-end mb-3">
             <div class="col-md-4">
               <label class="form-label">Documento TRASLADO *</label>
-              <input class="form-control" id="t2_traslado">
+              <input type="text" class="form-control" id="t4_traslado" placeholder="Numero de traslado">
             </div>
             <div class="col-md-3">
-              <button class="btn btn-mf-azul w-100" id="t2_btnBuscar">&#128269; Traer datos Tarjeta 1</button>
+              <button class="btn btn-mf-azul w-100" id="t4_btnBuscar">&#128269; Buscar traslado</button>
             </div>
-            <div class="col-md-5"><div id="t2_estadoTraslado" class="mf-estado"></div></div>
-          </div>
-
-          <!-- Datos heredados de Tarjeta 1 (solo lectura) -->
-          <div id="t2_bloquePlanilla">
-            <h6 class="text-primary fw-bold">Planilla de despacho (solo lectura)</h6>
-            <div class="row g-3 mb-3">
-              <div class="col-md-3"><label class="form-label">Bodega Origen</label>
-                <input class="form-control campo-bloqueado" id="t2_bodega_origen" readonly></div>
-              <div class="col-md-3"><label class="form-label">Destino</label>
-                <input class="form-control campo-bloqueado" id="t2_destino" readonly></div>
-              <div class="col-md-2"><label class="form-label">Zona</label>
-                <input class="form-control campo-bloqueado" id="t2_zona" readonly></div>
-              <div class="col-md-2"><label class="form-label">Cantidad</label>
-                <input class="form-control campo-bloqueado" id="t2_cantidad" readonly></div>
-              <div class="col-md-2"><label class="form-label">Urgente</label>
-                <input class="form-control campo-bloqueado" id="t2_urgente" readonly></div>
-              <div class="col-md-4"><label class="form-label">Responsable Entrega CENDIS</label>
-                <input class="form-control campo-bloqueado" id="t2_responsable_entrega" readonly></div>
-              <div class="col-md-4"><label class="form-label">Quien Alista</label>
-                <input class="form-control campo-bloqueado" id="t2_quien_alista" readonly></div>
-              <div class="col-md-4"><label class="form-label">Marca temporal (Fecha Inicial)</label>
-                <input class="form-control campo-bloqueado" id="t2_marca_temporal" readonly></div>
+            <div class="col-md-5">
+              <div id="t4_estadoTraslado" class="mf-estado"></div>
             </div>
           </div>
 
-          <h6 class="text-success fw-bold">Datos a diligenciar por Logistica</h6>
           <div class="row g-3">
-            <div class="col-md-3"><label class="form-label">Fecha Planilla Envio Logistica *</label>
-              <input type="datetime-local" class="form-control" id="t2_fecha_envio"></div>
-            <div class="col-md-3"><label class="form-label">Conductor / Responsable Envio *</label>
-              <select class="form-select" id="t2_conductor"></select></div>
-            <div class="col-md-2"><label class="form-label">Placa *</label>
-              <input class="form-control text-uppercase" id="t2_placa" maxlength="10"></div>
-            <div class="col-md-2"><label class="form-label">Planilla *</label>
-              <input class="form-control" id="t2_planilla"></div>
-            <div class="col-md-2"><label class="form-label">Quien Recibe Logistica</label>
-              <input class="form-control" id="t2_quien_recibe"></div>
-            <div class="col-12"><label class="form-label">Observaciones</label>
-              <textarea class="form-control" id="t2_observaciones" rows="2"></textarea></div>
+            <div class="col-md-3"><label class="form-label">Bodega Origen</label>
+              <input class="form-control campo-bloqueado" id="t4_bodega_origen" readonly></div>
+            <div class="col-md-3"><label class="form-label">Bodega Destino</label>
+              <input class="form-control campo-bloqueado" id="t4_destino" readonly></div>
+            <div class="col-md-2"><label class="form-label">Zona</label>
+              <input class="form-control campo-bloqueado" id="t4_zona" readonly></div>
+            <div class="col-md-2"><label class="form-label">Fecha Envio *</label><input type="date" class="form-control" id="t4_fecha_envio"></div>
+            <div class="col-md-3"><label class="form-label">Conductor / Mensajero *</label>
+              <select class="form-select" id="t4_conductor"></select></div>
+            <div class="col-md-2"><label class="form-label">Placa</label><input class="form-control" id="t4_placa"></div>
+            <div class="col-md-2"><label class="form-label">Planilla</label><input class="form-control" id="t4_planilla"></div>
+            <div class="col-md-3"><label class="form-label">Quien Recibe *</label><input class="form-control" id="t4_quien_recibe"></div>
+            <div class="col-12"><label class="form-label">Observacion</label><textarea class="form-control" id="t4_observacion" rows="2"></textarea></div>
           </div>
 
           <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="t2_btnGuardar" disabled>&#128228; Enviar / Guardar (sella Fecha Entrega Logistica)</button>
-            <button class="btn btn-mf-azul" id="t2_btnImprimir" disabled>&#128424; Imprimir Planilla (sella Salida Real)</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(2)">Limpiar</button>
-          </div>
-
-          <!-- Vista para impresion -->
-          <div class="print-only mt-4" id="t2_areaImpresion"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================================================================== -->
-    <!-- TARJETA 3: RECEPCION TECNICA                                         -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t3">
-      <div class="mf-card">
-        <div class="mf-card-header text-danger">&#129514; TARJETA 3 &middot; RECEPCION TECNICA (Facturas y Traslados Externos a CENDIS / B05)</div>
-        <div class="mf-card-body">
-
-          <div class="mf-drive-panel row g-2 align-items-end no-print">
-            <div class="col-md-7">
-              <label>ID Carpeta Drive Recepcion Tecnica</label>
-              <input type="text" class="form-control form-control-sm" id="folder_recepcion" value="1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0">
-            </div>
-            <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('recepcion')">Validar carpeta</button>
-              <span class="mf-estado align-self-center" id="estado_folder_recepcion"></span>
-            </div>
-          </div>
-
-          <!-- Switch de tipo de recepcion -->
-          <div class="btn-group mb-3" role="group">
-            <input type="radio" class="btn-check" name="tipoRecepcion" id="rec_a" value="FACTURA_PROVEEDOR" checked>
-            <label class="btn btn-outline-primary" for="rec_a">A. Recepcion por Factura Proveedor / Medicamentos</label>
-            <input type="radio" class="btn-check" name="tipoRecepcion" id="rec_b" value="TRASLADO_EXTERNO">
-            <label class="btn btn-outline-primary" for="rec_b">B. Recepcion de Traslados de Bodegas Externas</label>
-          </div>
-
-          <!-- OPCION A -->
-          <div id="bloque_rec_a">
-            <div class="row g-3">
-              <div class="col-md-2"><label class="form-label">Factura *</label><input class="form-control" id="a_factura"></div>
-              <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="a_proveedor"></div>
-              <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="a_fecha_recepcion"></div>
-              <div class="col-md-2"><label class="form-label">Codigo Producto *</label><input class="form-control" id="a_codigo"></div>
-              <div class="col-md-3"><label class="form-label">Descripcion *</label><input class="form-control" id="a_descripcion"></div>
-              <div class="col-md-2"><label class="form-label">Presentacion por Caja</label><input class="form-control" id="a_presentacion"></div>
-              <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="a_laboratorio"></div>
-              <div class="col-md-2"><label class="form-label">Registro INVIMA</label><input class="form-control" id="a_invima"></div>
-              <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="a_lote"></div>
-              <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="a_vencimiento"></div>
-              <div class="col-md-2"><label class="form-label">Cant. Unidades Recibidas *</label><input type="number" class="form-control" id="a_cantidad"></div>
-              <div class="col-md-3"><label class="form-label">Nombre Recepcionista *</label><input class="form-control" id="a_recepcionista"></div>
-              <div class="col-md-2"><label class="form-label">Presenta Novedad *</label>
-                <select class="form-select" id="a_novedad"><option>NO</option><option>SI</option></select></div>
-              <div class="col-md-5"><label class="form-label">Observaciones</label><input class="form-control" id="a_observaciones"></div>
-            </div>
-          </div>
-
-          <!-- OPCION B -->
-          <div id="bloque_rec_b" class="d-none">
-            <div class="row g-3">
-              <div class="col-md-2"><label class="form-label">Numero Traslado *</label><input class="form-control" id="b_traslado"></div>
-              <div class="col-md-3"><label class="form-label">Bodega Origen Emisora *</label><input class="form-control" id="b_origen"></div>
-              <div class="col-md-2"><label class="form-label">Bodega Destino *</label>
-                <select class="form-select" id="b_destino">
-                  <option value="">Seleccione...</option><option>CENDIS PRINCIPAL</option><option>B05</option>
-                </select></div>
-              <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="b_fecha_recepcion"></div>
-              <div class="col-md-3"><label class="form-label">Codigo Producto / Molecula *</label><input class="form-control" id="b_codigo"></div>
-              <div class="col-md-4"><label class="form-label">Descripcion *</label><input class="form-control" id="b_descripcion"></div>
-              <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="b_laboratorio"></div>
-              <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="b_lote"></div>
-              <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="b_vencimiento"></div>
-              <div class="col-md-2"><label class="form-label">Cantidad Enviada *</label><input type="number" class="form-control" id="b_enviada"></div>
-              <div class="col-md-2"><label class="form-label">Cantidad Recibida *</label><input type="number" class="form-control" id="b_recibida"></div>
-              <div class="col-md-2"><label class="form-label">Diferencia</label><input class="form-control campo-bloqueado" id="b_diferencia" readonly></div>
-              <div class="col-md-3"><label class="form-label">Responsable Recepcion *</label><input class="form-control" id="b_responsable"></div>
-              <div class="col-md-3"><label class="form-label">Estado Recepcion Tecnica *</label>
-                <select class="form-select" id="b_estado"><option>CONFORME</option><option>NOVEDAD</option></select></div>
-              <div class="col-12"><label class="form-label">Observaciones</label><input class="form-control" id="b_observaciones"></div>
-            </div>
-          </div>
-
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-outline-primary" id="t3_btnAgregar">&#10133; Agregar item a la lista</button>
-            <button class="btn btn-mf-verde" id="t3_btnGuardar">&#128190; Guardar recepcion en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(3)">Limpiar</button>
-          </div>
-
-          <div class="table-responsive mt-3">
-            <table class="table table-sm table-bordered mf-tabla-items">
-              <thead><tr id="t3_tablaHead"></tr></thead>
-              <tbody id="t3_tablaBody"></tbody>
-            </table>
+            <button class="btn btn-mf-verde" id="t4_btnGuardar">&#128190; Guardar logistica en Drive</button>
+            <button class="btn btn-outline-primary" id="t4_btnImprimir">&#128424; Imprimir planilla</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(4)">Limpiar</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ==================================================================== -->
-    <!-- TARJETA 4: CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)                   -->
+    <!-- TARJETA 5: CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)                  -->
     <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t4">
+    <div class="tab-pane fade" id="t5">
       <div class="mf-card">
-        <div class="mf-card-header text-warning-emphasis">&#129534; TARJETA 4 &middot; CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)</div>
+        <div class="mf-card-header text-warning-emphasis">&#129534; TARJETA 5 &middot; CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)</div>
         <div class="mf-card-body">
 
           <div class="mf-drive-panel row g-2 align-items-end no-print">
@@ -624,19 +654,19 @@
           </div>
 
           <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="t4_btnGuardar">&#128190; Guardar factura en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(4)">Limpiar</button>
+            <button class="btn btn-mf-verde" id="t5_btnGuardar">&#128190; Guardar factura en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(5)">Limpiar</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ==================================================================== -->
-    <!-- TARJETA 5: VERIFICACION DE INVENTARIO                                -->
+    <!-- TARJETA 6: VERIFICACION DE INVENTARIO                               -->
     <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t5">
+    <div class="tab-pane fade" id="t6">
       <div class="mf-card">
-        <div class="mf-card-header" style="color:#8e44ad">&#128300; TARJETA 5 &middot; VERIFICACION DE INVENTARIO (CENDIS / B05)</div>
+        <div class="mf-card-header" style="color:#8e44ad">&#128300; TARJETA 6 &middot; VERIFICACION DE INVENTARIO (CENDIS / B05)</div>
         <div class="mf-card-body">
 
           <div class="mf-drive-panel row g-2 align-items-end no-print">
@@ -670,15 +700,15 @@
           </div>
 
           <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-outline-primary" id="t5_btnAgregar">&#10133; Agregar item al conteo</button>
-            <button class="btn btn-mf-verde" id="t5_btnGuardar">&#128190; Guardar verificacion en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(5)">Limpiar</button>
+            <button class="btn btn-outline-primary" id="t6_btnAgregar">&#10133; Agregar item al conteo</button>
+            <button class="btn btn-mf-verde" id="t6_btnGuardar">&#128190; Guardar verificacion en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(6)">Limpiar</button>
           </div>
 
           <div class="table-responsive mt-3">
             <table class="table table-sm table-bordered mf-tabla-items">
-              <thead><tr id="t5_tablaHead"></tr></thead>
-              <tbody id="t5_tablaBody"></tbody>
+              <thead><tr id="t6_tablaHead"></tr></thead>
+              <tbody id="t6_tablaBody"></tbody>
             </table>
           </div>
         </div>
@@ -702,7 +732,6 @@
         <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <!-- Perfiles de usuario -->
         <div class="mb-3">
           <h6 class="text-danger fw-bold">&#128081; PERFILES DE USUARIO</h6>
           <div id="perfilesUsuarioInfo" class="small bg-light p-2 rounded border"></div>
@@ -721,13 +750,11 @@
           </div>
         </div>
         <hr>
-        <!-- Perfiles de archivos -->
         <div class="mb-3">
           <h6 class="text-primary fw-bold">&#128462; Perfiles de Archivos por Tarjeta (fijos en Drive)</h6>
           <div id="perfilesInfo" class="small bg-light p-2 rounded border"></div>
         </div>
         <hr>
-        <!-- IDs de carpetas -->
         <div class="mb-3">
           <h6 class="text-success fw-bold">&#128193; IDs de Carpetas de Drive (preconfigurados)</h6>
           <div id="idsCarpetasInfo" class="small bg-light p-2 rounded border"></div>
