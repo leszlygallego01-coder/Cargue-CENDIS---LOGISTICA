@@ -525,7 +525,7 @@ function t3AplicarRotacion() {
 
 function t3ValidarTraslado() {
   var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
-  if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
   var folderId = CONFIG.folders.trasladosConsulta;
   var estado = $('t3_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
@@ -535,6 +535,9 @@ function t3ValidarTraslado() {
       if (r && r.encontrado && r.registro) {
         t3TrasladoValidado = r.registro;
         var reg = r.registro;
+        var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
+        var numCoincidencias = r.registro.__coincidencias || 1;
+
         var campos = {
           't3_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
           't3_fecha': ['Fecha', 'Marca temporal'],
@@ -574,14 +577,21 @@ function t3ValidarTraslado() {
           if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '';
         }
 
-        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Traslado encontrado</span>';
-        showToast('Traslado <strong>' + traslado + '</strong> encontrado en Drive.', 'success');
+        var msgMatch = tipoMatch === 'sufijo'
+          ? 'Coincidencia por sufijo (<strong>' + traslado + '</strong>). Se selecciono el primer resultado.'
+          : 'Traslado <strong>' + traslado + '</strong> encontrado.';
+        if (numCoincidencias > 1) {
+          msgMatch += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias)</span>';
+        }
+
+        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
+        showToast(msgMatch, 'success');
 
         t3CargarRotacion();
       } else {
         t3TrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-        showToast('Traslado <strong>' + traslado + '</strong> no encontrado.', 'danger');
+        showToast('Traslado no encontrado en la base de datos de origen. Verifique el numero e intente de nuevo.', 'danger');
       }
     })
     .catch(function (err) {
@@ -661,7 +671,7 @@ function t3Guardar() {
    ═════════════════════════════════════════════════════════════════════════════════ */
 function logBuscar() {
   var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
-  if (!traslado) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
   var folderId = CONFIG.folders.trasladosConsulta;
   var estado = $('log_estadoTraslado');
   var despachoEstado = $('log_despacho_estado');
@@ -672,6 +682,9 @@ function logBuscar() {
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
         var reg = r.registro;
+        var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
+        var numCoincidencias = r.registro.__coincidencias || 1;
+
         /* Auto-fill Recepcion y Entrega */
         if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
         if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
@@ -689,13 +702,20 @@ function logBuscar() {
         if ($('log_d_quien_alista')) $('log_d_quien_alista').value = reg['QUIEN ALISTA'] || reg['Quien Alista'] || reg['Quien Alisto'] || '';
         if ($('log_d_marca_temporal')) $('log_d_marca_temporal').value = reg['Marca temporal'] || reg['Fecha Inicial'] || reg['Timestamp'] || '';
 
+        var msgLog = tipoMatch === 'sufijo'
+          ? 'Coincidencia por sufijo (<strong>' + traslado + '</strong>).'
+          : 'Traslado <strong>' + traslado + '</strong> encontrado.';
+        if (numCoincidencias > 1) {
+          msgLog += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias)</span>';
+        }
+
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">Datos cargados</span>';
-        showToast('Traslado <strong>' + traslado + '</strong> encontrado.', 'success');
+        showToast(msgLog, 'success');
       } else {
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-danger">Sin datos</span>';
-        showToast('Traslado no encontrado.', 'danger');
+        showToast('Traslado no encontrado en la base de datos de origen. Verifique el numero e intente de nuevo.', 'danger');
       }
     })
     .catch(function (err) {
