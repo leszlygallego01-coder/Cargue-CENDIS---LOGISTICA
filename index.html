@@ -58,19 +58,26 @@
   </div>
 </div>
 
-<!-- ====== LOGIN EARLY-BIND SCRIPT (se ejecuta antes del JS externo) ====== -->
+<!-- ====== SISTEMA DE SESION UNIFICADO (se ejecuta antes del JS externo) ====== -->
 <script>
 (function(){
-  /* Este script se ejecuta inmediatamente despues de que el HTML del login
-     se parsea, ANTES de que cargue_script.js cargue.
-     Garantiza que el boton de login responda al clic/tap desde el inicio. */
+  /* CREDENCIALES COMPARTIDAS CARGUE + VISOR */
   var CRED = {
     administrador:'Medis2024Admin', lider:'Medis2024Lider',
     auxiliar_entrega:'Medis2024Aux', recibido_logistica:'Medis2024Recib',
     planillar_logistica:'Medis2024Plan'
   };
-  var LS = 'MF_LOGIN_OK';
+  var LABELS = {
+    administrador:'ADMINISTRADOR', lider:'LIDER',
+    auxiliar_entrega:'AUXILIAR ENTREGA',
+    recibido_logistica:'RECIBIDO LOGISTICA',
+    planillar_logistica:'PLANILLAR LOGISTICA'
+  };
+  /* CLAVES UNIFICADAS — CARGUE y VISOR comparten la misma sesion */
+  var LS_LOGIN  = 'MF_LOGIN_OK';
+  var LS_PERFIL = 'MF_PERFIL_ACTIVO';
 
+  /* ---------- LOGIN ---------- */
   function doLogin(){
     var u = document.getElementById('loginUsuario');
     var p = document.getElementById('loginContrasena');
@@ -80,51 +87,95 @@
     var pv = p ? p.value.trim() : '';
     if(!uv){ if(e){e.style.display='block';e.textContent='Seleccione un perfil.';} return; }
     if(CRED[uv] && CRED[uv].toLowerCase()===pv.toLowerCase()){
-      localStorage.setItem(LS,uv);
-      localStorage.setItem('MF_PERFIL_ACTIVO',uv);
+      localStorage.setItem(LS_LOGIN, uv);
+      localStorage.setItem(LS_PERFIL, uv);
       if(o) o.style.display='none';
       if(e) e.style.display='none';
       document.body.classList.remove('mf-login-activo');
       /* Sincronizar selector de perfil en navbar si existe */
-      var sel=document.getElementById('selPerfil'); if(sel) sel.value=uv;
-      /* Si verificarLogin del script externo ya existe, usarla para el resto */
-      if(typeof verificarLogin==='function' && typeof aplicarPerfil==='function'){
-        /* El script externo ya cargo, dejar que haga su trabajo completo */
-      }
-      /* Mensaje de bienvenida */
-      var tw=document.getElementById('toastWrap');
-      if(tw){var d=document.createElement('div');d.className='alert alert-success shadow-sm py-2 px-3 small';d.innerHTML='Sesion iniciada correctamente';tw.appendChild(d);setTimeout(function(){d.remove();},5000);}
+      var sel = document.getElementById('selPerfil'); if(sel) sel.value = uv;
+      /* Toast de bienvenida */
+      showToast('Sesion iniciada como <strong>' + (LABELS[uv]||uv) + '</strong>', 'success');
+      /* Si el script externo ya cargo, invocar su aplicarPerfil */
+      if(typeof aplicarPerfil === 'function') aplicarPerfil();
     } else {
       if(e){e.style.display='block';e.textContent='Usuario o contrasena incorrectos';}
       if(p){p.value='';p.focus();}
     }
   }
 
-  /* Registrar evento de forma inmediata */
-  var btn=document.getElementById('btnLogin');
+  /* ---------- CIERRE DE SESION ---------- */
+  function doLogout(){
+    localStorage.removeItem(LS_LOGIN);
+    localStorage.removeItem(LS_PERFIL);
+    var o = document.getElementById('pantallaLogin');
+    if(o) o.style.display = 'flex';
+    document.body.classList.add('mf-login-activo');
+    var u = document.getElementById('loginUsuario');
+    var p = document.getElementById('loginContrasena');
+    var e = document.getElementById('loginError');
+    if(u) u.value = '';
+    if(p) p.value = '';
+    if(e) e.style.display = 'none';
+    showToast('Sesion cerrada correctamente.', 'info');
+  }
+
+  /* ---------- TOAST SIMPLE ---------- */
+  function showToast(msg, type){
+    var tw = document.getElementById('toastWrap');
+    if(!tw) return;
+    var d = document.createElement('div');
+    var bg = type==='success'?'alert-success':type==='danger'?'alert-danger':'alert-info';
+    d.className = 'alert ' + bg + ' shadow-sm py-2 px-3 small';
+    d.innerHTML = msg;
+    tw.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.remove(); }, 5000);
+  }
+
+  /* ---------- REGISTRAR EVENTOS INMEDIATAMENTE ---------- */
+  /* Boton INGRESAR (ya existe en el DOM) */
+  var btn = document.getElementById('btnLogin');
   if(btn){
-    btn.addEventListener('click',doLogin);
-    /* Registrar tambien en touchend para movil */
-    btn.addEventListener('touchend',function(ev){
-      ev.preventDefault();
-      doLogin();
+    btn.addEventListener('click', doLogin);
+    btn.addEventListener('touchend', function(ev){
+      ev.preventDefault(); doLogin();
     },{passive:false});
   }
-  /* Enter en el campo de contrasena */
-  var pw=document.getElementById('loginContrasena');
-  if(pw) pw.addEventListener('keydown',function(ev){if(ev.key==='Enter')doLogin();});
+  /* Enter en contrasena */
+  var pw = document.getElementById('loginContrasena');
+  if(pw) pw.addEventListener('keydown', function(ev){ if(ev.key==='Enter') doLogin(); });
+  /* Boton CERRAR SESION (puede no existir aun si la navbar no se parseo) */
+  function bindLogout(){
+    var btnOut = document.getElementById('btnCerrarSesion');
+    if(btnOut && !btnOut._mfLogoutBound){
+      btnOut._mfLogoutBound = true;
+      btnOut.addEventListener('click', doLogout);
+      btnOut.addEventListener('touchend', function(ev){
+        ev.preventDefault(); doLogout();
+      },{passive:false});
+    }
+  }
+  bindLogout();
+  /* Reintentar despues de que todo el HTML se parse */
+  setTimeout(bindLogout, 100);
+  setTimeout(bindLogout, 500);
+  document.addEventListener('DOMContentLoaded', bindLogout);
 
-  /* Verificar si ya hay sesion previa */
-  var prev=localStorage.getItem(LS);
+  /* ---------- VERIFICAR SESION PREVIA ---------- */
+  var prev = localStorage.getItem(LS_LOGIN);
+  var o = document.getElementById('pantallaLogin');
   if(prev && CRED[prev]){
-    if(o=document.getElementById('pantallaLogin')) o.style.display='none';
+    if(o) o.style.display = 'none';
     document.body.classList.remove('mf-login-activo');
+    /* Sincronizar selector */
+    var sel = document.getElementById('selPerfil'); if(sel) sel.value = prev;
   } else {
     document.body.classList.add('mf-login-activo');
   }
 
-  /* Hacer global para que el onclick del HTML pueda llamarla */
-  window._doLoginEarly=doLogin;
+  /* ---------- EXPORTAR A GLOBAL ---------- */
+  window._doLoginEarly  = doLogin;
+  window._doLogoutEarly = doLogout;
 })();
 </script>
 
@@ -369,4 +420,254 @@
     <!-- ==================================================================== -->
     <div class="tab-pane fade" id="t3">
       <div class="mf-card">
-        <div class="mf-card-header text-danger">&#129514; TARJETA 3 &middot; RECEPCION TECNICA (Facturas y Traslados 
+        <div class="mf-card-header text-danger">&#129514; TARJETA 3 &middot; RECEPCION TECNICA (Facturas y Traslados Externos a CENDIS / B05)</div>
+        <div class="mf-card-body">
+
+          <div class="mf-drive-panel row g-2 align-items-end no-print">
+            <div class="col-md-7">
+              <label>ID Carpeta Drive Recepcion Tecnica</label>
+              <input type="text" class="form-control form-control-sm" id="folder_recepcion" value="1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0">
+            </div>
+            <div class="col-md-5 d-flex gap-2">
+              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('recepcion')">Validar carpeta</button>
+              <span class="mf-estado align-self-center" id="estado_folder_recepcion"></span>
+            </div>
+          </div>
+
+          <!-- Switch de tipo de recepcion -->
+          <div class="btn-group mb-3" role="group">
+            <input type="radio" class="btn-check" name="tipoRecepcion" id="rec_a" value="FACTURA_PROVEEDOR" checked>
+            <label class="btn btn-outline-primary" for="rec_a">A. Recepcion por Factura Proveedor / Medicamentos</label>
+            <input type="radio" class="btn-check" name="tipoRecepcion" id="rec_b" value="TRASLADO_EXTERNO">
+            <label class="btn btn-outline-primary" for="rec_b">B. Recepcion de Traslados de Bodegas Externas</label>
+          </div>
+
+          <!-- OPCION A -->
+          <div id="bloque_rec_a">
+            <div class="row g-3">
+              <div class="col-md-2"><label class="form-label">Factura *</label><input class="form-control" id="a_factura"></div>
+              <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="a_proveedor"></div>
+              <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="a_fecha_recepcion"></div>
+              <div class="col-md-2"><label class="form-label">Codigo Producto *</label><input class="form-control" id="a_codigo"></div>
+              <div class="col-md-3"><label class="form-label">Descripcion *</label><input class="form-control" id="a_descripcion"></div>
+              <div class="col-md-2"><label class="form-label">Presentacion por Caja</label><input class="form-control" id="a_presentacion"></div>
+              <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="a_laboratorio"></div>
+              <div class="col-md-2"><label class="form-label">Registro INVIMA</label><input class="form-control" id="a_invima"></div>
+              <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="a_lote"></div>
+              <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="a_vencimiento"></div>
+              <div class="col-md-2"><label class="form-label">Cant. Unidades Recibidas *</label><input type="number" class="form-control" id="a_cantidad"></div>
+              <div class="col-md-3"><label class="form-label">Nombre Recepcionista *</label><input class="form-control" id="a_recepcionista"></div>
+              <div class="col-md-2"><label class="form-label">Presenta Novedad *</label>
+                <select class="form-select" id="a_novedad"><option>NO</option><option>SI</option></select></div>
+              <div class="col-md-5"><label class="form-label">Observaciones</label><input class="form-control" id="a_observaciones"></div>
+            </div>
+          </div>
+
+          <!-- OPCION B -->
+          <div id="bloque_rec_b" class="d-none">
+            <div class="row g-3">
+              <div class="col-md-2"><label class="form-label">Numero Traslado *</label><input class="form-control" id="b_traslado"></div>
+              <div class="col-md-3"><label class="form-label">Bodega Origen Emisora *</label><input class="form-control" id="b_origen"></div>
+              <div class="col-md-2"><label class="form-label">Bodega Destino *</label>
+                <select class="form-select" id="b_destino">
+                  <option value="">Seleccione...</option><option>CENDIS PRINCIPAL</option><option>B05</option>
+                </select></div>
+              <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="b_fecha_recepcion"></div>
+              <div class="col-md-3"><label class="form-label">Codigo Producto / Molecula *</label><input class="form-control" id="b_codigo"></div>
+              <div class="col-md-4"><label class="form-label">Descripcion *</label><input class="form-control" id="b_descripcion"></div>
+              <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="b_laboratorio"></div>
+              <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="b_lote"></div>
+              <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="b_vencimiento"></div>
+              <div class="col-md-2"><label class="form-label">Cantidad Enviada *</label><input type="number" class="form-control" id="b_enviada"></div>
+              <div class="col-md-2"><label class="form-label">Cantidad Recibida *</label><input type="number" class="form-control" id="b_recibida"></div>
+              <div class="col-md-2"><label class="form-label">Diferencia</label><input class="form-control campo-bloqueado" id="b_diferencia" readonly></div>
+              <div class="col-md-3"><label class="form-label">Responsable Recepcion *</label><input class="form-control" id="b_responsable"></div>
+              <div class="col-md-3"><label class="form-label">Estado Recepcion Tecnica *</label>
+                <select class="form-select" id="b_estado"><option>CONFORME</option><option>NOVEDAD</option></select></div>
+              <div class="col-12"><label class="form-label">Observaciones</label><input class="form-control" id="b_observaciones"></div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4 no-print">
+            <button class="btn btn-outline-primary" id="t3_btnAgregar">&#10133; Agregar item a la lista</button>
+            <button class="btn btn-mf-verde" id="t3_btnGuardar">&#128190; Guardar recepcion en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(3)">Limpiar</button>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-bordered mf-tabla-items">
+              <thead><tr id="t3_tablaHead"></tr></thead>
+              <tbody id="t3_tablaBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TARJETA 4: CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)                   -->
+    <!-- ==================================================================== -->
+    <div class="tab-pane fade" id="t4">
+      <div class="mf-card">
+        <div class="mf-card-header text-warning-emphasis">&#129534; TARJETA 4 &middot; CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)</div>
+        <div class="mf-card-body">
+
+          <div class="mf-drive-panel row g-2 align-items-end no-print">
+            <div class="col-md-7">
+              <label>ID Carpeta Drive Facturacion Transporte</label>
+              <input type="text" class="form-control form-control-sm" id="folder_facturacion" value="1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-">
+            </div>
+            <div class="col-md-5 d-flex gap-2">
+              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('facturacion')">Validar carpeta</button>
+              <span class="mf-estado align-self-center" id="estado_folder_facturacion"></span>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">Transporte *</label><input class="form-control" id="f_transporte"></div>
+            <div class="col-md-2"><label class="form-label">Guia *</label><input class="form-control" id="f_guia"></div>
+            <div class="col-md-2"><label class="form-label">Fecha *</label><input type="date" class="form-control" id="f_fecha"></div>
+            <div class="col-md-2"><label class="form-label">Factura *</label><input class="form-control" id="f_factura"></div>
+            <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="f_proveedor"></div>
+            <div class="col-md-3"><label class="form-label">Orden de Compra *</label><input class="form-control" id="f_orden"></div>
+            <div class="col-md-2"><label class="form-label">Ingreso *</label><input class="form-control" id="f_ingreso"></div>
+            <div class="col-md-2"><label class="form-label">Valor *</label><input type="number" step="0.01" class="form-control" id="f_valor"></div>
+            <div class="col-md-3"><label class="form-label">A Quien se Entrega *</label><input class="form-control" id="f_entregado_a"></div>
+            <div class="col-md-2"><label class="form-label">Fecha de Entrega *</label><input type="date" class="form-control" id="f_fecha_entrega"></div>
+            <div class="col-12"><label class="form-label">Observacion</label><textarea class="form-control" id="f_observacion" rows="2"></textarea></div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4 no-print">
+            <button class="btn btn-mf-verde" id="t4_btnGuardar">&#128190; Guardar factura en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(4)">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TARJETA 5: VERIFICACION DE INVENTARIO                                -->
+    <!-- ==================================================================== -->
+    <div class="tab-pane fade" id="t5">
+      <div class="mf-card">
+        <div class="mf-card-header" style="color:#8e44ad">&#128300; TARJETA 5 &middot; VERIFICACION DE INVENTARIO (CENDIS / B05)</div>
+        <div class="mf-card-body">
+
+          <div class="mf-drive-panel row g-2 align-items-end no-print">
+            <div class="col-md-7">
+              <label>ID Carpeta Drive Inventario</label>
+              <input type="text" class="form-control form-control-sm" id="folder_inventario" value="11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY">
+            </div>
+            <div class="col-md-5 d-flex gap-2">
+              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('inventario')">Validar carpeta</button>
+              <span class="mf-estado align-self-center" id="estado_folder_inventario"></span>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-2"><label class="form-label">Bodega a Verificar *</label>
+              <select class="form-select" id="i_bodega">
+                <option value="">Seleccione...</option><option>CENDIS</option><option>B05</option>
+              </select></div>
+            <div class="col-md-3"><label class="form-label">Responsable Asignado *</label><input class="form-control" id="i_responsable"></div>
+            <div class="col-md-2"><label class="form-label">Fecha Verificacion *</label><input type="date" class="form-control" id="i_fecha"></div>
+            <div class="col-md-3"><label class="form-label">Molecula / Medicamento *</label><input class="form-control" id="i_molecula"></div>
+            <div class="col-md-2"><label class="form-label">Codigo Producto *</label><input class="form-control" id="i_codigo"></div>
+            <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="i_lote"></div>
+            <div class="col-md-2"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="i_vencimiento"></div>
+            <div class="col-md-2"><label class="form-label">Cantidad Teorica *</label><input type="number" class="form-control" id="i_teorica"></div>
+            <div class="col-md-2"><label class="form-label">Cantidad Fisica *</label><input type="number" class="form-control" id="i_fisica"></div>
+            <div class="col-md-2"><label class="form-label">Diferencia / Novedad</label><input class="form-control campo-bloqueado" id="i_diferencia" readonly></div>
+            <div class="col-md-2"><label class="form-label">Estado Verificacion</label>
+              <input class="form-control campo-bloqueado" id="i_estado" readonly></div>
+            <div class="col-12"><label class="form-label">Observaciones</label><textarea class="form-control" id="i_observaciones" rows="2"></textarea></div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4 no-print">
+            <button class="btn btn-outline-primary" id="t5_btnAgregar">&#10133; Agregar item al conteo</button>
+            <button class="btn btn-mf-verde" id="t5_btnGuardar">&#128190; Guardar verificacion en Drive</button>
+            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(5)">Limpiar</button>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-bordered mf-tabla-items">
+              <thead><tr id="t5_tablaHead"></tr></thead>
+              <tbody id="t5_tablaBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+</div><!-- /container -->
+
+<!-- Boton flotante de respaldo -->
+<button class="btn btn-mf-verde mf-float-backup no-print" id="btnBackupFloat">
+  &#128190; BACKUP DE SEGURIDAD
+</button>
+
+<!-- ============================ MODAL CONFIGURACION ============================ -->
+<div class="modal fade" id="modalConfig" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header text-white" style="background:#0d6efd">
+        <h5 class="modal-title">Configuracion de conexion</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Perfiles de usuario -->
+        <div class="mb-3">
+          <h6 class="text-danger fw-bold">&#128081; PERFILES DE USUARIO</h6>
+          <div id="perfilesUsuarioInfo" class="small bg-light p-2 rounded border"></div>
+          <div class="mt-2">
+            <label class="form-label small">Cambiar perfil activo:</label>
+            <select class="form-select form-select-sm" id="modalSelPerfil">
+              <option value="administrador">&#128081; Administrador</option>
+              <option value="lider">&#128104;&#8205;&#128188; Lider</option>
+              <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
+              <option value="recibido_logistica">&#9989; Recibido Logistica</option>
+              <option value="planillar_logistica">&#128203; Planillar Logistica</option>
+            </select>
+            <button class="btn btn-sm btn-primary mt-1" onclick="seleccionarPerfil(document.getElementById('modalSelPerfil').value); bootstrap.Modal.getInstance(document.getElementById('modalConfig')).hide();">
+              Aplicar perfil
+            </button>
+          </div>
+        </div>
+        <hr>
+        <!-- Perfiles de archivos -->
+        <div class="mb-3">
+          <h6 class="text-primary fw-bold">&#128462; Perfiles de Archivos por Tarjeta (fijos en Drive)</h6>
+          <div id="perfilesInfo" class="small bg-light p-2 rounded border"></div>
+        </div>
+        <hr>
+        <!-- IDs de carpetas -->
+        <div class="mb-3">
+          <h6 class="text-success fw-bold">&#128193; IDs de Carpetas de Drive (preconfigurados)</h6>
+          <div id="idsCarpetasInfo" class="small bg-light p-2 rounded border"></div>
+        </div>
+        <hr>
+        <label class="form-label">URL de la Web App de Google Apps Script (/exec)</label>
+        <input class="form-control mb-3" id="cfg_api_url" placeholder="https://script.google.com/macros/s/xxxx/exec">
+        <label class="form-label">ID Carpeta Drive para respaldos remotos</label>
+        <input class="form-control mb-3" id="cfg_folder_backup" value="1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5">
+        <label class="form-label">Lista de Conductores / Mensajeros (uno por linea)</label>
+        <textarea class="form-control" id="cfg_conductores" rows="5"></textarea>
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" id="cfg_modo_local">
+          <label class="form-check-label" for="cfg_modo_local">
+            Modo local sin conexion (trabaja contra el almacen del navegador y sincroniza despues)
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-mf-verde" id="cfg_guardar">Guardar configuracion</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="cargue_script.js"></script>
+</body>
+</html>
