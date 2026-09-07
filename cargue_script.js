@@ -39,6 +39,8 @@ function limpiarCampos(prefijo) {
 function limpiarTarjeta(num) {
   var prefijos = { 1: 's_', 2: 'b_', 3: 't3_', 4: 'log_', 5: 'f_', 6: 'i_' };
   limpiarCampos(prefijos[num] || '');
+  // Restaurar etiqueta Factura/Traslado segun tipo seleccionado
+  if (num === 2) toggleLabelRecepcion();
   showToast('Tarjeta ' + num + ' limpiada.', 'info');
 }
 
@@ -352,10 +354,24 @@ function t1Guardar() {
    ═════════════════════════════════════════════════════════════════════════════════ */
 var t2Items = [];
 
+/** Alterna etiqueta del campo b_traslado: EXTERNA → "Factura", INTERNA → "Traslado" */
+function toggleLabelRecepcion() {
+  var tipo = document.querySelector('input[name="tipoRecepcion"]:checked');
+  var esExterna = tipo && tipo.value === 'EXTERNA';
+  var lbl = $('lbl_doc_recepcion');
+  var inp = $('b_traslado');
+  if (lbl) {
+    lbl.textContent = esExterna ? 'Factura *' : 'Traslado *';
+    lbl.className = 'form-label rec-doc-label ' + (esExterna ? 'externa' : 'interna');
+  }
+  if (inp) inp.placeholder = esExterna ? 'Numero de factura' : 'Numero de traslado';
+}
+
 function t2AgregarItem() {
   var tipo = document.querySelector('input[name="tipoRecepcion"]:checked');
   tipo = tipo ? tipo.value : 'EXTERNA';
-  var traslado = $('b_traslado') ? $('b_traslado').value.trim() : '';
+  var esExterna = tipo === 'EXTERNA';
+  var docNum = $('b_traslado') ? $('b_traslado').value.trim() : '';
   var bodegaOrigen = $('b_bodega_origen') ? $('b_bodega_origen').value : '';
   var destino = $('b_destino') ? $('b_destino').value : '';
   var fechaRecep = $('b_fecha_recepcion') ? $('b_fecha_recepcion').value : '';
@@ -371,13 +387,17 @@ function t2AgregarItem() {
   var estado = $('b_estado') ? $('b_estado').value : '';
   var observaciones = $('b_observaciones') ? $('b_observaciones').value.trim() : '';
 
-  if (!traslado || !codigo || !descripcion || !lote || !vencimiento || !enviada || !recibida || !responsable) {
-    showToast('Complete los campos obligatorios de recepcion.', 'danger');
+  if (!docNum || !codigo || !descripcion || !lote || !vencimiento || !enviada || !recibida || !responsable) {
+    var campoFaltante = esExterna ? 'Factura' : 'Traslado';
+    showToast('Complete los campos obligatorios de recepcion (incluyendo ' + campoFaltante + ').', 'danger');
     return;
   }
 
   var item = {
-    'Tipo Recepcion': tipo, 'Traslado': traslado, 'Bodega Origen': bodegaOrigen,
+    'Tipo Recepcion': tipo,
+    'Documento Recepcion': esExterna ? 'Factura' : 'Traslado',
+    'Numero Documento': docNum,
+    'Bodega Origen': bodegaOrigen,
     'Bodega Destino': destino, 'Fecha Recepcion': fechaRecep, 'Codigo Producto': codigo,
     'Descripcion': descripcion, 'Laboratorio': laboratorio, 'Lote': lote,
     'Fecha Vencimiento': vencimiento, 'Cantidad Enviada': enviada, 'Cantidad Recibida': recibida,
@@ -393,14 +413,14 @@ function t2PintarTabla() {
   var head = $('t2_tablaHead');
   var body = $('t2_tablaBody');
   if (!head || !body) return;
-  var cols = ['Tipo', 'Traslado', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
+  var cols = ['Tipo', 'Doc.', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
   head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
   body.innerHTML = '';
   t2Items.forEach(function (item, idx) {
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td>' + (item['Tipo Recepcion'] || '') + '</td>' +
-      '<td>' + (item['Traslado'] || '') + '</td>' +
+      '<td><small class="text-muted">' + (item['Documento Recepcion'] || '') + '</small> ' + (item['Numero Documento'] || '') + '</td>' +
       '<td>' + (item['Codigo Producto'] || '') + '</td>' +
       '<td>' + (item['Descripcion'] || '') + '</td>' +
       '<td>' + (item['Lote'] || '') + '</td>' +
@@ -932,6 +952,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // Perfil selector
   var sel = $('selPerfil');
   if (sel) sel.addEventListener('change', function () { seleccionarPerfil(sel.value); });
+
+  // Tipo de Recepcion: alternar etiqueta Factura / Traslado
+  var rExt = $('r_externa'), rInt = $('r_interna');
+  if (rExt) rExt.addEventListener('change', toggleLabelRecepcion);
+  if (rInt) rInt.addEventListener('change', toggleLabelRecepcion);
+  toggleLabelRecepcion(); // inicializar
 
   // Diferencia automatica en Recepcion
   var bEnv = $('b_enviada'), bRec = $('b_recibida'), bDif = $('b_diferencia');
