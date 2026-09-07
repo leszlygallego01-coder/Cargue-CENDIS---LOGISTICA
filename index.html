@@ -164,6 +164,16 @@
   /* ---------- VERIFICAR SESION PREVIA ---------- */
   var prev = localStorage.getItem(LS_LOGIN);
   var o = document.getElementById('pantallaLogin');
+  /* Verificar si viene sesion por URL desde el VISOR (cross-domain) */
+  var urlParams = new URLSearchParams(window.location.search);
+  var sesionURL = urlParams.get('sesion');
+  if(sesionURL && CRED[sesionURL]){
+    localStorage.setItem(LS_LOGIN, sesionURL);
+    localStorage.setItem(LS_PERFIL, sesionURL);
+    prev = sesionURL;
+    /* Limpiar la URL para no mostrar el parametro */
+    window.history.replaceState({}, '', window.location.pathname);
+  }
   if(prev && CRED[prev]){
     if(o) o.style.display = 'none';
     document.body.classList.remove('mf-login-activo');
@@ -172,6 +182,20 @@
   } else {
     document.body.classList.add('mf-login-activo');
   }
+
+  /* ---------- INTERCEPTAR LINK AL VISOR PARA PASAR SESION ---------- */
+  document.addEventListener('DOMContentLoaded', function(){
+    var linkVisor = document.querySelector('a[href*="Informe-de-Operacional-de-CEDIS"]');
+    if(linkVisor){
+      linkVisor.addEventListener('click', function(e){
+        e.preventDefault();
+        var perfil = localStorage.getItem(LS_LOGIN) || '';
+        var base = 'https://leszlygallego01-coder.github.io/Informe-de-Operacional-de-CEDIS---LOGISTICO/';
+        var url = perfil ? base + '?sesion=' + encodeURIComponent(perfil) : base;
+        window.location.href = url;
+      });
+    }
+  });
 
   /* ---------- EXPORTAR A GLOBAL ---------- */
   window._doLoginEarly  = doLogin;
@@ -209,7 +233,7 @@
       &#128190; DESCARGAR ARCHIVO DE SEGURIDAD (BACKUP)
     </button>
     <button class="btn btn-outline-light btn-sm" id="btnCerrarSesion">&#128274; Cerrar Sesion</button>
-    <a class="btn btn-outline-light btn-sm" href="visor.html">Ir al VISOR &rarr;</a>
+    <a class="btn btn-outline-light btn-sm" href="https://leszlygallego01-coder.github.io/Informe-de-Operacional-de-CEDIS---LOGISTICO/">Ir al VISOR &rarr;</a>
   </div>
 </nav>
 
