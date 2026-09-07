@@ -552,7 +552,7 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- TARJETA 4: LOGISTICA Y DESPACHOS (era T2)                           -->
+    <!-- TARJETA 4: LOGISTICA Y DESPACHOS (Reestructurada: Recepción + Despacho) -->
     <!-- ==================================================================== -->
     <div class="tab-pane fade" id="t4">
       <div class="mf-card">
@@ -572,7 +572,7 @@
             </div>
             <div class="row g-2 align-items-end">
               <div class="col-md-7">
-                <label>Carpeta Destino (escritura — misma de Planilla)</label>
+                <label>Carpeta Destino (escritura &mdash; misma de Planilla)</label>
                 <input type="text" class="form-control form-control-sm" id="folder_despachos_t4" value="1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8">
               </div>
               <div class="col-md-5 d-flex gap-2">
@@ -582,39 +582,86 @@
             </div>
           </div>
 
+          <!-- Busqueda de traslado -->
           <div class="row g-3 align-items-end mb-3">
             <div class="col-md-4">
               <label class="form-label">Documento TRASLADO *</label>
-              <input type="text" class="form-control" id="t4_traslado" placeholder="Numero de traslado">
+              <input type="text" class="form-control" id="log_traslado" placeholder="Numero de traslado">
             </div>
             <div class="col-md-3">
-              <button class="btn btn-mf-azul w-100" id="t4_btnBuscar">&#128269; Buscar traslado</button>
+              <button class="btn btn-mf-azul w-100" id="log_btnBuscar">&#128269; Buscar traslado</button>
             </div>
             <div class="col-md-5">
-              <div id="t4_estadoTraslado" class="mf-estado"></div>
+              <div id="log_estadoTraslado" class="mf-estado"></div>
             </div>
           </div>
 
-          <div class="row g-3">
-            <div class="col-md-3"><label class="form-label">Bodega Origen</label>
-              <input class="form-control campo-bloqueado" id="t4_bodega_origen" readonly></div>
-            <div class="col-md-3"><label class="form-label">Bodega Destino</label>
-              <input class="form-control campo-bloqueado" id="t4_destino" readonly></div>
-            <div class="col-md-2"><label class="form-label">Zona</label>
-              <input class="form-control campo-bloqueado" id="t4_zona" readonly></div>
-            <div class="col-md-2"><label class="form-label">Fecha Envio *</label><input type="date" class="form-control" id="t4_fecha_envio"></div>
-            <div class="col-md-3"><label class="form-label">Conductor / Mensajero *</label>
-              <select class="form-select" id="t4_conductor"></select></div>
-            <div class="col-md-2"><label class="form-label">Placa</label><input class="form-control" id="t4_placa"></div>
-            <div class="col-md-2"><label class="form-label">Planilla</label><input class="form-control" id="t4_planilla"></div>
-            <div class="col-md-3"><label class="form-label">Quien Recibe *</label><input class="form-control" id="t4_quien_recibe"></div>
-            <div class="col-12"><label class="form-label">Observacion</label><textarea class="form-control" id="t4_observacion" rows="2"></textarea></div>
+          <!-- ====== SUBPANEL A: RECEPCION Y ENTREGA ====== -->
+          <div class="log-subpanel">
+            <div class="log-subpanel-header log-subpanel-recepcion">
+              <span>&#9989; RECEPCION Y ENTREGA</span>
+            </div>
+            <div class="log-subpanel-body">
+              <div class="row g-3">
+                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
+                  <input class="form-control campo-bloqueado" id="log_bodega_origen" readonly></div>
+                <div class="col-md-3"><label class="form-label">Bodega Destino</label>
+                  <input class="form-control campo-bloqueado" id="log_destino" readonly></div>
+                <div class="col-md-2"><label class="form-label">Zona</label>
+                  <input class="form-control campo-bloqueado" id="log_zona" readonly></div>
+                <div class="col-md-2"><label class="form-label">Urgente *</label>
+                  <select class="form-select" id="log_urgente">
+                    <option value="NO">NO</option>
+                    <option value="SI">SI</option>
+                  </select></div>
+                <div class="col-md-4"><label class="form-label">Concepto</label>
+                  <input type="text" class="form-control" id="log_concepto" placeholder="Concepto del traslado"></div>
+                <div class="col-md-3"><label class="form-label">Quien Recibio *</label>
+                  <select class="form-select" id="log_quien_recibio">
+                    <option value="">Seleccione...</option>
+                    <option value="Diego">Diego</option>
+                    <option value="Angelica">Angelica</option>
+                    <option value="Lorena">Lorena</option>
+                    <option value="Yenny">Yenny</option>
+                  </select></div>
+                <div class="col-12"><label class="form-label">Observaciones</label>
+                  <textarea class="form-control" id="log_observaciones" rows="3" placeholder="Observaciones sobre la recepcion..."></textarea></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ====== SUBPANEL B: DESPACHO — PLANILLA DE LECTURA Y REGISTRO ====== -->
+          <div class="log-subpanel mt-3">
+            <div class="log-subpanel-header log-subpanel-despacho">
+              <span>&#128203; DESPACHO &mdash; Planilla de Lectura y Registro</span>
+              <span class="log-subpanel-badge" id="log_despacho_estado"></span>
+            </div>
+            <div class="log-subpanel-body">
+              <div class="row g-3">
+                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
+                  <input class="form-control campo-bloqueado" id="log_d_bodega_origen" readonly></div>
+                <div class="col-md-3"><label class="form-label">Destino</label>
+                  <input class="form-control campo-bloqueado" id="log_d_destino" readonly></div>
+                <div class="col-md-2"><label class="form-label">Zona</label>
+                  <input class="form-control campo-bloqueado" id="log_d_zona" readonly></div>
+                <div class="col-md-2"><label class="form-label">Cantidad</label>
+                  <input class="form-control campo-bloqueado" id="log_d_cantidad" readonly></div>
+                <div class="col-md-2"><label class="form-label">Urgente</label>
+                  <input class="form-control campo-bloqueado" id="log_d_urgente" readonly></div>
+                <div class="col-md-3"><label class="form-label">Responsable Entrega CENDIS</label>
+                  <input class="form-control campo-bloqueado" id="log_d_resp_cendis" readonly></div>
+                <div class="col-md-3"><label class="form-label">Quien Alista</label>
+                  <input class="form-control campo-bloqueado" id="log_d_quien_alista" readonly></div>
+                <div class="col-md-4"><label class="form-label">Marca Temporal / Fecha Inicial</label>
+                  <input class="form-control campo-bloqueado" id="log_d_marca_temporal" readonly></div>
+              </div>
+            </div>
           </div>
 
           <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="t4_btnGuardar">&#128190; Guardar logistica en Drive</button>
-            <button class="btn btn-outline-primary" id="t4_btnImprimir">&#128424; Imprimir planilla</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(4)">Limpiar</button>
+            <button class="btn btn-mf-verde" id="log_btnGuardar">&#128190; Guardar Recepcion en Drive</button>
+            <button class="btn btn-outline-primary" id="log_btnImprimir">&#128424; Imprimir planilla</button>
+            <button class="btn btn-outline-secondary" id="log_btnLimpiar">Limpiar</button>
           </div>
         </div>
       </div>
