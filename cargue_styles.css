@@ -41,7 +41,6 @@ body.mf-login-activo {
   /* Evitar scroll detras del login */
   overflow-y: auto;
 }
-}
 .mf-login-overlay.oculto { display: none !important; }
 
 .mf-login-box {
@@ -275,3 +274,56 @@ body.mf-login-activo {
   .print-only { display: block !important; }
 }
 .print-only { display: none; }
+
+/* ---------- Tarjeta de Seguridad (T1) ---------- */
+.mf-card-seguridad {
+  border-left: 5px solid var(--mf-verde) !important;
+}
+.mf-card-seguridad .mf-card-header {
+  background: linear-gradient(90deg, #e9f9ee 0%, #fbfdff 100%);
+  color: var(--mf-verde-osc);
+}
+
+/* ---------- Rotacion: alerta informativa ---------- */
+.rot-info-alert {
+  background: linear-gradient(90deg, #eef6ff 0%, #e9f9ee 100%);
+  border: 1px dashed var(--mf-verde);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: .82rem;
+  color: #2c5a3a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rot-info-alert .rot-info-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.rot-info-alert strong {
+  color: var(--mf-verde-osc);
+}
+
+/* ---------- Rotacion: badges de rol ---------- */
+.rot-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .3px;
+  vertical-align: middle;
+}
+.rot-badge-alistar  { background: var(--mf-verde); }
+.rot-badge-pitar    { background: var(--mf-azul); }
+.rot-badge-empacar  { background: var(--mf-ambar, #ffc107); color: #5a4200; }
+
+/* ---------- Rotacion: campo de solo lectura con fondo ---------- */
+.campo-rotacion {
+  background: #eef6ff !important;
+  font-weight: 600;
+  color: var(--mf-azul-osc);
+  border-color: var(--mf-azul) !important;
+}
