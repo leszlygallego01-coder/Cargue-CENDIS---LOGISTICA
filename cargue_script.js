@@ -28,7 +28,7 @@ const CONFIG_DEFAULT = {
   apiUrl: 'https://script.google.com/macros/s/AKfycbxyQBBPPZVYpuwCtKX1MTPVp4Pkaa6uJQc1xcbh3Tk68mrDFGRc5MQQ034CyOR2okYr/exec',
   modoLocal: false,
   folders: {
-    despachosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',  // Carpeta ORIGEN fija (solo lectura)
+    trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',  // Carpeta TRASLADOS — ORIGEN fija (solo lectura)
     despachos:         '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',  // Carpeta DESTINO (escritura/guardado)
     logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
     recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
@@ -477,7 +477,7 @@ function cargarConfig() {
     cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
     /* Forzar IDs de carpetas de Drive (valores oficiales) */
     cfg.folders = Object.assign({}, CONFIG_DEFAULT.folders, cfg.folders || {});
-    cfg.folders.despachosConsulta = CONFIG_DEFAULT.folders.despachosConsulta; // ORIGEN fijo (lectura)
+    cfg.folders.trasladosConsulta = CONFIG_DEFAULT.folders.trasladosConsulta; // TRASLADOS — ORIGEN fijo (lectura)
     // despachos = carpeta DESTINO (escritura) — editable por el usuario
     cfg.folders.logistica = CONFIG_DEFAULT.folders.logistica;   // 1_e8ycbz...  (carpeta LOGISTICA)
     cfg.folders.recepcion = CONFIG_DEFAULT.folders.recepcion;
@@ -884,7 +884,7 @@ async function validarFolder(modulo) {
   const est = $('estado_folder_' + modulo);
   if (!id) { est.innerHTML = '<span class="text-danger">Ingrese el ID de la carpeta.</span>'; return; }
   // Si es "despachos", el usuario está configurando la carpeta DESTINO (escritura)
-  // La carpeta ORIGEN (consulta/lectura) siempre es despachosConsulta y NO se toca
+  // Validar carpeta Traslados (origen fijo)
   CONFIG.folders[modulo] = id;
   guardarConfig();
 
@@ -926,27 +926,27 @@ async function validarFolder(modulo) {
  * ------------------------------------------------------------------------- */
 const CAMPOS_OBLIGATORIOS_DRIVE = ['bodegaOrigen', 'destino', 'zona', 'cantidad', 'tipo', 'urgente'];
 
-/** Busca el traslado en Drive (carpeta ORIGEN fija despachosConsulta) o en la sesion local, y valida su integridad. */
+/** Busca el traslado en Drive (carpeta TRASLADOS — ORIGEN fija trasladosConsulta) o en la sesion local, y valida su integridad. */
 async function t1ValidarTraslado() {
   const traslado = val('t1_traslado');
   const est = $('t1_estadoTraslado');
   $('t1_btnGuardar').disabled = true;
   if (!traslado) { est.innerHTML = '<span class="text-danger">Indique el numero de traslado.</span>'; return; }
 
-  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta origen: ' + (CONFIG.folders.despachosConsulta || '???').substring(0,8) + '...)</small>...';
+  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta Traslados: ' + (CONFIG.folders.trasladosConsulta || '???').substring(0,8) + '...)</small>...';
   let registro = null;
   try {
     if (CONFIG.modoLocal || !CONFIG.apiUrl) {
       registro = buscarTrasladoLocal('despachos', traslado) || buscarTrasladoLocal('logistica', traslado);
     } else {
       const r = await api('buscarTraslado', {
-        folderId: CONFIG.folders.despachosConsulta,
+        folderId: CONFIG.folders.trasladosConsulta,
         modulo: 'despachos', traslado
       });
       registro = r.encontrado ? r.registro : null;
     }
   } catch (e) {
-    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta origen: ${CONFIG.folders.despachosConsulta || '(vacia)'}</small>`;
+    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta Traslados: ${CONFIG.folders.trasladosConsulta || '(vacia)'}</small>`;
     return;
   }
 
@@ -1573,10 +1573,10 @@ function pintarConfig() {
     }
   });
   // Mostrar carpeta de consulta (origen) fija en la UI
-  const consultaEl = $('folder_despachos_consulta');
-  if (consultaEl) consultaEl.value = CONFIG.folders.despachosConsulta || '';
-  const consultaEst = $('estado_folder_despachos_consulta');
-  if (consultaEst) consultaEst.innerHTML = '<span class="text-info">&#128218; Carpeta de lectura fija</span>';
+  const consultaEl = $('folder_traslados_consulta');
+  if (consultaEl) consultaEl.value = CONFIG.folders.trasladosConsulta || '';
+  const consultaEst = $('estado_folder_traslados_consulta');
+  if (consultaEst) consultaEst.innerHTML = '<span class="text-info">&#128218; Carpeta Traslados (lectura fija)</span>';
 
   setVal('cfg_api_url', CONFIG.apiUrl);
   setVal('cfg_folder_backup', CONFIG.folders.backup || '');
@@ -1621,7 +1621,7 @@ function pintarIdsCarpetas() {
   const cont = $('idsCarpetasInfo');
   if (!cont) return;
   const MODULOS_LABEL = {
-    despachosConsulta: 'T1 — Consulta (lectura)',
+    trasladosConsulta: 'T1 — Traslados (lectura)',
     despachos:         'T1 — Destino (escritura)',
     logistica:         'Tarjeta 2',
     recepcion:         'Tarjeta 3',
@@ -1633,7 +1633,7 @@ function pintarIdsCarpetas() {
     const id = CONFIG.folders[k] || '';
     const ok = id ? 'text-success' : 'text-danger';
     const icon = id ? '&#10004;' : '&#10006;';
-    const extra = k === 'despachosConsulta' ? ' <span class="text-info">&#128218; fija</span>' : '';
+    const extra = k === 'trasladosConsulta' ? ' <span class="text-info">&#128218; fija</span>' :
     return '<div class="row g-1 mb-1">' +
       '<div class="col-md-3"><strong>' + esc(MODULOS_LABEL[k] || k) + '</strong></div>' +
       '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span>' + extra + '</div>' +
