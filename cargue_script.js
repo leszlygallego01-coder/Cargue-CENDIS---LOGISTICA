@@ -384,7 +384,14 @@ function destinoExigePunto(destino) {
 function cargarConfig() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? Object.assign({}, CONFIG_DEFAULT, JSON.parse(raw)) : Object.assign({}, CONFIG_DEFAULT);
+    const cfg = raw ? Object.assign({}, CONFIG_DEFAULT, JSON.parse(raw)) : Object.assign({}, CONFIG_DEFAULT);
+    /* Forzar URL de Web App si el usuario no la ha configurado o tiene vacia */
+    if (!cfg.apiUrl || cfg.apiUrl.trim() === '') cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
+    /* Si la URL esta configurada, modo local debe estar desactivado */
+    if (cfg.apiUrl && cfg.apiUrl.trim() !== '' && cfg.modoLocal) {
+      cfg.modoLocal = false;
+    }
+    return cfg;
   } catch (e) { return Object.assign({}, CONFIG_DEFAULT); }
 }
 function guardarConfig() { localStorage.setItem(LS_KEY, JSON.stringify(CONFIG)); }
