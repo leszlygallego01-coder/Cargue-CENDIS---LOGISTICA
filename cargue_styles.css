@@ -19,6 +19,110 @@ body {
   color: #1f2d3d;
 }
 
+/* ---------- LOGIN MODAL ---------- */
+.mf-login-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 99999;
+  background: linear-gradient(135deg, #0a4fb5 0%, #2fb457 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.mf-login-overlay.oculto { display: none !important; }
+
+.mf-login-box {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  max-width: 420px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.mf-login-header {
+  background: linear-gradient(90deg, var(--mf-azul), var(--mf-verde));
+  padding: 28px 30px 20px;
+  text-align: center;
+  color: #fff;
+}
+.mf-login-header img {
+  height: 64px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+}
+.mf-login-header h4 {
+  font-weight: 700;
+  margin: 0;
+  font-size: 1.1rem;
+}
+.mf-login-header p {
+  font-size: .8rem;
+  margin: 4px 0 0;
+  opacity: .9;
+}
+
+.mf-login-body {
+  padding: 28px 30px;
+}
+.mf-login-body label {
+  font-weight: 700;
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  color: var(--mf-azul-osc);
+}
+.mf-login-body .form-control {
+  border-radius: 10px;
+  border-color: var(--mf-borde);
+  padding: 10px 14px;
+}
+.mf-login-body .form-control:focus {
+  border-color: var(--mf-verde);
+  box-shadow: 0 0 0 .2rem rgba(47,180,87,.2);
+}
+.mf-login-body select.form-select {
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.mf-login-error {
+  display: none;
+  color: var(--mf-rojo);
+  font-weight: 700;
+  font-size: .82rem;
+  padding: 8px 12px;
+  background: #fff5f5;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.mf-login-error.visible { display: block; }
+
+.mf-login-btn {
+  background: linear-gradient(90deg, var(--mf-azul), var(--mf-verde));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  width: 100%;
+  cursor: pointer;
+  letter-spacing: .5px;
+  transition: opacity .2s;
+}
+.mf-login-btn:hover { opacity: .9; }
+.mf-login-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.mf-login-footer {
+  text-align: center;
+  padding: 0 30px 20px;
+  font-size: .74rem;
+  color: #8a97a8;
+}
+
 /* ---------- Barra superior ---------- */
 .mf-navbar {
   background: linear-gradient(90deg, var(--mf-azul) 0%, var(--mf-verde) 100%);
