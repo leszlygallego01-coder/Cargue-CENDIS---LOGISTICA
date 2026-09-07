@@ -385,8 +385,16 @@ function cargarConfig() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     const cfg = raw ? Object.assign({}, CONFIG_DEFAULT, JSON.parse(raw)) : Object.assign({}, CONFIG_DEFAULT);
-    /* Forzar URL de Web App si el usuario no la ha configurado o tiene vacia */
-    if (!cfg.apiUrl || cfg.apiUrl.trim() === '') cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
+    /* Forzar URL de Web App fija (nunca permitir vacia o distinta) */
+    cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
+    /* Forzar IDs de carpetas de Drive (valores oficiales) */
+    cfg.folders = Object.assign({}, CONFIG_DEFAULT.folders, cfg.folders || {});
+    cfg.folders.despachos = CONFIG_DEFAULT.folders.despachos;   // 1u30YFhT...  (carpeta DESPACHOS)
+    cfg.folders.logistica = CONFIG_DEFAULT.folders.logistica;   // 1_e8ycbz...  (carpeta LOGISTICA)
+    cfg.folders.recepcion = CONFIG_DEFAULT.folders.recepcion;
+    cfg.folders.facturacion = CONFIG_DEFAULT.folders.facturacion;
+    cfg.folders.inventario = CONFIG_DEFAULT.folders.inventario;
+    cfg.folders.backup = CONFIG_DEFAULT.folders.backup;
     /* Si la URL esta configurada, modo local debe estar desactivado */
     if (cfg.apiUrl && cfg.apiUrl.trim() !== '' && cfg.modoLocal) {
       cfg.modoLocal = false;
@@ -834,7 +842,7 @@ async function t1ValidarTraslado() {
   $('t1_btnGuardar').disabled = true;
   if (!traslado) { est.innerHTML = '<span class="text-danger">Indique el numero de traslado.</span>'; return; }
 
-  est.innerHTML = 'Consultando Google Drive...';
+  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta: ' + (CONFIG.folders.despachos || '???').substring(0,8) + '...)</small>...';
   let registro = null;
   try {
     if (CONFIG.modoLocal || !CONFIG.apiUrl) {
@@ -847,12 +855,12 @@ async function t1ValidarTraslado() {
       registro = r.encontrado ? r.registro : null;
     }
   } catch (e) {
-    est.innerHTML = `<span class="text-danger">Error de consulta: ${e.message}</span>`;
+    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta: ${CONFIG.folders.despachos || '(vacia)'}</small>`;
     return;
   }
 
   if (!registro) {
-    est.innerHTML = '<span class="text-danger">&#10006; El traslado NO existe en la base de Drive. No es posible continuar.</span>';
+    est.innerHTML = `<span class="text-danger">&#10006; Traslado <b>${esc(traslado)}</b> NO encontrado en la carpeta de Despachos. Verifique el numero o la base de datos en Drive.</span>`;
     limpiarAutocompletadosT1();
     return;
   }
