@@ -28,12 +28,13 @@ const CONFIG_DEFAULT = {
   apiUrl: 'https://script.google.com/macros/s/AKfycbxyQBBPPZVYpuwCtKX1MTPVp4Pkaa6uJQc1xcbh3Tk68mrDFGRc5MQQ034CyOR2okYr/exec',
   modoLocal: false,
   folders: {
-    despachos:   '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
-    logistica:   '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
-    recepcion:   '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
-    facturacion: '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
-    inventario:  '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
-    backup:      '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
+    despachosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',  // Carpeta ORIGEN fija (solo lectura)
+    despachos:         '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',  // Carpeta DESTINO (escritura/guardado)
+    logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
+    recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
+    facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
+    inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
+    backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
   },
   conductores: ['CONDUCTOR 1 - CAMION', 'CONDUCTOR 2 - FURGON', 'MENSAJERO 1 - MOTO', 'MENSAJERO 2 - MOTO'],
   /* Perfiles de archivos por tarjeta: nombre del archivo y hoja en Drive */
@@ -389,7 +390,8 @@ function cargarConfig() {
     cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
     /* Forzar IDs de carpetas de Drive (valores oficiales) */
     cfg.folders = Object.assign({}, CONFIG_DEFAULT.folders, cfg.folders || {});
-    cfg.folders.despachos = CONFIG_DEFAULT.folders.despachos;   // 1u30YFhT...  (carpeta DESPACHOS)
+    cfg.folders.despachosConsulta = CONFIG_DEFAULT.folders.despachosConsulta; // ORIGEN fijo (lectura)
+    // despachos = carpeta DESTINO (escritura) — editable por el usuario
     cfg.folders.logistica = CONFIG_DEFAULT.folders.logistica;   // 1_e8ycbz...  (carpeta LOGISTICA)
     cfg.folders.recepcion = CONFIG_DEFAULT.folders.recepcion;
     cfg.folders.facturacion = CONFIG_DEFAULT.folders.facturacion;
@@ -794,6 +796,8 @@ async function validarFolder(modulo) {
   const id = val('folder_' + modulo);
   const est = $('estado_folder_' + modulo);
   if (!id) { est.innerHTML = '<span class="text-danger">Ingrese el ID de la carpeta.</span>'; return; }
+  // Si es "despachos", el usuario está configurando la carpeta DESTINO (escritura)
+  // La carpeta ORIGEN (consulta/lectura) siempre es despachosConsulta y NO se toca
   CONFIG.folders[modulo] = id;
   guardarConfig();
 
@@ -835,27 +839,27 @@ async function validarFolder(modulo) {
  * ------------------------------------------------------------------------- */
 const CAMPOS_OBLIGATORIOS_DRIVE = ['bodegaOrigen', 'destino', 'zona', 'cantidad', 'tipo', 'urgente'];
 
-/** Busca el traslado en Drive (o en la sesion local) y valida su integridad. */
+/** Busca el traslado en Drive (carpeta ORIGEN fija despachosConsulta) o en la sesion local, y valida su integridad. */
 async function t1ValidarTraslado() {
   const traslado = val('t1_traslado');
   const est = $('t1_estadoTraslado');
   $('t1_btnGuardar').disabled = true;
   if (!traslado) { est.innerHTML = '<span class="text-danger">Indique el numero de traslado.</span>'; return; }
 
-  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta: ' + (CONFIG.folders.despachos || '???').substring(0,8) + '...)</small>...';
+  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta origen: ' + (CONFIG.folders.despachosConsulta || '???').substring(0,8) + '...)</small>...';
   let registro = null;
   try {
     if (CONFIG.modoLocal || !CONFIG.apiUrl) {
       registro = buscarTrasladoLocal('despachos', traslado) || buscarTrasladoLocal('logistica', traslado);
     } else {
       const r = await api('buscarTraslado', {
-        folderId: CONFIG.folders.despachos || val('folder_despachos'),
+        folderId: CONFIG.folders.despachosConsulta,
         modulo: 'despachos', traslado
       });
       registro = r.encontrado ? r.registro : null;
     }
   } catch (e) {
-    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta: ${CONFIG.folders.despachos || '(vacia)'}</small>`;
+    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta origen: ${CONFIG.folders.despachosConsulta || '(vacia)'}</small>`;
     return;
   }
 
@@ -1023,7 +1027,8 @@ async function t2Buscar() {
     if (CONFIG.modoLocal || !CONFIG.apiUrl) {
       registro = buscarTrasladoLocal('despachos', traslado);
     } else {
-      const folderT2 = val('folder_despachos_t2') || CONFIG.folders.despachos || val('folder_despachos');
+      // T2 lee de la carpeta DESTINO (donde T1 guardó)
+      const folderT2 = val('folder_despachos_t2') || CONFIG.folders.despachos;
       const r = await api('buscarTraslado', {
         folderId: folderT2,
         modulo: 'despachos', traslado
@@ -1331,7 +1336,11 @@ function registrarLocal(modulo, registro) {
   guardarSesion();
 }
 
-/** Guarda un registro (o lista) en Drive y siempre en la sesion local. */
+/** Guarda un registro (o lista) en Drive y siempre en la sesion local.
+ *  Para T1 (despachos) usa CONFIG.folders.despachos = carpeta DESTINO (escritura)
+ *  Para T2 (logistica) usa CONFIG.folders.logistica
+ *  etc.
+ */
 async function persistir(modulo, registro, prefijoLimpieza) {
   const lista = Array.isArray(registro) ? registro : [registro];
   const folderId = CONFIG.folders[modulo] || val('folder_' + modulo);
@@ -1474,6 +1483,12 @@ function pintarConfig() {
       if (t2input) t2input.value = CONFIG.folders[m] || '';
     }
   });
+  // Mostrar carpeta de consulta (origen) fija en la UI
+  const consultaEl = $('folder_despachos_consulta');
+  if (consultaEl) consultaEl.value = CONFIG.folders.despachosConsulta || '';
+  const consultaEst = $('estado_folder_despachos_consulta');
+  if (consultaEst) consultaEst.innerHTML = '<span class="text-info">&#128218; Carpeta de lectura fija</span>';
+
   setVal('cfg_api_url', CONFIG.apiUrl);
   setVal('cfg_folder_backup', CONFIG.folders.backup || '');
   setVal('cfg_conductores', (CONFIG.conductores || []).join('\n'));
@@ -1517,16 +1532,22 @@ function pintarIdsCarpetas() {
   const cont = $('idsCarpetasInfo');
   if (!cont) return;
   const MODULOS_LABEL = {
-    despachos: 'Tarjeta 1', logistica: 'Tarjeta 2', recepcion: 'Tarjeta 3',
-    facturacion: 'Tarjeta 4', inventario: 'Tarjeta 5', backup: 'Respaldos'
+    despachosConsulta: 'T1 — Consulta (lectura)',
+    despachos:         'T1 — Destino (escritura)',
+    logistica:         'Tarjeta 2',
+    recepcion:         'Tarjeta 3',
+    facturacion:       'Tarjeta 4',
+    inventario:        'Tarjeta 5',
+    backup:            'Respaldos'
   };
   cont.innerHTML = Object.keys(CONFIG.folders).map(k => {
     const id = CONFIG.folders[k] || '';
     const ok = id ? 'text-success' : 'text-danger';
     const icon = id ? '&#10004;' : '&#10006;';
+    const extra = k === 'despachosConsulta' ? ' <span class="text-info">&#128218; fija</span>' : '';
     return '<div class="row g-1 mb-1">' +
       '<div class="col-md-3"><strong>' + esc(MODULOS_LABEL[k] || k) + '</strong></div>' +
-      '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span></div>' +
+      '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span>' + extra + '</div>' +
       '</div>';
   }).join('');
 }
