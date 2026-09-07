@@ -62,6 +62,209 @@ function fechaLocal() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
+   0B. MAPEO BODEGA → RUTA  (autocompletado dinamico)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var MAPPING_BODEGA_RUTA = {
+  'M07 UBATE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M102 IPIALES NARIÑO': 'ZONA NARIÑO',
+  'M103 SANDONA NARIÑO': 'ZONA NARIÑO',
+  'M104 LEIVA NARIÑO': 'ZONA NARIÑO',
+  'M111 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
+  'M112 BOLIVAR CAUCA': 'ZONA CAUCA SUR',
+  'M116 TIMBIQUI CAUCA': 'ZONA CAUCA SUR',
+  'M117 EL BORDO CAUCA': 'ZONA CAUCA SUR',
+  'M118 MERCADERES CAUCA': 'ZONA CAUCA SUR',
+  'M119 CORINTO CAUCA': 'ZONA CAUCA NORTE',
+  'M120 ROSAS CAUCA': 'ZONA CAUCA SUR',
+  'M123 MONIQUIRA BOYACA': 'ZONA BOYACA',
+  'M124 CARTAGENA DEL CHAIRA CAQUETA': 'ZONA CAQUETA',
+  'M125 SAN VICENTE DEL CAGUAN CAQUETA': 'ZONA CAQUETA',
+  'M126 PUERTO RICO CAQUETA': 'ZONA CAQUETA',
+  'M130 EL DONCELLO CAQUETA': 'ZONA CAQUETA',
+  'M133 SAN JOSE DE FRAGUA CAQUETA': 'ZONA CAQUETA',
+  'M137 BALBOA CAUCA': 'ZONA CAUCA SUR',
+  'M138 BUENOS AIRES CAUCA CAUCA': 'ZONA CAUCA NORTE',
+  'M139 BUENOS AIRES - TIMBA CAUCA': 'ZONA CAUCA NORTE',
+  'M140 CAJIBIO CAUCA': 'ZONA CAUCA CENTRO',
+  'M141 CAJIBIO ROSARIO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M143 INZA CAUCA': 'ZONA CAUCA CENTRO',
+  'M144 VEGA CAUCA': 'ZONA CAUCA SUR',
+  'M145 LA VEGA - SAN MIGUEL CAUCA': 'ZONA CAUCA SUR',
+  'M146 LOPEZ DE MICAY CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M147 MIRANDA CAUCA': 'ZONA CAUCA NORTE',
+  'M148 MORALES CAUCA': 'ZONA CAUCA CENTRO',
+  'M149 PADILLA CAUCA': 'ZONA CAUCA NORTE',
+  'M15 IBAGUE TOLIMA': 'ZONA TOLIMA',
+  'M151 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
+  'M152 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M153 PURACE COCONUCO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M154 PURACE SANTA LETICIA CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M156 SANTANDER QUILICHAO CAUCA CAUCA': 'ZONA CAUCA NORTE',
+  'M157 SUAREZ CAUCA': 'ZONA CAUCA NORTE',
+  'M158 SUCRE CAUCA': 'ZONA CAUCA SUR',
+  'M159 TIMBIO CAUCA': 'ZONA CAUCA CENTRO',
+  'M16 MEDELLIN ANTIOQUIA': 'ZONA EJE CAFETERO',
+  'M160 ALVARADO TOLIMA': 'ZONA TOLIMA',
+  'M161 AMBALEMA TOLIMA': 'ZONA TOLIMA',
+  'M162 ANZOATEGUI TOLIMA': 'ZONA TOLIMA',
+  'M163 ARMERO TOLIMA': 'ZONA TOLIMA',
+  'M164 ATACO TOLIMA': 'ZONA TOLIMA',
+  'M165 CAJAMARCA TOLIMA': 'ZONA TOLIMA',
+  'M166 CARMEN DE APICALA TOLIMA': 'ZONA TOLIMA',
+  'M167 CASABIANCA TOLIMA': 'ZONA TOLIMA',
+  'M168 CHAPARRAL TOLIMA': 'ZONA TOLIMA',
+  'M169 COYAIMA TOLIMA': 'ZONA TOLIMA',
+  'M17 ALVERNIA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M170 CUNDAY TOLIMA': 'ZONA TOLIMA',
+  'M171 GUAMO TOLIMA': 'ZONA TOLIMA',
+  'M172 HONDA TOLIMA': 'ZONA TOLIMA',
+  'M173 ICONONZO TOLIMA': 'ZONA TOLIMA',
+  'M174 LERIDA TOLIMA': 'ZONA TOLIMA',
+  'M175 LIBANO TOLIMA': 'ZONA TOLIMA',
+  'M176 MARIQUITA TOLIMA': 'ZONA TOLIMA',
+  'M177 PALOCABILDO TOLIMA': 'ZONA TOLIMA',
+  'M178 PRADO TOLIMA': 'ZONA TOLIMA',
+  'M179 PURIFICACION TOLIMA': 'ZONA TOLIMA',
+  'M18 BUENAVENTURA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M180 RIOBLANCO TOLIMA': 'ZONA TOLIMA',
+  'M181 ROVIRA TOLIMA': 'ZONA TOLIMA',
+  'M182 SAN ANTONIO TOLIMA TOLIMA': 'ZONA TOLIMA',
+  'M183 VILLAHERMOSA TOLIMA': 'ZONA TOLIMA',
+  'M184 EL TAMBO CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M185 SAN AGUSTIN HUILA HUILA': 'ZONA CAQUETA',
+  'M188 PAEZ CAUCA': 'ZONA CAUCA CENTRO',
+  'M189 CALDONO CAUCA': 'ZONA CAUCA NORTE',
+  'M190 ALMAGUER CAUCA': 'ZONA CAUCA SUR',
+  'M193 FLORENCIA CAUCA': 'ZONA CAUCA SUR',
+  'M194 GUACHENE CAUCA': 'ZONA CAUCA NORTE',
+  'M195 LA SIERRA CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M197 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
+  'M20 JAMUNDI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M209 LA VIRGINIA RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M21 CARTAGO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M210 GUATICA RISARALDA': 'ZONA EJE CAFETERO',
+  'M211 QUINCHIA RISARALDA': 'ZONA EJE CAFETERO',
+  'M212 PUEBLO RICO RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M213 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M214 PEREIRA CUBA RISARALDA': 'ZONA EJE CAFETERO',
+  'M108 DOSQUEBRADAS RISARALDA': 'ZONA EJE CAFETERO',
+  'M217 TULUA E.D VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'M218 SAN SEBASTIAN CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M219 POPAYAN PARQUE INDUSTRIAL CAUCA': 'ZONA CAUCA CENTRO',
+  'M223 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M225 BUGA VALLE DEL CAUCA': 'ZONA VALLE',
+  'SM226 ORTEGA TOLIMA': 'ZONA TOLIMA',
+  'M235 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M239 PARATEBUENO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M240 SAN JUAN DEL CESAR GUAJIRA': 'ZONA COSTA NORTE',
+  'M241 FONSECA GUAJIRA': 'ZONA COSTA NORTE',
+  'M244 TOCANCIPA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M249 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M250 MITU VAUPES': 'ZONA CUNDINAMARCA',
+  'M251 ANAPOIMA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M253 PURACE CAUCA': 'ZONA CAUCA CENTRO',
+  'SM256 MANAURE GUAJIRA': 'ZONA COSTA NORTE',
+  'M259 FUSAGASUGA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M266 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
+  'M267 PEREIRA GARZAS RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M268 URIBIA LA GUAJIRA GUAJIRA': 'ZONA COSTA NORTE',
+  'M27 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M270 SANTA ROSA CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M283 DUITAMA BOYACA': 'ZONA BOYACA',
+  'M286 CHIQUINQUIRA BOYACA': 'ZONA BOYACA',
+  'M29 FLORIDA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M291 LA HERRADURA CAUCA': 'ZONA CAUCA SUR',
+  'M292 GARAGOA BOYACA': 'ZONA BOYACA',
+  'SM299 MAICAO GUAJIRA': 'ZONA COSTA NORTE',
+  'SM300 BARRANCAS GUAJIRA': 'ZONA COSTA NORTE',
+  'SM301 HATONUEVO GUAJIRA': 'ZONA COSTA NORTE',
+  'SM302 VILLANUEVA GUAJIRA': 'ZONA COSTA NORTE',
+  'SM303 URUMITA GUAJIRA': 'ZONA COSTA NORTE',
+  'SM304 DIBULLA GUAJIRA': 'ZONA COSTA NORTE',
+  'M305 VILLETA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M306 GUADUAS CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M307 RICAURTE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M308 BOJACA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M309 TENJO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M31 SAN VICENTE TULUA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M310 VILLA DE LEYVA BOYACA': 'ZONA BOYACA',
+  'M311 GUICAN BOYACA': 'ZONA BOYACA',
+  'M313 MIRAFLORES MIRAFLORES BOYACA': 'ZONA BOYACA',
+  'M314 GUATEQUE GUATEQUE BOYACA': 'ZONA BOYACA',
+  'M32 PASTO NARIÑO': 'ZONA NARIÑO',
+  'M33 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M34 TUNJA BOYACA': 'ZONA BOYACA',
+  'M42 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
+  'M43 MANIZALES CALDAS': 'ZONA EJE CAFETERO',
+  'M46 ARMENIA QUINDIO': 'ZONA EJE CAFETERO',
+  'M65 SOATA BOYACA': 'ZONA BOYACA',
+  'M73 SOGAMOSO BOYACA': 'ZONA BOYACA',
+  'M75 RIOHACHA GUAJIRA': 'ZONA COSTA NORTE',
+  'M76 PUERTO BOYACA': 'ZONA BOYACA',
+  'M77 SILVIA CAUCA': 'ZONA CAUCA CENTRO',
+  'M78 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
+  'M79 CALOTO CAUCA': 'ZONA CAUCA NORTE',
+  'M82 SANTANDER QUILICHAO CAUCA': 'ZONA CAUCA NORTE',
+  'M84 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M85 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M87 YUMBO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M88 GUACARI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M89 GINEBRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M90 CERRITO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M91 CALIMA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M92 CANDELARIA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M93 PRADERA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M94 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M95 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M96 SANTANDER CAUCA': 'ZONA CAUCA NORTE',
+  'N31 MDF. SURTIDROGAS POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'BOD. N40 BOGOTA MEDISFARMA SURTIDROGAS CUNDINAMARCA': 'BODEGA VIRTUAL',
+  'M107 BELEN DE UMBRIA RISARALDA': 'ZONA EJE CAFETERO',
+  'M209 LA VIRGINIA RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M210 GUATICA RISARALDA': 'ZONA EJE CAFETERO',
+  'M231 BOGOTA UNICENTRO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M243 BOD. NUEVA EPS': 'BODEGA VIRTUAL',
+  'BOD. N11 MEDISFARMA SURTIDROGAS CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'B10 BODEGA BOGOTA': 'BODEGA VIRTUAL',
+  'M20 JAMUNDI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M314 GUATEQUE GUATEQUE BOYACA': 'ZONA BOYACA',
+  'M03 NEIVA HUILA': 'ZONA CAQUETA',
+  '02M FLORENCIA CAQUETA': 'ZONA CAQUETA',
+  'M217 TULUA E.D VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'CASOS JURIDICOS': 'BODEGA VIRTUAL',
+  'BOD. 80 FACTURACION': 'BODEGA VIRTUAL',
+  'CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL': 'BODEGA VALLE',
+  'B05 ALTO COSTO': 'BODEGA VALLE',
+  'ST28 BODEGA LOGISTICA': 'BODEGA VIRTUAL',
+  'URG01 MDF. URGENCIAS TULUA VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'B9 POPAYAN PARQUE INDUSTRIAL CAUCA': 'BODEGA',
+  'M100 TUMACO NARIÑO': 'ZONA NARIÑO',
+  'M245 BUCARAMANGA SANTANDER SANTANDER': 'ZONA CUNDINAMARCA',
+  'M257 PEREIRA PINARES RISARALDA RISARALDA': 'LOCAL Y ACTIVOS'
+};
+
+/** Autocompletar Ruta segun Bodega Destino */
+function autocompletarRuta(inputDestinoId, inputRutaId) {
+  var destEl = $(inputDestinoId);
+  var rutEl = $(inputRutaId);
+  if (!destEl || !rutEl) return;
+  var val = destEl.value.trim();
+  // Busqueda exacta primero, luego parcial
+  var ruta = MAPPING_BODEGA_RUTA[val] || '';
+  if (!ruta) {
+    // Busqueda parcial: coincide inicio del nombre (ej. 'M108' → 'M108 DOSQUEBRADAS...')
+    var claves = Object.keys(MAPPING_BODEGA_RUTA);
+    for (var i = 0; i < claves.length; i++) {
+      if (claves[i].indexOf(val) === 0 || val.indexOf(claves[i]) === 0) {
+        ruta = MAPPING_BODEGA_RUTA[claves[i]];
+        break;
+      }
+    }
+  }
+  rutEl.value = ruta;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
@@ -488,38 +691,44 @@ function t3CargarRotacion() {
     .catch(function () { t3RotacionHoy = null; });
 }
 
-/** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca segun la rotacion del dia */
+/** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca segun la rotacion del dia.
+ *  Si el traslado comienza con TB5, asigna el Grupo Especial Gris (todas hacen los 3 roles).
+ *  Si no, aplica la rotacion de trios (primer miembro disponible de cada rol en el trio del dia).
+ */
 function t3AplicarRotacion() {
   if (!t3RotacionHoy) return;
-  var alistar = t3RotacionHoy.filter(function (a) { return a.rol === 'Alistar'; });
-  var pitar = t3RotacionHoy.filter(function (a) { return a.rol === 'Pitar'; });
-  var empacar = t3RotacionHoy.filter(function (a) { return a.rol === 'Empacar'; });
-  if (alistar.length) {
-    var sel = $('t3_quien_alista');
-    if (sel) {
-      var opts = sel.options;
-      for (var i = 0; i < opts.length; i++) {
-        if (opts[i].textContent.trim() === alistar[0].nombre) { sel.selectedIndex = i; break; }
-      }
+  var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
+  var esTB5 = traslado.length >= 3 && traslado.substring(0, 3).toUpperCase() === 'TB5';
+
+  if (esTB5) {
+    // Grupo Especial Gris (TB5): todos hacen los 3 roles
+    var tb5 = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris (TB5)'; });
+    if (tb5.length) {
+      var alistarTB5 = tb5.filter(function (a) { return a.rol === 'Alistar'; });
+      var pitarTB5 = tb5.filter(function (a) { return a.rol === 'Pitar'; });
+      var empacarTB5 = tb5.filter(function (a) { return a.rol === 'Empacar'; });
+      seleccionarOpcion('t3_quien_alista', alistarTB5.length ? alistarTB5[0].nombre : '');
+      seleccionarOpcion('t3_quien_pita', pitarTB5.length ? pitarTB5[0].nombre : '');
+      seleccionarOpcion('t3_quien_empaca', empacarTB5.length ? empacarTB5[0].nombre : '');
     }
+  } else {
+    // Rotacion normal: trios ciclicos
+    var alistar = t3RotacionHoy.filter(function (a) { return a.rol === 'Alistar' && a.grupo !== 'Gris (TB5)'; });
+    var pitar = t3RotacionHoy.filter(function (a) { return a.rol === 'Pitar' && a.grupo !== 'Gris (TB5)'; });
+    var empacar = t3RotacionHoy.filter(function (a) { return a.rol === 'Empacar' && a.grupo !== 'Gris (TB5)'; });
+    if (alistar.length) { seleccionarOpcion('t3_quien_alista', alistar[0].nombre); }
+    if (pitar.length) { seleccionarOpcion('t3_quien_pita', pitar[0].nombre); }
+    if (empacar.length) { seleccionarOpcion('t3_quien_empaca', empacar[0].nombre); }
   }
-  if (pitar.length) {
-    var sel2 = $('t3_quien_pita');
-    if (sel2) {
-      var opts2 = sel2.options;
-      for (var j = 0; j < opts2.length; j++) {
-        if (opts2[j].textContent.trim() === pitar[0].nombre) { sel2.selectedIndex = j; break; }
-      }
-    }
-  }
-  if (empacar.length) {
-    var sel3 = $('t3_quien_empaca');
-    if (sel3) {
-      var opts3 = sel3.options;
-      for (var k = 0; k < opts3.length; k++) {
-        if (opts3[k].textContent.trim() === empacar[0].nombre) { sel3.selectedIndex = k; break; }
-      }
-    }
+}
+
+/** Utilidad: seleccionar opcion en un <select> por texto visible */
+function seleccionarOpcion(selectId, nombre) {
+  var sel = $(selectId);
+  if (!sel || !nombre) return;
+  var opts = sel.options;
+  for (var i = 0; i < opts.length; i++) {
+    if (opts[i].textContent.trim() === nombre) { sel.selectedIndex = i; break; }
   }
 }
 
@@ -549,7 +758,7 @@ function t3ValidarTraslado() {
           't3_fecha': ['Fecha', 'Marca temporal'],
           't3_bodega_origen': ['Bodega Origen', 'Bodega'],
           't3_destino': ['Bodega Destino', 'Destino'],
-          't3_zona': ['Zona'],
+          't3_ruta': ['Zona', 'Ruta'],
           't3_cantidad': ['Cantidad', 'Unidades'],
           't3_tipo': ['Tipo'],
           't3_urgente': ['Urgente'],
@@ -601,6 +810,9 @@ function t3ValidarTraslado() {
           msgMatch += ')</span>';
         }
 
+        // Autocompletar Ruta segun Bodega Destino
+        autocompletarRuta('t3_destino', 't3_ruta');
+
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
         showToast(msgMatch, 'success');
 
@@ -640,12 +852,27 @@ function t3Guardar() {
   if (!quienAlista || !quienPita || !quienEmpaca) { showToast('Seleccione Quien Alista, Quien Pita y Quien Empaca.', 'danger'); return; }
   if (!tipoCarga) { showToast('Seleccione el Tipo de Carga.', 'danger'); return; }
 
+  // --- Validacion Cantidad: entero mayor a 0 ---
+  var cantidadVal = $('t3_cantidad') ? $('t3_cantidad').value : '';
+  if (cantidadVal === '') { showToast('Ingrese la Cantidad.', 'danger'); return; }
+  var cantidadNum = Number(cantidadVal);
+  if (isNaN(cantidadNum) || cantidadNum !== Math.floor(cantidadNum) || cantidadNum < 1) {
+    showToast('Cantidad debe ser un numero entero mayor a 0.', 'danger'); return;
+  }
+
+  // --- Validacion Tipo y Urgente obligatorios ---
+  var tipoVal = $('t3_tipo') ? $('t3_tipo').value : '';
+  var urgenteVal = $('t3_urgente') ? $('t3_urgente').value : '';
+  if (!tipoVal) { showToast('Seleccione el Tipo.', 'danger'); return; }
+  if (!urgenteVal) { showToast('Seleccione si es Urgente (SI/NO).', 'danger'); return; }
+
   var registro = {
     'Documento Traslado': traslado,
     'Fecha': $('t3_fecha') ? $('t3_fecha').value : '',
     'Bodega Origen': $('t3_bodega_origen') ? $('t3_bodega_origen').value : '',
     'Bodega Destino': $('t3_destino') ? $('t3_destino').value : '',
-    'Zona': $('t3_zona') ? $('t3_zona').value : '',
+    'Ruta': $('t3_ruta') ? $('t3_ruta').value : '',
+    'Zona': $('t3_ruta') ? $('t3_ruta').value : '',
     'Cantidad': $('t3_cantidad') ? $('t3_cantidad').value : '',
     'Tipo': $('t3_tipo') ? $('t3_tipo').value : '',
     'Urgente': $('t3_urgente') ? $('t3_urgente').value : '',
@@ -710,14 +937,15 @@ function logBuscar() {
         /* Auto-fill Recepcion y Entrega */
         if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
         if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
-        if ($('log_zona')) $('log_zona').value = reg['Zona'] || '';
+        if ($('log_ruta')) $('log_ruta').value = reg['Zona'] || reg['Ruta'] || '';
+        autocompletarRuta('log_destino', 'log_ruta');
         if ($('log_urgente') && reg['Urgente']) $('log_urgente').value = reg['Urgente'];
         if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
 
         /* Fill Despacho read-only panel */
         if ($('log_d_bodega_origen')) $('log_d_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
         if ($('log_d_destino')) $('log_d_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
-        if ($('log_d_zona')) $('log_d_zona').value = reg['Zona'] || '';
+        if ($('log_d_ruta')) $('log_d_ruta').value = reg['Zona'] || reg['Ruta'] || '';
         if ($('log_d_cantidad')) $('log_d_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || '';
         if ($('log_d_urgente')) $('log_d_urgente').value = reg['Urgente'] || 'NO';
         if ($('log_d_resp_cendis')) $('log_d_resp_cendis').value = reg['RESPONSABLE DE ENTREGA CENDIS'] || reg['Responsable de Entrega'] || '';
@@ -767,7 +995,8 @@ function logGuardarRecepcion() {
     'Documento Traslado': traslado,
     'Bodega Origen': $('log_bodega_origen') ? $('log_bodega_origen').value : '',
     'Bodega Destino': $('log_destino') ? $('log_destino').value : '',
-    'Zona': $('log_zona') ? $('log_zona').value : '',
+    'Ruta': $('log_ruta') ? $('log_ruta').value : '',
+    'Zona': $('log_ruta') ? $('log_ruta').value : '',
     'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
     'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
     'Quien Recibio': quienRecibio,
