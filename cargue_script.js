@@ -28,12 +28,13 @@ const CONFIG_DEFAULT = {
   apiUrl: 'https://script.google.com/macros/s/AKfycbxyQBBPPZVYpuwCtKX1MTPVp4Pkaa6uJQc1xcbh3Tk68mrDFGRc5MQQ034CyOR2okYr/exec',
   modoLocal: false,
   folders: {
-    despachos:   '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
-    logistica:   '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
-    recepcion:   '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
-    facturacion: '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
-    inventario:  '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
-    backup:      '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
+    despachosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',  // Carpeta ORIGEN fija (solo lectura)
+    despachos:         '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',  // Carpeta DESTINO (escritura/guardado)
+    logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
+    recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
+    facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
+    inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
+    backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
   },
   conductores: ['CONDUCTOR 1 - CAMION', 'CONDUCTOR 2 - FURGON', 'MENSAJERO 1 - MOTO', 'MENSAJERO 2 - MOTO'],
   /* Perfiles de archivos por tarjeta: nombre del archivo y hoja en Drive */
@@ -59,11 +60,45 @@ let itemsInventario = [];
  * 1b. CREDENCIALES DE USUARIO (LOGIN)
  * ------------------------------------------------------------------------- */
 const CREDENCIALES = {
+  // Perfiles institucionales
   administrador:       'Medis2024Admin',
   lider:              'Medis2024Lider',
   auxiliar_entrega:   'Medis2024Aux',
   recibido_logistica: 'Medis2024Recib',
-  planillar_logistica:'Medis2024Plan'
+  planillar_logistica:'Medis2024Plan',
+  // Usuarios individuales (Auxiliares — ven T1, T2, T3)
+  yuri:    'Yuri2024',
+  julio:   'Julio2024',
+  hernan:  'Hernan2024',
+  diego:   'Diego2024',
+  brian:   'Brian2024',
+  karina:  'Karina2024',
+  jhony:   'Jhony2024',
+  natalia: 'Natalia2024',
+  manuel:  'Manuel2024',
+  claudia: 'Claudia2024',
+  daniela: 'Daniela2024',
+  juan:    'Juan2024',
+  luzl:    'LuzL2024',
+  liz:     'Liz2024',
+  ana:     'Ana2024',
+  leidy:   'Leidy2024',
+  bivian:  'Bivian2024',
+  vaneza:  'Vaneza2024',
+  brayan:  'Brayan2024',
+  nicoll:  'Nicoll2024',
+  luis:    'Luis2024',
+  estefania:'Estefania2024',
+  angela:  'Angela2024',
+  camila:  'Camila2024',
+  angie:   'Angie2024',
+  mayra:   'Mayra2024',
+  derly:   'Derly2024',
+  luisa:   'Luisa2024',
+  luzn:    'LuzN2024',
+  andrea:  'Andrea2024',
+  andres:  'Andres2024',
+  diegoe:  'DiegoE2024'
 };
 const LS_LOGIN = 'MF_LOGIN_OK';
 
@@ -78,17 +113,18 @@ function verificarLogin() {
     errDiv.textContent = 'Seleccione un perfil.'; return;
   }
   if (CREDENCIALES[usuario] && CREDENCIALES[usuario].toLowerCase() === clave.toLowerCase()) {
-    localStorage.setItem(LS_LOGIN, usuario);
-    PERFIL_ACTIVO = usuario;
-    localStorage.setItem(LS_PERFIL, usuario);
+    const perfilAsignado = obtenerPerfilDeUsuario(usuario);
+    localStorage.setItem(LS_LOGIN, perfilAsignado);
+    PERFIL_ACTIVO = perfilAsignado;
+    localStorage.setItem(LS_PERFIL, perfilAsignado);
     $('pantallaLogin').style.display = 'none';
     document.body.classList.remove('mf-login-activo');
     errDiv.style.display = 'none';
     // Sincronizar selector de perfil en navbar
     const sel = $('selPerfil');
-    if (sel) sel.value = usuario;
+    if (sel) sel.value = perfilAsignado;
     aplicarPerfil();
-    toast('Sesion iniciada como <strong>' + PERFILES[usuario].label + '</strong>', 'success');
+    toast('Sesion iniciada como <strong>' + PERFILES[perfilAsignado].label + '</strong>', 'success');
   } else {
     errDiv.style.display = 'block';
     errDiv.textContent = 'Usuario o contrasena incorrectos';
@@ -233,11 +269,47 @@ const PERFILES = {
     puedeImprimir: true,
     puedeBackup: false,
     puedeConfig: false
+  },
+  auxiliar: {
+    label: 'AUXILIAR',
+    icon: '&#128119;',
+    color: 'bg-secondary',
+    descripcion: 'Personal auxiliar. Puede visualizar y registrar en Tarjetas 1, 2 y 3.',
+    tarjetas: ['t1', 't2', 't3'],
+    puedeCrearTraslado: false,
+    exigePunto: false,
+    puntoExcepciones: [],
+    puedeAsignarResponsable: false,
+    camposObligatorios: {
+      t1: ['t1_traslado', 't1_quien_alista'],
+      t2: ['t2_traslado'],
+      t3: ['t3_traslado']
+    },
+    bloqueaAlRecibir: false,
+    soloLectura: ['t1_responsable_entrega', 't1_recomendado'],
+    puedeImprimir: false,
+    puedeBackup: false,
+    puedeConfig: false
   }
 };
 
 /** Perfil activo (persistido en localStorage). */
 let PERFIL_ACTIVO = localStorage.getItem(LS_PERFIL) || 'administrador';
+
+/** Usuarios individuales que usan el perfil AUXILIAR (ven T1, T2, T3). */
+const USUARIOS_AUXILIAR = [
+  'yuri','julio','hernan','diego','brian','karina','jhony','natalia',
+  'manuel','claudia','daniela','juan','luzl','liz','ana','leidy',
+  'bivian','vaneza','brayan','nicoll','luis','estefania','angela','camila',
+  'angie','mayra','derly','luisa','luzn','andrea','andres','diegoe'
+];
+
+/** Devuelve el perfil que corresponde a un usuario dado. */
+function obtenerPerfilDeUsuario(usuario) {
+  if (PERFILES[usuario]) return usuario;  // Perfil institucional directo
+  if (USUARIOS_AUXILIAR.includes(usuario)) return 'auxiliar';
+  return 'administrador';  // Fallback
+}
 
 /** Establece el perfil activo y refresca la interfaz. */
 function seleccionarPerfil(clave) {
@@ -294,8 +366,12 @@ function aplicarPerfil() {
   // Perfiles que pueden ver el boton Validar: todos los que tienen t1
   if (t1Validar) t1Validar.style.display = p.tarjetas.includes('t1') ? '' : 'none';
 
+  // Auxiliar (solo lectura): puede buscar/visualizar traslados pero NO guardar ni crear
+  if (PERFIL_ACTIVO === 'auxiliar') {
+    if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Buscar traslado'; }
+    if (t1Guardar) { t1Guardar.style.display = 'none'; }
   // Auxiliar Entrega: puede llamar traslado (validar) Y registrar entrega (guardar)
-  if (PERFIL_ACTIVO === 'auxiliar_entrega') {
+  } else if (PERFIL_ACTIVO === 'auxiliar_entrega') {
     if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Llamar traslado'; }
     if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Registrar entrega'; }
   } else if (p.puedeCrearTraslado) {
@@ -305,6 +381,18 @@ function aplicarPerfil() {
     // Otros perfiles con t1 (planillar_logistica): ven el boton pero con texto generico
     if (t1Validar) { t1Validar.style.display = ''; t1Validar.innerHTML = '&#128269; Llamar traslado'; }
     if (t1Guardar) { t1Guardar.style.display = ''; t1Guardar.innerHTML = '&#128190; Guardar en Drive'; }
+  }
+
+  // Auxiliar (solo lectura): ocultar botones de guardar e imprimir en T2/T3
+  if (PERFIL_ACTIVO === 'auxiliar') {
+    const t2Guardar = $('t2_btnGuardar');
+    const t2Imprimir = $('t2_btnImprimir');
+    const t3Guardar = $('t3_btnGuardar');
+    const t3Imprimir = $('t3_btnImprimir');
+    if (t2Guardar) t2Guardar.style.display = 'none';
+    if (t2Imprimir) t2Imprimir.style.display = 'none';
+    if (t3Guardar) t3Guardar.style.display = 'none';
+    if (t3Imprimir) t3Imprimir.style.display = 'none';
   }
 
   // Recibido Logistica: en T2 muestra solo boton de recibido
@@ -389,7 +477,8 @@ function cargarConfig() {
     cfg.apiUrl = CONFIG_DEFAULT.apiUrl;
     /* Forzar IDs de carpetas de Drive (valores oficiales) */
     cfg.folders = Object.assign({}, CONFIG_DEFAULT.folders, cfg.folders || {});
-    cfg.folders.despachos = CONFIG_DEFAULT.folders.despachos;   // 1u30YFhT...  (carpeta DESPACHOS)
+    cfg.folders.despachosConsulta = CONFIG_DEFAULT.folders.despachosConsulta; // ORIGEN fijo (lectura)
+    // despachos = carpeta DESTINO (escritura) — editable por el usuario
     cfg.folders.logistica = CONFIG_DEFAULT.folders.logistica;   // 1_e8ycbz...  (carpeta LOGISTICA)
     cfg.folders.recepcion = CONFIG_DEFAULT.folders.recepcion;
     cfg.folders.facturacion = CONFIG_DEFAULT.folders.facturacion;
@@ -794,6 +883,8 @@ async function validarFolder(modulo) {
   const id = val('folder_' + modulo);
   const est = $('estado_folder_' + modulo);
   if (!id) { est.innerHTML = '<span class="text-danger">Ingrese el ID de la carpeta.</span>'; return; }
+  // Si es "despachos", el usuario está configurando la carpeta DESTINO (escritura)
+  // La carpeta ORIGEN (consulta/lectura) siempre es despachosConsulta y NO se toca
   CONFIG.folders[modulo] = id;
   guardarConfig();
 
@@ -835,27 +926,27 @@ async function validarFolder(modulo) {
  * ------------------------------------------------------------------------- */
 const CAMPOS_OBLIGATORIOS_DRIVE = ['bodegaOrigen', 'destino', 'zona', 'cantidad', 'tipo', 'urgente'];
 
-/** Busca el traslado en Drive (o en la sesion local) y valida su integridad. */
+/** Busca el traslado en Drive (carpeta ORIGEN fija despachosConsulta) o en la sesion local, y valida su integridad. */
 async function t1ValidarTraslado() {
   const traslado = val('t1_traslado');
   const est = $('t1_estadoTraslado');
   $('t1_btnGuardar').disabled = true;
   if (!traslado) { est.innerHTML = '<span class="text-danger">Indique el numero de traslado.</span>'; return; }
 
-  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta: ' + (CONFIG.folders.despachos || '???').substring(0,8) + '...)</small>...';
+  est.innerHTML = 'Consultando Google Drive <small class="text-muted">(carpeta origen: ' + (CONFIG.folders.despachosConsulta || '???').substring(0,8) + '...)</small>...';
   let registro = null;
   try {
     if (CONFIG.modoLocal || !CONFIG.apiUrl) {
       registro = buscarTrasladoLocal('despachos', traslado) || buscarTrasladoLocal('logistica', traslado);
     } else {
       const r = await api('buscarTraslado', {
-        folderId: CONFIG.folders.despachos || val('folder_despachos'),
+        folderId: CONFIG.folders.despachosConsulta,
         modulo: 'despachos', traslado
       });
       registro = r.encontrado ? r.registro : null;
     }
   } catch (e) {
-    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta: ${CONFIG.folders.despachos || '(vacia)'}</small>`;
+    est.innerHTML = `<span class="text-danger">Error de conexion: ${e.message}</span><br><small class="text-muted">Web App: ${CONFIG.apiUrl ? CONFIG.apiUrl.substring(0,50) + '...' : 'NO CONFIGURADA'} | Carpeta origen: ${CONFIG.folders.despachosConsulta || '(vacia)'}</small>`;
     return;
   }
 
@@ -971,6 +1062,7 @@ function buscarTrasladoLocal(modulo, traslado) {
 
 /** Guarda la planilla de entrega de despachos. */
 async function t1Guardar() {
+  if (PERFIL_ACTIVO === 'auxiliar') { toast('Su perfil solo permite visualizar, no guardar.', 'warning'); return; }
   const p = PERFILES[PERFIL_ACTIVO];
   // Campos obligatorios segun perfil
   const obligT1 = (p.camposObligatorios && p.camposObligatorios.t1) ||
@@ -1023,7 +1115,8 @@ async function t2Buscar() {
     if (CONFIG.modoLocal || !CONFIG.apiUrl) {
       registro = buscarTrasladoLocal('despachos', traslado);
     } else {
-      const folderT2 = val('folder_despachos_t2') || CONFIG.folders.despachos || val('folder_despachos');
+      // T2 lee de la carpeta DESTINO (donde T1 guardó)
+      const folderT2 = val('folder_despachos_t2') || CONFIG.folders.despachos;
       const r = await api('buscarTraslado', {
         folderId: folderT2,
         modulo: 'despachos', traslado
@@ -1063,6 +1156,7 @@ async function t2Buscar() {
 
 /** Guardar de logistica: sella automaticamente FECHA ENTREGA LOGISTICA. */
 async function t2Guardar() {
+  if (PERFIL_ACTIVO === 'auxiliar') { toast('Su perfil solo permite visualizar, no guardar.', 'warning'); return; }
   const p = PERFILES[PERFIL_ACTIVO];
   const obligT2 = (p.camposObligatorios && p.camposObligatorios.t2) ||
     ['t2_traslado', 't2_fecha_envio', 't2_conductor', 't2_placa', 't2_planilla'];
@@ -1331,7 +1425,11 @@ function registrarLocal(modulo, registro) {
   guardarSesion();
 }
 
-/** Guarda un registro (o lista) en Drive y siempre en la sesion local. */
+/** Guarda un registro (o lista) en Drive y siempre en la sesion local.
+ *  Para T1 (despachos) usa CONFIG.folders.despachos = carpeta DESTINO (escritura)
+ *  Para T2 (logistica) usa CONFIG.folders.logistica
+ *  etc.
+ */
 async function persistir(modulo, registro, prefijoLimpieza) {
   const lista = Array.isArray(registro) ? registro : [registro];
   const folderId = CONFIG.folders[modulo] || val('folder_' + modulo);
@@ -1474,6 +1572,12 @@ function pintarConfig() {
       if (t2input) t2input.value = CONFIG.folders[m] || '';
     }
   });
+  // Mostrar carpeta de consulta (origen) fija en la UI
+  const consultaEl = $('folder_despachos_consulta');
+  if (consultaEl) consultaEl.value = CONFIG.folders.despachosConsulta || '';
+  const consultaEst = $('estado_folder_despachos_consulta');
+  if (consultaEst) consultaEst.innerHTML = '<span class="text-info">&#128218; Carpeta de lectura fija</span>';
+
   setVal('cfg_api_url', CONFIG.apiUrl);
   setVal('cfg_folder_backup', CONFIG.folders.backup || '');
   setVal('cfg_conductores', (CONFIG.conductores || []).join('\n'));
@@ -1517,16 +1621,22 @@ function pintarIdsCarpetas() {
   const cont = $('idsCarpetasInfo');
   if (!cont) return;
   const MODULOS_LABEL = {
-    despachos: 'Tarjeta 1', logistica: 'Tarjeta 2', recepcion: 'Tarjeta 3',
-    facturacion: 'Tarjeta 4', inventario: 'Tarjeta 5', backup: 'Respaldos'
+    despachosConsulta: 'T1 — Consulta (lectura)',
+    despachos:         'T1 — Destino (escritura)',
+    logistica:         'Tarjeta 2',
+    recepcion:         'Tarjeta 3',
+    facturacion:       'Tarjeta 4',
+    inventario:        'Tarjeta 5',
+    backup:            'Respaldos'
   };
   cont.innerHTML = Object.keys(CONFIG.folders).map(k => {
     const id = CONFIG.folders[k] || '';
     const ok = id ? 'text-success' : 'text-danger';
     const icon = id ? '&#10004;' : '&#10006;';
+    const extra = k === 'despachosConsulta' ? ' <span class="text-info">&#128218; fija</span>' : '';
     return '<div class="row g-1 mb-1">' +
       '<div class="col-md-3"><strong>' + esc(MODULOS_LABEL[k] || k) + '</strong></div>' +
-      '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span></div>' +
+      '<div class="col-md-9"><span class="' + ok + '">' + icon + ' ' + esc(id || '(sin configurar)') + '</span>' + extra + '</div>' +
       '</div>';
   }).join('');
 }
@@ -1597,9 +1707,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----- SISTEMA DE LOGIN -----
   // Si ya inicio sesion, ocultar el overlay; si no, mostrarlo y bloquear scroll
   const loginPrevio = localStorage.getItem(LS_LOGIN);
-  if (loginPrevio && PERFILES[loginPrevio]) {
-    PERFIL_ACTIVO = loginPrevio;
-    localStorage.setItem(LS_PERFIL, loginPrevio);
+  if (loginPrevio) {
+    const perfilPrevio = PERFILES[loginPrevio] ? loginPrevio : obtenerPerfilDeUsuario(loginPrevio);
+    PERFIL_ACTIVO = perfilPrevio;
+    localStorage.setItem(LS_PERFIL, perfilPrevio);
     $('pantallaLogin').style.display = 'none';
     document.body.classList.remove('mf-login-activo');
   } else {
@@ -1697,6 +1808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toast('Item agregado a la lista de recepcion.', 'primary');
   });
   $('t3_btnGuardar').addEventListener('click', async () => {
+    if (PERFIL_ACTIVO === 'auxiliar') { toast('Su perfil solo permite visualizar, no guardar.', 'warning'); return; }
     let lista = itemsRecepcion.slice();
     if (!lista.length) {
       const r = t3ConstruirRegistro();
