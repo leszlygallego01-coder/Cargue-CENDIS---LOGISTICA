@@ -21,11 +21,9 @@ body {
   padding: 0;
 }
 
-/* Cuando el login esta activo, ocultar el contenido y bloquear scroll */
+/* Cuando el login esta activo, bloquear scroll del contenido detras */
 body.mf-login-activo {
   overflow: hidden !important;
-  position: fixed;
-  width: 100%;
 }
 
 /* ---------- LOGIN MODAL ---------- */
@@ -42,7 +40,7 @@ body.mf-login-activo {
   width: auto; height: auto;
   /* Evitar scroll detras del login */
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+}
 }
 .mf-login-overlay.oculto { display: none !important; }
 
@@ -137,6 +135,8 @@ body.mf-login-activo {
   -webkit-touch-callout: none;
   user-select: none;
   touch-action: manipulation;
+  position: relative;
+  z-index: 100000;
 }
 .mf-login-btn:hover { opacity: .9; }
 .mf-login-btn:active { transform: scale(.97); opacity: .85; }
