@@ -25,7 +25,7 @@ const LS_DATA = 'MF_DATOS_SESION';
 const LS_PERFIL = 'MF_PERFIL_ACTIVO';
 
 const CONFIG_DEFAULT = {
-  apiUrl: 'https://script.google.com/macros/s/AKfycbzkMtCzR_HyVXE7YXiKuS8oHMIya0tXYhqTtU6dH_cX5FHecd4nMFs-FeZ1Oo338J4d/exec',
+  apiUrl: 'https://script.google.com/macros/s/AKfycbxyQBBPPZVYpuwCtKX1MTPVp4Pkaa6uJQc1xcbh3Tk68mrDFGRc5MQQ034CyOR2okYr/exec',
   modoLocal: false,
   folders: {
     despachos:   '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
@@ -459,10 +459,19 @@ function construirMapaCabeceras(headers) {
 
 /* Alias oficiales de cada campo: tolera variaciones de nombre en las hojas. */
 const ALIAS = {
-  traslado:      ['Documento TRASLADO', 'TRASLADO', 'Numero Traslado', 'Documento de Traslado'],
+  traslado:      ['Documento TRASLADO', 'TRASLADO', 'Numero Traslado', 'Documento de Traslado', 'Traslado', 'TRASLADO'],
+  fecha:         ['Fecha', 'FECHA', 'Fecha Traslado', 'Fecha del Traslado'],
   bodegaOrigen:  ['Bodega Origen', 'BODEGA ORIGEN', 'BODEGA ORIGEN DEL TRASLADO', 'Bodega Origen Emisora', 'Bodega Origen Extrema'],
-  destino:       ['DESTINO', 'Destino', 'BODEGA DESTINO DEL TRASLADO', 'Bodega Destino'],
-  cantidad:      ['Cantidad', 'CANTIDAD', 'Cantidad Enviada'],
+  destino:       ['DESTINO', 'Destino', 'BODEGA DESTINO DEL TRASLADO', 'Bodega Destino', 'Bodega Destino'],
+  recibido:      ['Recibido', 'RECIBIDO', 'Recibido Por'],
+  codigo:        ['Codigo', 'CODIGO', 'Codigo Producto', 'Cod'],
+  descripcion:   ['Descripcion', 'DESCRIPCION', 'Descripcion Producto', 'Producto'],
+  unidades:      ['Unidades', 'UNIDADES', 'Cantidad', 'CANTIDAD', 'Cantidad Enviada'],
+  usuario:       ['Usuario', 'USUARIO', 'Usuario Registro'],
+  lote:          ['Lote', 'LOTE', 'Lote Producto'],
+  fechaVencLote: ['Fecha Vencimiento Lote', 'FECHA VENCIMIENTO LOTE', 'Fecha Vencimiento', 'Vencimiento'],
+  observaciones: ['Observaciones', 'OBSERVACIONES', 'Observacion'],
+  cantidad:      ['Cantidad', 'CANTIDAD', 'Cantidad Enviada', 'Unidades', 'UNIDADES'],
   tipo:          ['TIPO', 'Tipo'],
   urgente:       ['Urgente', 'URGENTE', 'PRIORIDAD'],
   zona:          ['ZONA', 'Zona'],
@@ -476,6 +485,229 @@ const ALIAS = {
   planilla:      ['PLANILLA', 'Planilla'],
   seguimiento:   ['SEGUIMIENTO', 'Estado Seguimiento']
 };
+
+/* ==========================================================================
+ * MAPA DE BODEGAS → ZONAS (desde archivo BODEGAS Y ZONAS.xlsx)
+ * Permite auto-calcular la zona cuando no viene en los datos de Drive
+ * pero se conoce la bodega destino.
+ * ========================================================================== */
+const BODEGA_ZONA_MAP = {
+  'M07 UBATE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M102 IPIALES NARIÑO': 'ZONA NARIÑO',
+  'M103 SANDONA NARIÑO': 'ZONA NARIÑO',
+  'M104 LEIVA NARIÑO': 'ZONA NARIÑO',
+  'M111 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
+  'M112 BOLIVAR CAUCA': 'ZONA CAUCA SUR',
+  'M116 TIMBIQUI CAUCA': 'ZONA CAUCA SUR',
+  'M117 EL BORDO CAUCA': 'ZONA CAUCA SUR',
+  'M118 MERCADERES CAUCA': 'ZONA CAUCA SUR',
+  'M119 CORINTO CAUCA': 'ZONA CAUCA NORTE',
+  'M120 ROSAS CAUCA': 'ZONA CAUCA SUR',
+  'M123 MONIQUIRA BOYACA': 'ZONA BOYACA',
+  'M124 CARTAGENA DEL CHAIRA CAQUETA': 'ZONA CAQUETA',
+  'M125 SAN VICENTE DEL CAGUAN CAQUETA': 'ZONA CAQUETA',
+  'M126 PUERTO RICO CAQUETA': 'ZONA CAQUETA',
+  'M130 EL DONCELLO CAQUETA': 'ZONA CAQUETA',
+  'M133 SAN JOSE DE FRAGUA CAQUETA': 'ZONA CAQUETA',
+  'M137 BALBOA CAUCA': 'ZONA CAUCA SUR',
+  'M138 BUENOS AIRES CAUCA CAUCA': 'ZONA CAUCA NORTE',
+  'M139 BUENOS AIRES - TIMBA CAUCA': 'ZONA CAUCA NORTE',
+  'M140 CAJIBIO CAUCA': 'ZONA CAUCA CENTRO',
+  'M141 CAJIBIO ROSARIO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M143 INZA CAUCA': 'ZONA CAUCA CENTRO',
+  'M144 VEGA CAUCA': 'ZONA CAUCA SUR',
+  'M145 LA VEGA - SAN MIGUEL CAUCA': 'ZONA CAUCA SUR',
+  'M146 LOPEZ DE MICAY CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M147 MIRANDA CAUCA': 'ZONA CAUCA NORTE',
+  'M148 MORALES CAUCA': 'ZONA CAUCA CENTRO',
+  'M149 PADILLA CAUCA': 'ZONA CAUCA NORTE',
+  'M15 IBAGUE TOLIMA': 'ZONA TOLIMA',
+  'M151 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
+  'M152 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M153 PURACE COCONUCO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M154 PURACE SANTA LETICIA CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M156 SANTANDER QUILICHAO CAUCA CAUCA': 'ZONA CAUCA NORTE',
+  'M157 SUAREZ CAUCA': 'ZONA CAUCA NORTE',
+  'M158 SUCRE CAUCA': 'ZONA CAUCA SUR',
+  'M159 TIMBIO CAUCA': 'ZONA CAUCA CENTRO',
+  'M16 MEDELLIN ANTIOQUIA': 'ZONA EJE CAFETERO',
+  'M160 ALVARADO TOLIMA': 'ZONA TOLIMA',
+  'M161 AMBALEMA TOLIMA': 'ZONA TOLIMA',
+  'M162 ANZOATEGUI TOLIMA': 'ZONA TOLIMA',
+  'M163 ARMERO TOLIMA': 'ZONA TOLIMA',
+  'M164 ATACO TOLIMA': 'ZONA TOLIMA',
+  'M165 CAJAMARCA TOLIMA': 'ZONA TOLIMA',
+  'M166 CARMEN DE APICALA TOLIMA': 'ZONA TOLIMA',
+  'M167 CASABIANCA TOLIMA': 'ZONA TOLIMA',
+  'M168 CHAPARRAL TOLIMA': 'ZONA TOLIMA',
+  'M169 COYAIMA TOLIMA': 'ZONA TOLIMA',
+  'M17 ALVERNIA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M170 CUNDAY TOLIMA': 'ZONA TOLIMA',
+  'M171 GUAMO TOLIMA': 'ZONA TOLIMA',
+  'M172 HONDA TOLIMA': 'ZONA TOLIMA',
+  'M173 ICONONZO TOLIMA': 'ZONA TOLIMA',
+  'M174 LERIDA TOLIMA': 'ZONA TOLIMA',
+  'M175 LIBANO TOLIMA': 'ZONA TOLIMA',
+  'M176 MARIQUITA TOLIMA': 'ZONA TOLIMA',
+  'M177 PALOCABILDO TOLIMA': 'ZONA TOLIMA',
+  'M178 PRADO TOLIMA': 'ZONA TOLIMA',
+  'M179 PURIFICACION TOLIMA': 'ZONA TOLIMA',
+  'M180 RIOBLANCO TOLIMA': 'ZONA TOLIMA',
+  'M181 ROVIRA TOLIMA': 'ZONA TOLIMA',
+  'M182 SAN ANTONIO TOLIMA TOLIMA': 'ZONA TOLIMA',
+  'M183 VILLAHERMOSA TOLIMA': 'ZONA TOLIMA',
+  'M184 EL TAMBO CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M188 PAEZ CAUCA': 'ZONA CAUCA CENTRO',
+  'M189 CALDONO CAUCA': 'ZONA CAUCA NORTE',
+  'M190 ALMAGUER CAUCA': 'ZONA CAUCA SUR',
+  'M193 FLORENCIA CAUCA': 'ZONA CAUCA SUR',
+  'M194 GUACHENE CAUCA': 'ZONA CAUCA NORTE',
+  'M195 LA SIERRA CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M197 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
+  'M21 CARTAGO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M211 QUINCHIA RISARALDA': 'ZONA EJE CAFETERO',
+  'M212 PUEBLO RICO RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M214 PEREIRA CUBA RISARALDA': 'ZONA EJE CAFETERO',
+  'M108 DOSQUEBRADAS RISARALDA': 'ZONA EJE CAFETERO',
+  'M218 SAN SEBASTIAN CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M223 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M225 BUGA VALLE DEL CAUCA': 'ZONA VALLE',
+  'SM226 ORTEGA TOLIMA': 'ZONA TOLIMA',
+  'M235 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M239 PARATEBUENO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M240 SAN JUAN DEL CESAR GUAJIRA': 'ZONA COSTA NORTE',
+  'M241 FONSECA GUAJIRA': 'ZONA COSTA NORTE',
+  'M244 TOCANCIPA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M250 MITU VAUPES': 'ZONA CUNDINAMARCA',
+  'M251 ANAPOIMA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M253 PURACE CAUCA': 'ZONA CAUCA CENTRO',
+  'SM256 MANAURE GUAJIRA': 'ZONA COSTA NORTE',
+  'M259 FUSAGASUGA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M266 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
+  'M267 PEREIRA GARZAS RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M268 URIBIA LA GUAJIRA GUAJIRA': 'ZONA COSTA NORTE',
+  'M27 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M270 SANTA ROSA CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M283 DUITAMA BOYACA': 'ZONA BOYACA',
+  'M286 CHIQUINQUIRÁ BOYACA': 'ZONA BOYACA',
+  'M29 FLORIDA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M291 LA HERRADURA CAUCA': 'ZONA CAUCA SUR',
+  'M292 GARAGOA BOYACA': 'ZONA BOYACA',
+  'SM299 MAICAO GUAJIRA': 'ZONA COSTA NORTE',
+  'SM300 BARRANCAS GUAJIRA': 'ZONA COSTA NORTE',
+  'SM301 HATONUEVO GUAJIRA': 'ZONA COSTA NORTE',
+  'SM302 VILLANUEVA GUAJIRA': 'ZONA COSTA NORTE',
+  'SM303 URUMITA GUAJIRA': 'ZONA COSTA NORTE',
+  'SM304 DIBULLA GUAJIRA': 'ZONA COSTA NORTE',
+  'M305 VILLETA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M306 GUADUAS CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M307 RICAURTE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M308 BOJACA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M309 TENJO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M31 SAN VICENTE TULUA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M310 VILLA DE LEYVA BOYACA': 'ZONA BOYACA',
+  'M311 GUICAN BOYACA': 'ZONA BOYACA',
+  'M313 MIRAFLORES MIRAFLORES BOYACA': 'ZONA BOYACA',
+  'M32 PASTO NARIÑO': 'ZONA NARIÑO',
+  'M33 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M34 TUNJA BOYACA': 'ZONA BOYACA',
+  'M42 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
+  'M43 MANIZALES CALDAS': 'ZONA EJE CAFETERO',
+  'M46 ARMENIA QUINDIO': 'ZONA EJE CAFETERO',
+  'M65 SOATA BOYACA': 'ZONA BOYACA',
+  'M73 SOGAMOSO BOYACA': 'ZONA BOYACA',
+  'M75 RIOHACHA GUAJIRA': 'ZONA COSTA NORTE',
+  'M76 PUERTO BOYACA': 'ZONA BOYACA',
+  'M77 SILVIA CAUCA': 'ZONA CAUCA CENTRO',
+  'M78 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
+  'M79 CALOTO CAUCA': 'ZONA CAUCA NORTE',
+  'M82 SANTANDER QUILICHAO CAUCA': 'ZONA CAUCA NORTE',
+  'M84 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M87 YUMBO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M88 GUACARI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M89 GINEBRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M90 CERRITO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M92 CANDELARIA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M93 PRADERA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M94 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M95 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M96 SANTANDER CAUCA': 'ZONA CAUCA NORTE',
+  'N31 MDF. SURTIDROGAS POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'BOD. N40 BOGOTÁ MEDISFARMA SURTIDROGAS CUNDINAMARCA': 'BODEGA VIRTUAL',
+  'M107 BELEN DE UMBRIA RISARALDA': 'ZONA EJE CAFETERO',
+  'M209 LA VIRGINIA RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M210 GUATICA RISARALDA': 'ZONA EJE CAFETERO',
+  'M231 BOGOTA UNICENTRO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M243 BOD. NUEVA EPS': 'BODEGA VIRTUAL',
+  'BOD. N11 MEDISFARMA SURTIDROGAS CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'B10 BODEGA BOGOTA': 'BODEGA VIRTUAL',
+  'M20 JAMUNDI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M314 GUATEQUE GUATEQUE BOYACA': 'ZONA BOYACA',
+  'M03 NEIVA HUILA': 'ZONA CAQUETA',
+  '35 YOPAL CASANARE': 'CERRADA',
+  'M217 TULUA E.D VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'M220 POPAYAN CAUCA': 'CERRADA',
+  'M24 POPAYAN CAUCA': 'CERRADA',
+  'CASOS JURIDICOS': 'BODEGA VIRTUAL',
+  'BOD. 80 FACTURACION': 'BODEGA VIRTUAL',
+  'M213 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL': 'BODEGA VALLE',
+  'B05 ALTO COSTO': 'BODEGA VALLE',
+  'ST28 BODEGA LOGISTICA': 'BODEGA VIRTUAL',
+  'M155 ROSAS CAUCA (CERRADA)': 'CERRADA',
+  'ST07 MDF. POPAYAN SANTA RITA LA VEGA CAUCA': 'CERRADA',
+  'M61 PASTO NARIÑO': 'CERRADA',
+  'M18 BUENAVENTURA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M185 SAN AGUSTIN HUILA HUILA': 'ZONA CAQUETA',
+  'M249 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M91 CALIMA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M337 CARTAGENA DE INDIAS BOLIVAR': 'CERRADA',
+  'M85 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M219 POPAYAN PARQUE INDUSTRIAL CAUCA': 'ZONA CAUCA CENTRO',
+  'M257 PEREIRA PINARES RISARALDA RISARALDA': 'LOCAL Y ACTIVOS',
+  'M260 LA MESA CUNDINAMARCA': 'CERRADA',
+  '02M FLORENCIA CAQUETA': 'ZONA CAQUETA',
+  'B9 POPAYAN PARQUE INDUSTRIAL CAUCA': 'BODEGA',
+  'M100 TUMACO NARIÑO': 'ZONA NARIÑO',
+  'M245 BUCARAMANGA SANTANDER SANTANDER': 'ZONA CUNDINAMARCA',
+  'URG01 MDF. URGENCIAS TULUA VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  /* Entradas adicionales heredadas (compatibilidad con datos historicos) */
+  'B1 BODEGA PRINCIPAL POPAYAN CAUCA': 'BODEGA',
+  'B2 BODEGA PRINCIPAL CALI VALLE': 'BODEGA VALLE',
+  'B3 BODEGA PRINCIPAL PALMIRA VALLE': 'BODEGA VALLE',
+  'B4 BODEGA PRINCIPAL TULUA VALLE': 'BODEGA VALLE',
+  'B5 BODEGA PRINCIPAL BUGA VALLE': 'BODEGA VALLE',
+  'B6 BODEGA PRINCIPAL CARTAGO VALLE': 'BODEGA VALLE',
+  'B7 BODEGA PRINCIPAL IBAGUE TOLIMA': 'BODEGA',
+  'B8 BODEGA PRINCIPAL MANIZALES CALDAS': 'BODEGA',
+  '01M VIRTUAL NACIONAL': 'BODEGA VIRTUAL'
+};
+
+/** Lista de todas las zonas unicas para selects/filtros. */
+const ZONAS_LISTA = [
+  'ZONA CUNDINAMARCA', 'ZONA NARIÑO', 'ZONA CAUCA NORTE', 'ZONA CAUCA SUR',
+  'ZONA CAUCA CENTRO', 'ZONA BOYACA', 'ZONA CAQUETA', 'ZONA VALLE',
+  'ZONA EJE CAFETERO', 'ZONA TOLIMA', 'ZONA COSTA NORTE', 'BODEGA',
+  'BODEGA VALLE', 'BODEGA VIRTUAL', 'CERRADA', 'LOCAL Y ACTIVOS'
+];
+
+/** Busca la zona correspondiente a una bodega por nombre parcial o exacto. */
+function zonaDeBodega(nombreBodega) {
+  if (!nombreBodega) return '';
+  const nb = String(nombreBodega).trim();
+  // Busqueda exacta
+  if (BODEGA_ZONA_MAP[nb]) return BODEGA_ZONA_MAP[nb];
+  // Busqueda parcial (normalizada)
+  const nbNorm = normalizarCabecera(nb);
+  for (const [bodega, zona] of Object.entries(BODEGA_ZONA_MAP)) {
+    if (normalizarCabecera(bodega) === nbNorm) return zona;
+  }
+  // Busqueda por inicio del codigo (e.g. "M111" o "B2")
+  for (const [bodega, zona] of Object.entries(BODEGA_ZONA_MAP)) {
+    if (bodega.toUpperCase().startsWith(nb.substring(0, 4).toUpperCase())) return zona;
+  }
+  return '';
+}
 
 /* ---------------------------------------------------------------------------
  * 3. CLIENTE API (Google Apps Script Web App)
@@ -593,7 +825,7 @@ async function validarFolder(modulo) {
 /* ---------------------------------------------------------------------------
  * 6. TARJETA 1 | PLANILLA ENTREGA DESPACHOS (validacion estricta por perfil)
  * ------------------------------------------------------------------------- */
-const CAMPOS_OBLIGATORIOS_DRIVE = ['bodegaOrigen', 'destino', 'cantidad', 'tipo', 'zona'];
+const CAMPOS_OBLIGATORIOS_DRIVE = ['bodegaOrigen', 'destino', 'zona', 'cantidad', 'tipo', 'urgente'];
 
 /** Busca el traslado en Drive (o en la sesion local) y valida su integridad. */
 async function t1ValidarTraslado() {
@@ -627,26 +859,68 @@ async function t1ValidarTraslado() {
 
   // Autocompletado por NOMBRE de cabecera (no por posicion).
   const datos = {
+    traslado:     obtenerValorPorNombreColumna(registro, ALIAS.traslado),
+    fecha:        obtenerValorPorNombreColumna(registro, ALIAS.fecha),
     bodegaOrigen: obtenerValorPorNombreColumna(registro, ALIAS.bodegaOrigen),
     destino:      obtenerValorPorNombreColumna(registro, ALIAS.destino),
+    recibido:     obtenerValorPorNombreColumna(registro, ALIAS.recibido),
+    codigo:       obtenerValorPorNombreColumna(registro, ALIAS.codigo),
+    descripcion:  obtenerValorPorNombreColumna(registro, ALIAS.descripcion),
+    unidades:     obtenerValorPorNombreColumna(registro, ALIAS.unidades),
+    usuario:      obtenerValorPorNombreColumna(registro, ALIAS.usuario),
+    lote:         obtenerValorPorNombreColumna(registro, ALIAS.lote),
+    fechaVenc:    obtenerValorPorNombreColumna(registro, ALIAS.fechaVencLote),
+    observaciones:obtenerValorPorNombreColumna(registro, ALIAS.observaciones),
     cantidad:     obtenerValorPorNombreColumna(registro, ALIAS.cantidad),
     tipo:         obtenerValorPorNombreColumna(registro, ALIAS.tipo),
     urgente:      obtenerValorPorNombreColumna(registro, ALIAS.urgente) || 'NO',
     zona:         obtenerValorPorNombreColumna(registro, ALIAS.zona)
   };
+
+  // Auto-calcular zona si no viene en Drive: usar Bodega Destino como clave
+  if (!String(datos.zona).trim() && String(datos.destino).trim()) {
+    datos.zona = zonaDeBodega(datos.destino);
+    if (datos.zona) {
+      toast('Zona auto-calculada desde Bodega Destino: <b>' + datos.zona + '</b>', 'info');
+    }
+  }
+  // Si aun no hay zona, intentar con Bodega Origen
+  if (!String(datos.zona).trim() && String(datos.bodegaOrigen).trim()) {
+    datos.zona = zonaDeBodega(datos.bodegaOrigen);
+    if (datos.zona) {
+      toast('Zona inferida desde Bodega Origen: <b>' + datos.zona + '</b>', 'warning');
+    }
+  }
+
+  setVal('t1_traslado_mostrar', datos.traslado);
+  setVal('t1_fecha', datos.fecha);
   setVal('t1_bodega_origen', datos.bodegaOrigen);
   setVal('t1_destino', datos.destino);
+  setVal('t1_recibido', datos.recibido);
+  setVal('t1_codigo', datos.codigo);
+  setVal('t1_descripcion', datos.descripcion);
+  setVal('t1_unidades', datos.unidades);
+  setVal('t1_usuario', datos.usuario);
+  setVal('t1_lote', datos.lote);
+  setVal('t1_fechaVenc', datos.fechaVenc);
+  setVal('t1_observaciones_drive', datos.observaciones);
   setVal('t1_cantidad', datos.cantidad);
   setVal('t1_tipo', datos.tipo);
   setVal('t1_urgente', datos.urgente);
   setVal('t1_zona', datos.zona);
 
   // Validacion estricta: si falta informacion requerida, NO permite avanzar.
-  const faltantes = CAMPOS_OBLIGATORIOS_DRIVE.filter(k => !String(datos[k]).trim());
+  // Nota: zona se considera completo si se pudo auto-calcular
+  const camposAValidar = CAMPOS_OBLIGATORIOS_DRIVE.filter(k => k !== 'zona');
+  const faltantes = camposAValidar.filter(k => !String(datos[k]).trim());
   if (faltantes.length) {
     est.innerHTML = `<span class="text-danger">&#10006; Informacion incompleta en Drive (${faltantes.join(', ')}). No es posible continuar.</span>`;
     $('t1_btnGuardar').disabled = true;
     return;
+  }
+  // Verificar zona por separado: advertir si no se pudo calcular pero no bloquear
+  if (!String(datos.zona).trim()) {
+    est.innerHTML += ' <span class="text-warning">&#9888; No se pudo determinar la zona. Verifique manualmente.</span>';
   }
 
   // Perfil LIDER: verificar si el destino exige punto
@@ -672,7 +946,10 @@ async function t1ValidarTraslado() {
 }
 
 function limpiarAutocompletadosT1() {
-  ['t1_bodega_origen', 't1_destino', 't1_cantidad', 't1_tipo', 't1_urgente', 't1_zona'].forEach(id => setVal(id, ''));
+  ['t1_traslado_mostrar', 't1_fecha', 't1_bodega_origen', 't1_destino', 't1_recibido',
+   't1_codigo', 't1_descripcion', 't1_unidades', 't1_usuario', 't1_lote', 't1_fechaVenc',
+   't1_observaciones_drive', 't1_cantidad', 't1_tipo', 't1_urgente', 't1_zona'
+  ].forEach(id => setVal(id, ''));
   $('t1_badgeUrgente').innerHTML = '';
 }
 
@@ -751,9 +1028,21 @@ async function t2Buscar() {
     est.innerHTML = '<span class="text-danger">&#10006; El traslado no tiene planilla de entrega registrada.</span>';
     return;
   }
-  setVal('t2_bodega_origen', obtenerValorPorNombreColumna(registro, ALIAS.bodegaOrigen));
-  setVal('t2_destino', obtenerValorPorNombreColumna(registro, ALIAS.destino));
-  setVal('t2_zona', obtenerValorPorNombreColumna(registro, ALIAS.zona));
+  const t2Destino = obtenerValorPorNombreColumna(registro, ALIAS.destino);
+  const t2BodegaOrigen = obtenerValorPorNombreColumna(registro, ALIAS.bodegaOrigen);
+  let t2Zona = obtenerValorPorNombreColumna(registro, ALIAS.zona);
+  // Auto-calcular zona si no viene en Drive
+  if (!String(t2Zona).trim() && String(t2Destino).trim()) {
+    t2Zona = zonaDeBodega(t2Destino);
+    if (t2Zona) toast('T2 Zona auto-calculada: <b>' + t2Zona + '</b>', 'info');
+  }
+  if (!String(t2Zona).trim() && String(t2BodegaOrigen).trim()) {
+    t2Zona = zonaDeBodega(t2BodegaOrigen);
+    if (t2Zona) toast('T2 Zona inferida desde Origen: <b>' + t2Zona + '</b>', 'warning');
+  }
+  setVal('t2_bodega_origen', t2BodegaOrigen);
+  setVal('t2_destino', t2Destino);
+  setVal('t2_zona', t2Zona);
   setVal('t2_cantidad', obtenerValorPorNombreColumna(registro, ALIAS.cantidad));
   setVal('t2_urgente', obtenerValorPorNombreColumna(registro, ALIAS.urgente));
   setVal('t2_responsable_entrega', obtenerValorPorNombreColumna(registro, ALIAS.respEntrega));
