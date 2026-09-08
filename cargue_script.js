@@ -852,6 +852,49 @@ var GRUPOS_FIJOS_CARGUE = [
   });
 })();
 
+/* ── Auto-asignar grupo aleatorio al cargar la pagina ── */
+function autoAsignarGrupoAleatorio() {
+  var gs = $('t3a_grupo_asignado');
+  if (!gs) return;
+  // Elegir grupo aleatorio entre 1 y 8 (incluyendo Gris)
+  var numGrupo = 1 + Math.floor(Math.random() * 8);
+  var grupoInfo = null;
+  for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
+    if (GRUPOS_FIJOS_CARGUE[i].numero === numGrupo) { grupoInfo = GRUPOS_FIJOS_CARGUE[i]; break; }
+  }
+  if (!grupoInfo) return;
+  // Para Gris: personalizar con una persona aleatoria
+  if (grupoInfo.nombre === 'Gris') {
+    var idx = Math.floor(Math.random() * grupoInfo.miembros.length);
+    var persona = grupoInfo.miembros[idx];
+    var textoGris = 'Grupo Especial Gris (8) \u2014 ' + persona;
+    for (var j = 0; j < gs.options.length; j++) {
+      if (gs.options[j].value.indexOf('Gris') >= 0) {
+        gs.options[j].value = textoGris;
+        gs.options[j].textContent = 'Especial Gris (8) \u2014 ' + persona;
+        gs.selectedIndex = j;
+        gs.style.borderColor = grupoInfo.hex;
+        gs.style.color = grupoInfo.hex;
+        gs.style.fontWeight = 'bold';
+        break;
+      }
+    }
+  } else {
+    // Para los demas grupos: seleccionar la opcion correspondiente
+    for (var k = 0; k < gs.options.length; k++) {
+      if (gs.options[k].value.indexOf(grupoInfo.nombre) >= 0) {
+        gs.selectedIndex = k;
+        gs.style.borderColor = grupoInfo.hex;
+        gs.style.color = grupoInfo.hex;
+        gs.style.fontWeight = 'bold';
+        break;
+      }
+    }
+  }
+  // Mostrar toast informativo
+  showToast('Grupo asignado autom\u00e1ticamente: <strong>' + grupoInfo.nombre + '</strong> — Puedes cambiarlo si deseas.', 'info');
+}
+
 /* ── Normalizar Grupo Asignado — convierte numero o texto corto al formato completo del select ── */
 function normalizarGrupoAsignado(valorRaw) {
   if (!valorRaw) return '';
@@ -1056,13 +1099,14 @@ function limpiarSeccionA() {
         break;
       }
     }
-    ga.selectedIndex = 0; // reset a opcion placeholder
+    // Reset y luego auto-asignar grupo aleatorio nuevamente
+    ga.selectedIndex = 0;
+    autoAsignarGrupoAleatorio();
   }
   if ($('t3a_punto_row')) $('t3a_punto_row').style.display = 'none';
   if ($('t3a_estadoTraslado')) $('t3a_estadoTraslado').innerHTML = '';
   if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
   t3aTrasladoValidado = null;
-  showToast('Secci&oacute;n A (Asignaci&oacute;n) limpiada.', 'info');
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────────
@@ -1544,6 +1588,9 @@ function generarBackup() {
 document.addEventListener('DOMContentLoaded', function () {
   cargarConfig();
   aplicarPerfil();
+
+  // Auto-asignar grupo aleatorio al cargar
+  autoAsignarGrupoAleatorio();
 
   // Botones de tarjeta
   var btn;
