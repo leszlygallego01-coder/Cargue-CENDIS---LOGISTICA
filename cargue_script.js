@@ -273,13 +273,14 @@ var CONFIG_DEFAULT = {
   folders: {
     trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
     seguridad:        '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
-    despachos:         '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',
+    despachos:         '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
+    asignacion:        '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
     logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
     recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
     facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
     inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
-    rotacion:          '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
-    entrega:           '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',
+    rotacion:          '106BTSHLA8giLcW8qkvbJWiqA_7KiDpBi',
+    entrega:           '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
     backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
   },
   perfiles: {
@@ -348,7 +349,9 @@ function cargarConfig() {
   if (!CONFIG.folders.seguridad) CONFIG.folders.seguridad = CONFIG_DEFAULT.folders.seguridad;
   if (!CONFIG.folders.rotacion)  CONFIG.folders.rotacion  = CONFIG_DEFAULT.folders.rotacion;
   if (!CONFIG.folders.entrega)   CONFIG.folders.entrega   = CONFIG_DEFAULT.folders.entrega;
+  if (!CONFIG.folders.asignacion) CONFIG.folders.asignacion = CONFIG_DEFAULT.folders.asignacion;
   if (!CONFIG.perfiles.entrega)  CONFIG.perfiles.entrega  = CONFIG_DEFAULT.perfiles.entrega;
+  if (!CONFIG.perfiles.asignacion) CONFIG.perfiles.asignacion = CONFIG_DEFAULT.perfiles.asignacion;
   if (!CONFIG.conductores || !CONFIG.conductores.length) CONFIG.conductores = CONFIG_DEFAULT.conductores.slice();
   var el = $('cfg_api_url'); if (el) el.value = CONFIG.api_url;
   var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
@@ -713,36 +716,73 @@ function t3CargarRotacion() {
 
 /** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca en SECCION A
  *  segun Bodega Origen.
- *  Si Bodega Origen contiene "B05 ALTO COSTO" → asigna miembros del Grupo Gris.
- *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → asigna trio de Apertura del Dia.
+ *  Si Bodega Origen contiene "B05 ALTO COSTO" → asigna Grupo Gris (persona que hace traslado B05).
+ *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → asigna el tr&iacute;o de la Apertura del D&iacute;a.
+ *  Muestra el nombre del grupo asignado en el campo t3a_grupo_asignado.
  */
 function t3AplicarRotacionA() {
-  if (!t3RotacionHoy) return;
   var bodega = $('t3a_bodega_origen') ? $('t3a_bodega_origen').value.trim() : '';
+  var grupoAsignadoEl = $('t3a_grupo_asignado');
   var esB05AltoCosto = bodega.toUpperCase().indexOf('B05 ALTO COSTO') >= 0;
   var esCendis = bodega.toUpperCase().indexOf('CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL') >= 0;
 
   if (esB05AltoCosto) {
-    // Grupo Gris — asignar primer miembro a cada rol
-    var gris = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris'; });
-    if (gris.length) {
-      seleccionarOpcion('t3a_quien_alista', gris[0].nombre);
-      seleccionarOpcion('t3a_quien_pita', gris.length > 1 ? gris[1].nombre : gris[0].nombre);
-      seleccionarOpcion('t3a_quien_empaca', gris.length > 2 ? gris[2].nombre : gris[0].nombre);
+    // Grupo Gris — persona del grupo Gris que hace traslado B05 ALTO COSTO
+    if (grupoAsignadoEl) grupoAsignadoEl.value = 'Grupo Gris (B05 ALTO COSTO)';
+    // Si hay rotacion cargada, pre-llenar con miembros del Grupo Gris
+    if (t3RotacionHoy && t3RotacionHoy.length) {
+      var gris = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris'; });
+      if (gris.length) {
+        seleccionarOpcion('t3a_quien_alista', gris[0].nombre);
+        seleccionarOpcion('t3a_quien_pita', gris.length > 1 ? gris[1].nombre : gris[0].nombre);
+        seleccionarOpcion('t3a_quien_empaca', gris.length > 2 ? gris[2].nombre : gris[0].nombre);
+      }
     }
   } else if (esCendis) {
-    // Asignar trio de Apertura del Dia — filtrar por grupo (no Gris)
-    var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
-    if (noGris.length >= 3) {
-      seleccionarOpcion('t3a_quien_alista', noGris[0].nombre);
-      seleccionarOpcion('t3a_quien_pita', noGris[1].nombre);
-      seleccionarOpcion('t3a_quien_empaca', noGris[2].nombre);
+    // Asignar tr&iacute;o de Apertura del D&iacute;a segun la rotacion
+    if (t3RotacionHoy && t3RotacionHoy.length) {
+      // Buscar el primer grupo no-Gris que tenga miembros
+      var gruposNoGris = {};
+      t3RotacionHoy.forEach(function (a) {
+        if (a.grupo !== 'Gris' && a.grupo) {
+          if (!gruposNoGris[a.grupo]) gruposNoGris[a.grupo] = [];
+          gruposNoGris[a.grupo].push(a.nombre);
+        }
+      });
+      // Tomar el primer grupo con exactamente 3 miembros (tr&iacute;o)
+      var grupoNombre = '';
+      var grupoMiembros = [];
+      var claves = Object.keys(gruposNoGris);
+      for (var i = 0; i < claves.length; i++) {
+        if (gruposNoGris[claves[i]].length >= 3) {
+          grupoNombre = claves[i];
+          grupoMiembros = gruposNoGris[claves[i]].slice(0, 3);
+          break;
+        }
+      }
+      if (grupoNombre && grupoMiembros.length >= 3) {
+        if (grupoAsignadoEl) grupoAsignadoEl.value = 'Grupo ' + grupoNombre + ' (CENDIS)';
+        seleccionarOpcion('t3a_quien_alista', grupoMiembros[0]);
+        seleccionarOpcion('t3a_quien_pita', grupoMiembros[1]);
+        seleccionarOpcion('t3a_quien_empaca', grupoMiembros[2]);
+      } else {
+        // Fallback: primeros 3 no-Gris
+        var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
+        if (noGris.length >= 3) {
+          if (grupoAsignadoEl) grupoAsignadoEl.value = noGris[0].grupo ? 'Grupo ' + noGris[0].grupo + ' (CENDIS)' : 'Tr&iacute;o Apertura (CENDIS)';
+          seleccionarOpcion('t3a_quien_alista', noGris[0].nombre);
+          seleccionarOpcion('t3a_quien_pita', noGris[1].nombre);
+          seleccionarOpcion('t3a_quien_empaca', noGris[2].nombre);
+        } else {
+          if (grupoAsignadoEl) grupoAsignadoEl.value = 'Tr&iacute;o de Apertura (CENDIS)';
+        }
+      }
     } else {
-      // Usar primeros disponibles
-      if (noGris.length >= 1) seleccionarOpcion('t3a_quien_alista', noGris[0].nombre);
-      if (noGris.length >= 2) seleccionarOpcion('t3a_quien_pita', noGris[1].nombre);
-      if (noGris.length >= 3) seleccionarOpcion('t3a_quien_empaca', noGris[2].nombre);
+      if (grupoAsignadoEl) grupoAsignadoEl.value = 'Tr&iacute;o de Apertura (CENDIS)';
     }
+  } else {
+    // Bodega no reconocida
+    if (grupoAsignadoEl) grupoAsignadoEl.value = bodega ? 'Sin asignaci&oacute;n autom&aacute;tica' : '';
   }
 }
 
@@ -852,8 +892,8 @@ function t3aGuardarAsignacion() {
   if (!traslado) { showToast('Primero valide un traslado en la Seccion A.', 'danger'); return; }
   if (!t3aTrasladoValidado) { showToast('Valide el traslado antes de guardar la Asignacion.', 'danger'); return; }
 
-  var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
-  if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
+  var folderId = $('folder_asignacion') ? $('folder_asignacion').value.trim() : CONFIG.folders.asignacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Asignaci&oacute;n.', 'danger'); return; }
 
   var quienAlista = $('t3a_quien_alista') ? $('t3a_quien_alista').value : '';
   var quienPita = $('t3a_quien_pita') ? $('t3a_quien_pita').value : '';
@@ -878,6 +918,7 @@ function t3aGuardarAsignacion() {
     'Quien Pito': quienPita,
     'Quien Empaco': quienEmpaca,
     'Grupo': quienAlista + ', ' + quienPita + ', ' + quienEmpaca,
+    'Grupo Asignado': $('t3a_grupo_asignado') ? $('t3a_grupo_asignado').value : '',
     'Concepto': concepto,
     'Codigo': $('t3a_codigo') ? $('t3a_codigo').value : '',
     'Descripcion': $('t3a_descripcion') ? $('t3a_descripcion').value : '',
