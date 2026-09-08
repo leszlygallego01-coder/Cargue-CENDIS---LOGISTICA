@@ -716,9 +716,9 @@ function t3CargarRotacion() {
 
 /** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca en SECCION A
  *  segun Bodega Origen.
- *  Si Bodega Origen contiene "B05 ALTO COSTO" → asigna Grupo Gris (persona que hace traslado B05).
- *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → asigna el tr&iacute;o de la Apertura del D&iacute;a.
- *  Muestra el nombre del grupo asignado en el campo t3a_grupo_asignado.
+ *  Si Bodega Origen contiene "B05 ALTO COSTO" → asigna Grupo Gris (misma persona para Alista, Pita y Empaca).
+ *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → asigna el tr\u00edo de la Apertura del D\u00eda.
+ *  Muestra el nombre del grupo con color y n\u00famero en el campo t3a_grupo_asignado.
  */
 function t3AplicarRotacionA() {
   var bodega = $('t3a_bodega_origen') ? $('t3a_bodega_origen').value.trim() : '';
@@ -727,21 +727,27 @@ function t3AplicarRotacionA() {
   var esCendis = bodega.toUpperCase().indexOf('CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL') >= 0;
 
   if (esB05AltoCosto) {
-    // Grupo Gris — persona del grupo Gris que hace traslado B05 ALTO COSTO
-    if (grupoAsignadoEl) grupoAsignadoEl.value = 'Grupo Gris (B05 ALTO COSTO)';
-    // Si hay rotacion cargada, pre-llenar con miembros del Grupo Gris
-    if (t3RotacionHoy && t3RotacionHoy.length) {
-      var gris = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris'; });
-      if (gris.length) {
-        seleccionarOpcion('t3a_quien_alista', gris[0].nombre);
-        seleccionarOpcion('t3a_quien_pita', gris.length > 1 ? gris[1].nombre : gris[0].nombre);
-        seleccionarOpcion('t3a_quien_empaca', gris.length > 2 ? gris[2].nombre : gris[0].nombre);
+    // Grupo Gris — la MISMA persona para Alista, Pita y Empaca
+    var grupoGris = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === 'Gris'; })[0];
+    if (grupoGris) {
+      if (grupoAsignadoEl) {
+        grupoAsignadoEl.value = 'Grupo Gris (8) — B05 ALTO COSTO';
+        grupoAsignadoEl.style.borderColor = grupoGris.hex;
+        grupoAsignadoEl.style.color = grupoGris.hex;
+      }
+      // Misma persona para los 3 campos
+      if (t3RotacionHoy && t3RotacionHoy.length) {
+        var gris = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris'; });
+        if (gris.length) {
+          seleccionarOpcion('t3a_quien_alista', gris[0].nombre);
+          seleccionarOpcion('t3a_quien_pita', gris[0].nombre);
+          seleccionarOpcion('t3a_quien_empaca', gris[0].nombre);
+        }
       }
     }
   } else if (esCendis) {
-    // Asignar tr&iacute;o de Apertura del D&iacute;a segun la rotacion
+    // Asignar tr\u00edeo de Apertura del D\u00eda segun la rotaci\u00f3n
     if (t3RotacionHoy && t3RotacionHoy.length) {
-      // Buscar el primer grupo no-Gris que tenga miembros
       var gruposNoGris = {};
       t3RotacionHoy.forEach(function (a) {
         if (a.grupo !== 'Gris' && a.grupo) {
@@ -749,7 +755,6 @@ function t3AplicarRotacionA() {
           gruposNoGris[a.grupo].push(a.nombre);
         }
       });
-      // Tomar el primer grupo con exactamente 3 miembros (tr&iacute;o)
       var grupoNombre = '';
       var grupoMiembros = [];
       var claves = Object.keys(gruposNoGris);
@@ -760,8 +765,17 @@ function t3AplicarRotacionA() {
           break;
         }
       }
+      // Buscar datos del grupo en GRUPOS_FIJOS_CARGUE para obtener numero y color
+      var grupoInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === grupoNombre; })[0];
       if (grupoNombre && grupoMiembros.length >= 3) {
-        if (grupoAsignadoEl) grupoAsignadoEl.value = 'Grupo ' + grupoNombre + ' (CENDIS)';
+        if (grupoAsignadoEl) {
+          var numGrupo = grupoInfo ? grupoInfo.numero : '?';
+          grupoAsignadoEl.value = 'Grupo ' + grupoNombre + ' (' + numGrupo + ') — CENDIS';
+          if (grupoInfo) {
+            grupoAsignadoEl.style.borderColor = grupoInfo.hex;
+            grupoAsignadoEl.style.color = grupoInfo.hex;
+          }
+        }
         seleccionarOpcion('t3a_quien_alista', grupoMiembros[0]);
         seleccionarOpcion('t3a_quien_pita', grupoMiembros[1]);
         seleccionarOpcion('t3a_quien_empaca', grupoMiembros[2]);
@@ -769,22 +783,48 @@ function t3AplicarRotacionA() {
         // Fallback: primeros 3 no-Gris
         var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
         if (noGris.length >= 3) {
-          if (grupoAsignadoEl) grupoAsignadoEl.value = noGris[0].grupo ? 'Grupo ' + noGris[0].grupo + ' (CENDIS)' : 'Tr&iacute;o Apertura (CENDIS)';
+          var infoFallback = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === noGris[0].grupo; })[0];
+          var numFallback = infoFallback ? infoFallback.numero : '?';
+          if (grupoAsignadoEl) {
+            grupoAsignadoEl.value = noGris[0].grupo ? 'Grupo ' + noGris[0].grupo + ' (' + numFallback + ') — CENDIS' : 'Tr\u00edeo Apertura (CENDIS)';
+            if (infoFallback) {
+              grupoAsignadoEl.style.borderColor = infoFallback.hex;
+              grupoAsignadoEl.style.color = infoFallback.hex;
+            }
+          }
           seleccionarOpcion('t3a_quien_alista', noGris[0].nombre);
           seleccionarOpcion('t3a_quien_pita', noGris[1].nombre);
           seleccionarOpcion('t3a_quien_empaca', noGris[2].nombre);
         } else {
-          if (grupoAsignadoEl) grupoAsignadoEl.value = 'Tr&iacute;o de Apertura (CENDIS)';
+          if (grupoAsignadoEl) grupoAsignadoEl.value = 'Tr\u00edeo de Apertura (CENDIS)';
         }
       }
     } else {
-      if (grupoAsignadoEl) grupoAsignadoEl.value = 'Tr&iacute;o de Apertura (CENDIS)';
+      if (grupoAsignadoEl) grupoAsignadoEl.value = 'Tr\u00edeo de Apertura (CENDIS)';
     }
   } else {
     // Bodega no reconocida
-    if (grupoAsignadoEl) grupoAsignadoEl.value = bodega ? 'Sin asignaci&oacute;n autom&aacute;tica' : '';
+    if (grupoAsignadoEl) {
+      grupoAsignadoEl.value = bodega ? 'Sin asignaci\u00f3n autom\u00e1tica' : '';
+      grupoAsignadoEl.style.borderColor = '';
+      grupoAsignadoEl.style.color = '';
+    }
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────────
+   8. GRUPOS FIJOS — Datos de los 8 grupos con numeracion y lideres
+   ───────────────────────────────────────────────────────────────────────────────── */
+var GRUPOS_FIJOS_CARGUE = [
+  { nombre: 'Rojo',    numero: 1, hex: '#dc3545', miembros: ['Nicoll Trivi\u00f1o', 'Estefania Parra', 'Luisa Mar\u00eda Osorio'], lider: 'Luisa Mar\u00eda Osorio' },
+  { nombre: 'Naranja', numero: 2, hex: '#FF8C00', miembros: ['Daniela Nore\u00f1a', 'Juan David Moreno', 'Kelly Beltran'] },
+  { nombre: 'Azul',    numero: 3, hex: '#0d6efd', miembros: ['Karina Riascos', 'Ana Lorena Ortiz', 'Vaneza Escobar'] },
+  { nombre: 'Verde',   numero: 4, hex: '#2fb457', miembros: ['Leidy Valencia', 'Bivian Lorena Rivera', 'Brayan Camilo Izquierdo'] },
+  { nombre: 'Morado',  numero: 5, hex: '#6f42c1', miembros: ['Jhony Saenz', 'Natalia Galvez', 'Valentina Cano'] },
+  { nombre: 'Amarillo',numero: 6, hex: '#ffc107', miembros: ['Liz Karime Valencia', 'Angela Vanessa Aguirre', 'Derly Yulieth Mosquera'] },
+  { nombre: 'Fucsia',  numero: 7, hex: '#FF00FF', miembros: ['Manuel David Salazar', 'Luz Nelly Chaves', 'Luis Felipe Marin'], lider: 'Luz Nelly Chaves' },
+  { nombre: 'Gris',    numero: 8, hex: '#6c757d', miembros: ['Claudia Echeverry', 'Camila Posada', 'Angela Vera', 'Mayra Alejandra Franco', 'Andrea Vanegas'], lider: 'Andrea Vanegas' }
+];
 
 /* ─────────────────────────────────────────────────────────────────────────────────
    8A. SECCION A — ASIGNACION DE TRASLADO (Paso 1)
@@ -960,6 +1000,8 @@ function t3aGuardarAsignacion() {
 
 function limpiarSeccionA() {
   limpiarCampos('t3a_');
+  var ga = $('t3a_grupo_asignado');
+  if (ga) { ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = ''; }
   if ($('t3a_punto_row')) $('t3a_punto_row').style.display = 'none';
   if ($('t3a_estadoTraslado')) $('t3a_estadoTraslado').innerHTML = '';
   if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
@@ -1003,11 +1045,32 @@ function t3bValidarTraslado() {
       if ($('t3b_destino')) $('t3b_destino').value = asig['Bodega Destino'] || '';
       if ($('t3b_ruta')) $('t3b_ruta').value = asig['Ruta'] || asig['Zona'] || '';
       if ($('t3b_urgente')) $('t3b_urgente').value = asig['Urgente'] || 'NO';
-      if ($('t3b_quien_alista')) $('t3b_quien_alista').value = asig['Quien Alisto'] || '';
-      if ($('t3b_quien_pita')) $('t3b_quien_pita').value = asig['Quien Pito'] || '';
-      if ($('t3b_quien_empaca')) $('t3b_quien_empaca').value = asig['Quien Empaco'] || '';
+      if ($('t3b_quien_alista')) $('t3b_quien_alista').value = asig['Quien Alisto'] || asig['Quien Alista'] || '';
+      if ($('t3b_quien_pita')) $('t3b_quien_pita').value = asig['Quien Pito'] || asig['Quien Pita'] || '';
+      if ($('t3b_quien_empaca')) $('t3b_quien_empaca').value = asig['Quien Empaco'] || asig['Quien Empaca'] || '';
       if ($('t3b_concepto')) $('t3b_concepto').value = asig['Concepto'] || '';
-      if ($('t3b_grupo_asignado')) $('t3b_grupo_asignado').value = asig['Grupo Asignado'] || '';
+
+      // Formatear Grupo Asignado con color y numero
+      var grupoNombreRaw = asig['Grupo Asignado'] || '';
+      var grupoAsignadoEl = $('t3b_grupo_asignado');
+      if (grupoAsignadoEl && grupoNombreRaw) {
+        // Extraer nombre del grupo del texto (puede venir como "Grupo Gris (8) — B05 ALTO COSTO" o "Grupo Fucsia (7) — CENDIS")
+        var matchNombre = grupoNombreRaw.match(/Grupo\s+(\w+)/i);
+        var nombreGrupo = matchNombre ? matchNombre[1] : '';
+        var grupoInfo = null;
+        for (var gi = 0; gi < GRUPOS_FIJOS_CARGUE.length; gi++) {
+          if (GRUPOS_FIJOS_CARGUE[gi].nombre === nombreGrupo) { grupoInfo = GRUPOS_FIJOS_CARGUE[gi]; break; }
+        }
+        if (grupoInfo) {
+          grupoAsignadoEl.value = grupoNombreRaw;
+          grupoAsignadoEl.style.borderColor = grupoInfo.hex;
+          grupoAsignadoEl.style.color = grupoInfo.hex;
+        } else {
+          grupoAsignadoEl.value = grupoNombreRaw;
+        }
+      } else if (grupoAsignadoEl) {
+        grupoAsignadoEl.value = grupoNombreRaw;
+      }
 
       // Punto de captura
       if ($('t3b_punto_captura')) $('t3b_punto_captura').value = 'Punto ' + (asig['Punto'] || traslado);
@@ -1126,6 +1189,8 @@ function t3bGuardarEntrega() {
 
 function limpiarSeccionB() {
   limpiarCampos('t3b_');
+  var ga = $('t3b_grupo_asignado');
+  if (ga) { ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = ''; }
   if ($('t3b_punto_row')) $('t3b_punto_row').style.display = 'none';
   if ($('t3b_estadoTraslado')) $('t3b_estadoTraslado').innerHTML = '';
   t3bTrasladoValidado = null;
