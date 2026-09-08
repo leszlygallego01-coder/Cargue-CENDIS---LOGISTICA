@@ -784,14 +784,36 @@
               </div>
             </div>
             <div class="row g-2 align-items-end">
-              <div class="col-md-7">
+              <div class="col-md-5">
                 <label>&#128190; Carpeta Destino (guardado de registros)</label>
                 <input type="text" class="form-control form-control-sm" id="folder_despachos"
                        value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
               </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
+              <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar</button>
                 <span class="mf-estado align-self-center" id="estado_folder_despachos"></span>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end mt-1">
+              <div class="col-md-5">
+                <label>&#128190; Carpeta Asignaci&oacute;n de Traslado</label>
+                <input type="text" class="form-control form-control-sm" id="folder_asignacion"
+                       value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
+              </div>
+              <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('asignacion')">Validar</button>
+                <span class="mf-estado align-self-center" id="estado_folder_asignacion"></span>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end mt-1">
+              <div class="col-md-5">
+                <label>&#128190; Carpeta Entrega a Log&iacute;stica</label>
+                <input type="text" class="form-control form-control-sm" id="folder_entrega"
+                       value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
+              </div>
+              <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('entrega')">Validar</button>
+                <span class="mf-estado align-self-center" id="estado_folder_entrega"></span>
               </div>
             </div>
           </div>
@@ -968,6 +990,8 @@
                 <input class="form-control campo-bloqueado" id="t3b_quien_pita" readonly></div>
               <div class="col-md-3"><label class="form-label">Grupo (Empaca)</label>
                 <input class="form-control campo-bloqueado" id="t3b_quien_empaca" readonly></div>
+              <div class="col-md-3"><label class="form-label">Grupo Asignado</label>
+                <input class="form-control campo-bloqueado" id="t3b_grupo_asignado" readonly></div>
               <div class="col-md-4"><label class="form-label">Concepto</label>
                 <input class="form-control campo-bloqueado" id="t3b_concepto" readonly></div>
             </div>
