@@ -37,8 +37,9 @@ function limpiarCampos(prefijo) {
 }
 
 function limpiarTarjeta(num) {
-  var prefijos = { 1: 's_', 2: 'b_', 3: 't3_', 4: 'log_', 5: 'f_', 6: 'i_' };
+  var prefijos = { 1: 's_', 2: 'b_', 3: 't3a_', 4: 'log_', 5: 'f_', 6: 'i_' };
   limpiarCampos(prefijos[num] || '');
+  if (num === 3) limpiarCampos('t3b_');
   // Restaurar etiqueta Factura/Traslado segun tipo seleccionado
   if (num === 2) toggleLabelRecepcion();
   showToast('Tarjeta ' + num + ' limpiada.', 'info');
@@ -283,6 +284,7 @@ var CONFIG_DEFAULT = {
   perfiles: {
     seguridad:   { file: 'BD_SEGURIDAD_DESPACHOS',         sheet: 'DATOS' },
     despachos:   { file: 'BD_PLANILLA_ENTREGA_DESPACHOS',  sheet: 'DATOS' },
+    asignacion:  { file: 'BD_ASIGNACION_TRASLADOS',       sheet: 'DATOS' },
     logistica:   { file: 'BD_LOGISTICA_DESPACHOS',        sheet: 'DATOS' },
     recepcion:   { file: 'BD_RECEPCION_TECNICA',          sheet: 'DATOS' },
     facturacion: { file: 'BD_CARGUE_FACTURA_TRANSPORTE',  sheet: 'DATOS' },
@@ -332,7 +334,7 @@ var PERFILES = {
 };
 
 /* Modulos (orden de carpetas/backend) */
-var MODULOS = ['seguridad','recepcion','despachos','logistica','facturacion','inventario'];
+var MODULOS = ['seguridad','recepcion','asignacion','despachos','logistica','facturacion','inventario'];
 
 /* ═════════════════════════════════════════════════════════════════════════════════
    3. CONFIGURACION EN MEMORIA + GUARDADO EN LOCALSTORAGE
@@ -670,57 +672,14 @@ function t2Guardar() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
-   8. TARJETA 3 — PLANILLA ENTREGA DESPACHOS (ENRIQUECIDA)
+   8. TARJETA 3 — PLANILLA ENTREGA DESPACHOS (DOS SECCIONES: A + B)
+   ═════════════════════════════════════════════════════════════════════════════════
+   Seccion A = Asignacion de Traslado (Paso 1 — Obligatorio)
+   Seccion B = Entrega a Logistica   (Paso 2 — Depende de A)
    ═════════════════════════════════════════════════════════════════════════════════ */
-var t3TrasladoValidado = null;
+var t3aTrasladoValidado = null;  // Seccion A: traslado validado en trasladosConsulta
+var t3bTrasladoValidado = null;  // Seccion B: asignacion validada + datos consolidados
 var t3RotacionHoy = null;
-
-/** Carga la rotacion del dia desde el backend para pre-llenar campos */
-function t3CargarRotacion() {
-  var folderId = CONFIG.folders.rotacion;
-  var fecha = hoy();
-  apiGet({ action: 'leerRotacion', folderId: folderId, fecha: fecha })
-    .then(function (r) {
-      if (r && r.ok && r.asignaciones && r.asignaciones.length) {
-        t3RotacionHoy = r.asignaciones;
-        t3AplicarRotacion();
-      } else {
-        t3RotacionHoy = null;
-      }
-    })
-    .catch(function () { t3RotacionHoy = null; });
-}
-
-/** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca segun la rotacion del dia.
- *  Si el traslado comienza con TB5, asigna el Grupo Especial Gris (todas hacen los 3 roles).
- *  Si no, aplica la rotacion de trios (primer miembro disponible de cada rol en el trio del dia).
- */
-function t3AplicarRotacion() {
-  if (!t3RotacionHoy) return;
-  var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
-  var esTB5 = traslado.length >= 3 && traslado.substring(0, 3).toUpperCase() === 'TB5';
-
-  if (esTB5) {
-    // Grupo Especial Gris (TB5): todos hacen los 3 roles
-    var tb5 = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris (TB5)'; });
-    if (tb5.length) {
-      var alistarTB5 = tb5.filter(function (a) { return a.rol === 'Alistar'; });
-      var pitarTB5 = tb5.filter(function (a) { return a.rol === 'Pitar'; });
-      var empacarTB5 = tb5.filter(function (a) { return a.rol === 'Empacar'; });
-      seleccionarOpcion('t3_quien_alista', alistarTB5.length ? alistarTB5[0].nombre : '');
-      seleccionarOpcion('t3_quien_pita', pitarTB5.length ? pitarTB5[0].nombre : '');
-      seleccionarOpcion('t3_quien_empaca', empacarTB5.length ? empacarTB5[0].nombre : '');
-    }
-  } else {
-    // Rotacion normal: trios ciclicos
-    var alistar = t3RotacionHoy.filter(function (a) { return a.rol === 'Alistar' && a.grupo !== 'Gris (TB5)'; });
-    var pitar = t3RotacionHoy.filter(function (a) { return a.rol === 'Pitar' && a.grupo !== 'Gris (TB5)'; });
-    var empacar = t3RotacionHoy.filter(function (a) { return a.rol === 'Empacar' && a.grupo !== 'Gris (TB5)'; });
-    if (alistar.length) { seleccionarOpcion('t3_quien_alista', alistar[0].nombre); }
-    if (pitar.length) { seleccionarOpcion('t3_quien_pita', pitar[0].nombre); }
-    if (empacar.length) { seleccionarOpcion('t3_quien_empaca', empacar[0].nombre); }
-  }
-}
 
 /** Utilidad: seleccionar opcion en un <select> por texto visible */
 function seleccionarOpcion(selectId, nombre) {
@@ -732,48 +691,92 @@ function seleccionarOpcion(selectId, nombre) {
   }
 }
 
-function t3ValidarTraslado() {
-  var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
+/** Carga la rotacion del dia desde el backend para pre-llenar campos */
+function t3CargarRotacion() {
+  var folderId = CONFIG.folders.rotacion;
+  var fecha = hoy();
+  apiGet({ action: 'leerRotacion', folderId: folderId, fecha: fecha })
+    .then(function (r) {
+      if (r && r.ok && r.asignaciones && r.asignaciones.length) {
+        t3RotacionHoy = r.asignaciones;
+        t3AplicarRotacionA();
+      } else {
+        t3RotacionHoy = null;
+      }
+    })
+    .catch(function () { t3RotacionHoy = null; });
+}
+
+/** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca en SECCION A
+ *  segun la rotacion del dia.
+ *  Si el traslado comienza con TB5, asigna el Grupo Especial Gris (todas hacen los 3 roles).
+ *  Si no, aplica la rotacion de trios (primer miembro disponible de cada rol en el trio del dia).
+ */
+function t3AplicarRotacionA() {
+  if (!t3RotacionHoy) return;
+  var traslado = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
+  var esTB5 = traslado.length >= 3 && traslado.substring(0, 3).toUpperCase() === 'TB5';
+
+  if (esTB5) {
+    var tb5 = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris (TB5)'; });
+    if (tb5.length) {
+      var alistarTB5 = tb5.filter(function (a) { return a.rol === 'Alistar'; });
+      var pitarTB5 = tb5.filter(function (a) { return a.rol === 'Pitar'; });
+      var empacarTB5 = tb5.filter(function (a) { return a.rol === 'Empacar'; });
+      seleccionarOpcion('t3a_quien_alista', alistarTB5.length ? alistarTB5[0].nombre : '');
+      seleccionarOpcion('t3a_quien_pita', pitarTB5.length ? pitarTB5[0].nombre : '');
+      seleccionarOpcion('t3a_quien_empaca', empacarTB5.length ? empacarTB5[0].nombre : '');
+    }
+  } else {
+    var alistar = t3RotacionHoy.filter(function (a) { return a.rol === 'Alistar' && a.grupo !== 'Gris (TB5)'; });
+    var pitar = t3RotacionHoy.filter(function (a) { return a.rol === 'Pitar' && a.grupo !== 'Gris (TB5)'; });
+    var empacar = t3RotacionHoy.filter(function (a) { return a.rol === 'Empacar' && a.grupo !== 'Gris (TB5)'; });
+    if (alistar.length) { seleccionarOpcion('t3a_quien_alista', alistar[0].nombre); }
+    if (pitar.length) { seleccionarOpcion('t3a_quien_pita', pitar[0].nombre); }
+    if (empacar.length) { seleccionarOpcion('t3a_quien_empaca', empacar[0].nombre); }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────────
+   8A. SECCION A — ASIGNACION DE TRASLADO (Paso 1)
+   Busca en la carpeta trasladosConsulta, autocompleta campos bloqueados,
+   carga la rotacion del dia, y guarda en BD_ASIGNACION_TRASLADOS.
+   ───────────────────────────────────────────────────────────────────────────────── */
+function t3aValidarTraslado() {
+  var traslado = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
   var folderId = CONFIG.folders.trasladosConsulta;
-  var estado = $('t3_estadoTraslado');
+  var estado = $('t3a_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
-  // Accion: buscarDatosTraslado — busqueda hibrida texto+numerica
   apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
-        t3TrasladoValidado = r.registro;
+        t3aTrasladoValidado = r.registro;
         var reg = r.registro;
-        var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
-        var numCoincidencias = r.registro.__coincidencias || 1;
-        var numExactas = r.registro.__coincidenciasExactas || 0;
-        var digitosBuscados = r.registro.__buscadoDigitos || '';
+        var tipoMatch = reg.__tipoCoincidencia || 'exacta';
+        var numCoincidencias = reg.__coincidencias || 1;
+        var numExactas = reg.__coincidenciasExactas || 0;
+        var digitosBuscados = reg.__buscadoDigitos || '';
 
-        // --- Mapeo y autocompletado por cabeceras ---
-        // Se recorren todas las cabeceras del registro retornado y se
-        // autocompletan los campos bloqueados del formulario T3.
+        // Mapeo de cabeceras → campos Seccion A
         var campos = {
-          't3_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
-          't3_fecha': ['Fecha', 'Marca temporal'],
-          't3_bodega_origen': ['Bodega Origen', 'Bodega'],
-          't3_destino': ['Bodega Destino', 'Destino'],
-          't3_ruta': ['Zona', 'Ruta'],
-          't3_cantidad': ['Cantidad', 'Unidades'],
-          't3_tipo': ['Tipo'],
-          't3_urgente': ['Urgente'],
-          't3_codigo': ['Codigo', 'Codigo Producto'],
-          't3_descripcion': ['Descripcion'],
-          't3_unidades': ['Unidades'],
-          't3_recibido': ['Recibido', 'Quien Recibe'],
-          't3_usuario': ['Usuario', 'Correo'],
-          't3_lote': ['Lote'],
-          't3_fechaVenc': ['Fecha Vencimiento', 'Vencimiento'],
-          't3_observaciones_drive': ['Observacion', 'Observaciones'],
-          't3_concepto': ['Concepto', 'CONCEPTO']
+          't3a_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
+          't3a_fecha': ['Fecha', 'Marca temporal'],
+          't3a_bodega_origen': ['Bodega Origen', 'Bodega'],
+          't3a_destino': ['Bodega Destino', 'Destino'],
+          't3a_ruta': ['Zona', 'Ruta'],
+          't3a_codigo': ['Codigo', 'Codigo Producto'],
+          't3a_descripcion': ['Descripcion'],
+          't3a_unidades': ['Unidades'],
+          't3a_recibido': ['Recibido', 'Quien Recibe'],
+          't3a_usuario': ['Usuario', 'Correo'],
+          't3a_lote': ['Lote'],
+          't3a_fechaVenc': ['Fecha Vencimiento', 'Vencimiento'],
+          't3a_observaciones_drive': ['Observacion', 'Observaciones'],
+          't3a_concepto': ['Concepto', 'CONCEPTO']
         };
 
-        // Autocompletar campos bloqueados con datos del registro
         Object.keys(campos).forEach(function (elId) {
           var el = $(elId);
           if (el) {
@@ -785,19 +788,24 @@ function t3ValidarTraslado() {
           }
         });
 
-        // Punto de captura
-        if ($('t3_punto_captura')) $('t3_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
-        if ($('t3_punto_row')) $('t3_punto_row').style.display = '';
-        if ($('t3_punto_info')) $('t3_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Punto capturado</span>';
-
-        // Badge urgente
+        // Urgente: autocompletar select si viene del registro
         if (reg['Urgente'] === 'SI' || reg['Urgente'] === 'Si' || reg['Urgente'] === 'si' || reg['urgente'] === 'SI') {
-          if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE</span>';
+          seleccionarOpcion('t3a_urgente', 'SI');
+          if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE</span>';
         } else {
-          if ($('t3_badgeUrgente')) $('t3_badgeUrgente').innerHTML = '';
+          seleccionarOpcion('t3a_urgente', 'NO');
+          if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
         }
 
-        // --- Mensaje detallado del tipo de coincidencia ---
+        // Punto de captura
+        if ($('t3a_punto_captura')) $('t3a_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
+        if ($('t3a_punto_row')) $('t3a_punto_row').style.display = '';
+        if ($('t3a_punto_info')) $('t3a_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Punto capturado</span>';
+
+        // Autocompletar Ruta segun Bodega Destino
+        autocompletarRuta('t3a_destino', 't3a_ruta');
+
+        // Mensaje detallado del tipo de coincidencia
         var msgMatch = '';
         if (tipoMatch === 'exacta') {
           msgMatch = 'Traslado <strong>' + traslado + '</strong> encontrado (coincidencia exacta).';
@@ -811,84 +819,219 @@ function t3ValidarTraslado() {
           msgMatch += ')</span>';
         }
 
-        // Autocompletar Ruta segun Bodega Destino
-        autocompletarRuta('t3_destino', 't3_ruta');
-
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
         showToast(msgMatch, 'success');
 
+        // Cargar rotacion del dia para pre-llenar Grupo
         t3CargarRotacion();
       } else {
-        t3TrasladoValidado = null;
+        t3aTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-        // Mostrar mensaje detallado del backend si existe
         var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
         showToast(msgNo, 'danger');
       }
     })
     .catch(function (err) {
-      t3TrasladoValidado = null;
+      t3aTrasladoValidado = null;
       if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
       showToast('Error al buscar traslado: ' + err.message, 'danger');
     });
 }
 
-function t3Guardar() {
-  var traslado = $('t3_traslado') ? $('t3_traslado').value.trim() : '';
-  if (!traslado) { showToast('Primero valide un traslado.', 'danger'); return; }
-  if (!t3TrasladoValidado) { showToast('Valide el traslado antes de guardar.', 'danger'); return; }
+function t3aGuardarAsignacion() {
+  var traslado = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
+  if (!traslado) { showToast('Primero valide un traslado en la Seccion A.', 'danger'); return; }
+  if (!t3aTrasladoValidado) { showToast('Valide el traslado antes de guardar la Asignacion.', 'danger'); return; }
 
   var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
   if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
 
-  var responsableEntrega = $('t3_responsable_entrega') ? $('t3_responsable_entrega').value : '';
-  var quienAlista = $('t3_quien_alista') ? $('t3_quien_alista').value : '';
-  var quienPita = $('t3_quien_pita') ? $('t3_quien_pita').value : '';
-  var quienEmpaca = $('t3_quien_empaca') ? $('t3_quien_empaca').value : '';
-  var tipoCarga = $('t3_tipo_carga') ? $('t3_tipo_carga').value : '';
-  var concepto = $('t3_concepto') ? $('t3_concepto').value.trim() : '';
+  var quienAlista = $('t3a_quien_alista') ? $('t3a_quien_alista').value : '';
+  var quienPita = $('t3a_quien_pita') ? $('t3a_quien_pita').value : '';
+  var quienEmpaca = $('t3a_quien_empaca') ? $('t3a_quien_empaca').value : '';
+  var urgenteVal = $('t3a_urgente') ? $('t3a_urgente').value : '';
+  var concepto = $('t3a_concepto') ? $('t3a_concepto').value.trim() : '';
 
-  if (!responsableEntrega) { showToast('Seleccione el Responsable de Entrega.', 'danger'); return; }
-  if (!quienAlista || !quienPita || !quienEmpaca) { showToast('Seleccione Quien Alista, Quien Pita y Quien Empaca.', 'danger'); return; }
+  if (!quienAlista || !quienPita || !quienEmpaca) {
+    showToast('Seleccione Quien Alista, Quien Pita y Quien Empaca.', 'danger'); return;
+  }
+  if (!urgenteVal) { showToast('Seleccione si es Urgente (SI/NO).', 'danger'); return; }
+
+  var registro = {
+    'Documento Traslado': traslado,
+    'Fecha': $('t3a_fecha') ? $('t3a_fecha').value : '',
+    'Bodega Origen': $('t3a_bodega_origen') ? $('t3a_bodega_origen').value : '',
+    'Bodega Destino': $('t3a_destino') ? $('t3a_destino').value : '',
+    'Ruta': $('t3a_ruta') ? $('t3a_ruta').value : '',
+    'Zona': $('t3a_ruta') ? $('t3a_ruta').value : '',
+    'Urgente': urgenteVal,
+    'Quien Alisto': quienAlista,
+    'Quien Pito': quienPita,
+    'Quien Empaco': quienEmpaca,
+    'Grupo': quienAlista + ', ' + quienPita + ', ' + quienEmpaca,
+    'Concepto': concepto,
+    'Codigo': $('t3a_codigo') ? $('t3a_codigo').value : '',
+    'Descripcion': $('t3a_descripcion') ? $('t3a_descripcion').value : '',
+    'Unidades': $('t3a_unidades') ? $('t3a_unidades').value : '',
+    'Lote': $('t3a_lote') ? $('t3a_lote').value : '',
+    'Fecha Vencimiento': $('t3a_fechaVenc') ? $('t3a_fechaVenc').value : '',
+    'Recibido': $('t3a_recibido') ? $('t3a_recibido').value : '',
+    'Observacion Drive': $('t3a_observaciones_drive') ? $('t3a_observaciones_drive').value : '',
+    'Marca temporal': ahora(),
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'asignacion', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.', 'success');
+        t3aTrasladoValidado = null;
+        limpiarSeccionA();
+      } else {
+        showToast('Error al guardar Asignaci&oacute;n: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+function limpiarSeccionA() {
+  limpiarCampos('t3a_');
+  if ($('t3a_punto_row')) $('t3a_punto_row').style.display = 'none';
+  if ($('t3a_estadoTraslado')) $('t3a_estadoTraslado').innerHTML = '';
+  if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
+  t3aTrasladoValidado = null;
+  showToast('Secci&oacute;n A (Asignaci&oacute;n) limpiada.', 'info');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────────
+   8B. SECCION B — ENTREGA A LOGISTICA (Paso 2 — Depende de A)
+   1. Verifica que el traslado exista en BD_ASIGNACION_TRASLADOS (buscarAsignacion).
+   2. Si existe, trae los datos de la asignacion (Urgente, Grupo, Concepto).
+   3. Luego busca el traslado en la hoja consolidada de despachos para
+      autocompletar campos bloqueados.
+   4. El usuario completa Responsable Entrega CENDIS, Cantidad, Tipo Carga.
+   5. Guarda en BD_PLANILLA_ENTREGA_DESPACHOS (modulo 'despachos').
+   ───────────────────────────────────────────────────────────────────────────────── */
+function t3bValidarTraslado() {
+  var traslado = $('t3b_traslado') ? $('t3b_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado asignado.', 'danger'); return; }
+
+  var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
+  if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
+
+  var estado = $('t3b_estadoTraslado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Verificando asignaci&oacute;n...</span>';
+
+  // PASO 1: Verificar que el traslado fue asignado (existe en BD_ASIGNACION_TRASLADOS)
+  apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: traslado })
+    .then(function (rAsig) {
+      if (!rAsig || !rAsig.encontrado || !rAsig.registro) {
+        // No se encontro asignacion — bloquear
+        t3bTrasladoValidado = null;
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Sin asignaci&oacute;n</span>';
+        showToast('El traslado <strong>' + traslado + '</strong> no ha completado el paso de Asignaci&oacute;n de Traslado.', 'danger');
+        return;
+      }
+
+      // Asignacion encontrada — autocompletar campos bloqueados de Seccion B
+      var asig = rAsig.registro;
+      if ($('t3b_bodega_origen')) $('t3b_bodega_origen').value = asig['Bodega Origen'] || '';
+      if ($('t3b_destino')) $('t3b_destino').value = asig['Bodega Destino'] || '';
+      if ($('t3b_ruta')) $('t3b_ruta').value = asig['Ruta'] || asig['Zona'] || '';
+      if ($('t3b_urgente')) $('t3b_urgente').value = asig['Urgente'] || 'NO';
+      if ($('t3b_quien_alista')) $('t3b_quien_alista').value = asig['Quien Alisto'] || '';
+      if ($('t3b_quien_pita')) $('t3b_quien_pita').value = asig['Quien Pito'] || '';
+      if ($('t3b_quien_empaca')) $('t3b_quien_empaca').value = asig['Quien Empaco'] || '';
+      if ($('t3b_concepto')) $('t3b_concepto').value = asig['Concepto'] || '';
+
+      // Punto de captura
+      if ($('t3b_punto_captura')) $('t3b_punto_captura').value = 'Punto ' + (asig['Punto'] || traslado);
+      if ($('t3b_punto_row')) $('t3b_punto_row').style.display = '';
+
+      if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Asignaci&oacute;n verificada</span>';
+      showToast('Asignaci&oacute;n de traslado <strong>' + traslado + '</strong> verificada. Complete los datos de entrega.', 'success');
+
+      // Guardar la asignacion como referencia para guardar despues
+      t3bTrasladoValidado = asig;
+
+      // PASO 2: Buscar datos adicionales en la hoja consolidada de despachos
+      // (para traer Codigo, Descripcion, Unidades, Lote, Fecha Venc, etc.)
+      var folderConsulta = CONFIG.folders.trasladosConsulta;
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'despachos', traslado: traslado })
+        .then(function (rConsol) {
+          if (rConsol && rConsol.encontrado && rConsol.registro) {
+            var reg = rConsol.registro;
+            // Completar campos adicionales en Seccion B (no sobreescribir los ya llenos)
+            if ($('t3b_punto_captura') && !$('t3b_punto_captura').value) {
+              $('t3b_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
+            }
+            // Guardar referencia completa para el guardado
+            t3bTrasladoValidado.__consolidado = reg;
+          }
+        })
+        .catch(function () { /* no critico, la asignacion ya es suficiente */ });
+
+    })
+    .catch(function (err) {
+      t3bTrasladoValidado = null;
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al verificar asignaci&oacute;n: ' + err.message, 'danger');
+    });
+}
+
+function t3bGuardarEntrega() {
+  var traslado = $('t3b_traslado') ? $('t3b_traslado').value.trim() : '';
+  if (!traslado) { showToast('Primero consulte un traslado en la Secci&oacute;n B.', 'danger'); return; }
+  if (!t3bTrasladoValidado) { showToast('Valide la asignaci&oacute;n del traslado antes de guardar.', 'danger'); return; }
+
+  var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
+  if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
+
+  var responsableEntrega = $('t3b_responsable_entrega') ? $('t3b_responsable_entrega').value : '';
+  var cantidadVal = $('t3b_cantidad') ? $('t3b_cantidad').value : '';
+  var tipoCarga = $('t3b_tipo_carga') ? $('t3b_tipo_carga').value : '';
+
+  if (!responsableEntrega) { showToast('Seleccione el Responsable de Entrega CENDIS.', 'danger'); return; }
   if (!tipoCarga) { showToast('Seleccione el Tipo de Carga.', 'danger'); return; }
 
-  // --- Validacion Cantidad: entero mayor a 0 ---
-  var cantidadVal = $('t3_cantidad') ? $('t3_cantidad').value : '';
+  // Validacion Cantidad: entero mayor a 0
   if (cantidadVal === '') { showToast('Ingrese la Cantidad.', 'danger'); return; }
   var cantidadNum = Number(cantidadVal);
   if (isNaN(cantidadNum) || cantidadNum !== Math.floor(cantidadNum) || cantidadNum < 1) {
     showToast('Cantidad debe ser un numero entero mayor a 0.', 'danger'); return;
   }
 
-  // --- Validacion Tipo y Urgente obligatorios ---
-  var tipoVal = $('t3_tipo') ? $('t3_tipo').value : '';
-  var urgenteVal = $('t3_urgente') ? $('t3_urgente').value : '';
-  if (!tipoVal) { showToast('Seleccione el Tipo.', 'danger'); return; }
-  if (!urgenteVal) { showToast('Seleccione si es Urgente (SI/NO).', 'danger'); return; }
+  // Datos de la asignacion (paso 1)
+  var asig = t3bTrasladoValidado;
+  // Datos consolidados adicionales
+  var consol = asig.__consolidado || {};
 
   var registro = {
     'Documento Traslado': traslado,
-    'Fecha': $('t3_fecha') ? $('t3_fecha').value : '',
-    'Bodega Origen': $('t3_bodega_origen') ? $('t3_bodega_origen').value : '',
-    'Bodega Destino': $('t3_destino') ? $('t3_destino').value : '',
-    'Ruta': $('t3_ruta') ? $('t3_ruta').value : '',
-    'Zona': $('t3_ruta') ? $('t3_ruta').value : '',
-    'Cantidad': $('t3_cantidad') ? $('t3_cantidad').value : '',
-    'Tipo': $('t3_tipo') ? $('t3_tipo').value : '',
-    'Urgente': $('t3_urgente') ? $('t3_urgente').value : '',
-    'Codigo': $('t3_codigo') ? $('t3_codigo').value : '',
-    'Descripcion': $('t3_descripcion') ? $('t3_descripcion').value : '',
-    'Unidades': $('t3_unidades') ? $('t3_unidades').value : '',
-    'Lote': $('t3_lote') ? $('t3_lote').value : '',
-    'Fecha Vencimiento': $('t3_fechaVenc') ? $('t3_fechaVenc').value : '',
-    'Recibido': $('t3_recibido') ? $('t3_recibido').value : '',
-    'Responsable Entrega CENDIS': responsableEntrega,
-    'Quien Alisto': quienAlista,
-    'Quien Pito': quienPita,
-    'Quien Empaco': quienEmpaca,
+    'Fecha': asig['Fecha'] || '',
+    'Bodega Origen': $('t3b_bodega_origen') ? $('t3b_bodega_origen').value : '',
+    'Bodega Destino': $('t3b_destino') ? $('t3b_destino').value : '',
+    'Ruta': $('t3b_ruta') ? $('t3b_ruta').value : '',
+    'Zona': $('t3b_ruta') ? $('t3b_ruta').value : '',
+    'Urgente': $('t3b_urgente') ? $('t3b_urgente').value : '',
+    'Quien Alisto': $('t3b_quien_alista') ? $('t3b_quien_alista').value : '',
+    'Quien Pito': $('t3b_quien_pita') ? $('t3b_quien_pita').value : '',
+    'Quien Empaco': $('t3b_quien_empaca') ? $('t3b_quien_empaca').value : '',
+    'Grupo': $('t3b_quien_alista') ? $('t3b_quien_alista').value + ', ' + $('t3b_quien_pita').value + ', ' + $('t3b_quien_empaca').value : '',
+    'Concepto': $('t3b_concepto') ? $('t3b_concepto').value : '',
+    'Cantidad': $('t3b_cantidad') ? $('t3b_cantidad').value : '',
     'Tipo Carga': tipoCarga,
-    'Concepto': concepto,
-    'Observacion Drive': $('t3_observaciones_drive') ? $('t3_observaciones_drive').value : '',
+    'Responsable Entrega CENDIS': responsableEntrega,
+    'Codigo': consol['Codigo'] || consol['Codigo Producto'] || '',
+    'Descripcion': consol['Descripcion'] || '',
+    'Unidades': consol['Unidades'] || '',
+    'Lote': consol['Lote'] || '',
+    'Fecha Vencimiento': consol['Fecha Vencimiento'] || consol['Vencimiento'] || '',
+    'Recibido': consol['Recibido'] || consol['Quien Recibe'] || '',
+    'Observacion Drive': asig['Observacion Drive'] || consol['Observacion'] || consol['Observaciones'] || '',
     'Marca temporal': ahora(),
     'Perfil': perfilActivo(),
     'Usuario': nombreUsuario()
@@ -897,18 +1040,24 @@ function t3Guardar() {
   apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'despachos', registro: registro })
     .then(function (r) {
       if (r && r.ok) {
-        showToast('&#128190; <strong>Planilla Entrega</strong> guardada en Drive (con datos de rotacion).', 'success');
-        t3TrasladoValidado = null;
-        limpiarCampos('t3_');
-        if ($('t3_punto_row')) $('t3_punto_row').style.display = 'none';
-        if ($('t3_estadoTraslado')) $('t3_estadoTraslado').innerHTML = '';
+        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en Drive.', 'success');
+        t3bTrasladoValidado = null;
+        limpiarSeccionB();
       } else {
-        showToast('Error al guardar Planilla: ' + (r.error || ''), 'danger');
+        showToast('Error al guardar Entrega: ' + (r.error || ''), 'danger');
       }
     })
     .catch(function (err) {
       showToast('Error de conexion: ' + err.message, 'danger');
     });
+}
+
+function limpiarSeccionB() {
+  limpiarCampos('t3b_');
+  if ($('t3b_punto_row')) $('t3b_punto_row').style.display = 'none';
+  if ($('t3b_estadoTraslado')) $('t3b_estadoTraslado').innerHTML = '';
+  t3bTrasladoValidado = null;
+  showToast('Secci&oacute;n B (Entrega a Log&iacute;stica) limpiada.', 'info');
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
@@ -1212,8 +1361,10 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('t1_btnGuardar'); if (btn) btn.addEventListener('click', t1Guardar);
   btn = $('t2_btnAgregar'); if (btn) btn.addEventListener('click', t2AgregarItem);
   btn = $('t2_btnGuardar'); if (btn) btn.addEventListener('click', t2Guardar);
-  btn = $('t3_btnValidar'); if (btn) btn.addEventListener('click', t3ValidarTraslado);
-  btn = $('t3_btnGuardar'); if (btn) btn.addEventListener('click', t3Guardar);
+  btn = $('t3a_btnValidar'); if (btn) btn.addEventListener('click', t3aValidarTraslado);
+  btn = $('t3a_btnGuardar'); if (btn) btn.addEventListener('click', t3aGuardarAsignacion);
+  btn = $('t3b_btnValidar'); if (btn) btn.addEventListener('click', t3bValidarTraslado);
+  btn = $('t3b_btnGuardar'); if (btn) btn.addEventListener('click', t3bGuardarEntrega);
   btn = $('log_btnBuscar');  if (btn) btn.addEventListener('click', logBuscar);
   btn = $('log_btnGuardar'); if (btn) btn.addEventListener('click', logGuardarRecepcion);
   btn = $('log_btnImprimir'); if (btn) btn.addEventListener('click', logImprimir);
