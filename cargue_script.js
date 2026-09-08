@@ -293,7 +293,7 @@ var CONFIG_DEFAULT = {
     inventario:  { file: 'BD_VERIFICACION_INVENTARIO',    sheet: 'DATOS' },
     novedades:   { file: 'BD_NOVEDADES_MODIFICACIONES',   sheet: 'DATOS' },
     rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' },
-    entrega:     { file: 'BD_ENTREGA_A_LOGÍSTICA',        sheet: 'DATOS' }
+    entrega:     { file: 'BD_ENTREGA_A_LOGISTICA',        sheet: 'DATOS' }
   },
   conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS']
 };
@@ -906,34 +906,43 @@ function t3aGuardarAsignacion() {
   }
   if (!urgenteVal) { showToast('Seleccione si es Urgente (SI/NO).', 'danger'); return; }
 
-  var registro = {
-    'Documento Traslado': traslado,
-    'Fecha': $('t3a_fecha') ? $('t3a_fecha').value : '',
-    'Bodega Origen': $('t3a_bodega_origen') ? $('t3a_bodega_origen').value : '',
-    'Bodega Destino': $('t3a_destino') ? $('t3a_destino').value : '',
-    'Ruta': $('t3a_ruta') ? $('t3a_ruta').value : '',
-    'Zona': $('t3a_ruta') ? $('t3a_ruta').value : '',
-    'Urgente': urgenteVal,
-    'Quien Alisto': quienAlista,
-    'Quien Pito': quienPita,
-    'Quien Empaco': quienEmpaca,
-    'Grupo': quienAlista + ', ' + quienPita + ', ' + quienEmpaca,
-    'Grupo Asignado': $('t3a_grupo_asignado') ? $('t3a_grupo_asignado').value : '',
-    'Concepto': concepto,
-    'Codigo': $('t3a_codigo') ? $('t3a_codigo').value : '',
-    'Descripcion': $('t3a_descripcion') ? $('t3a_descripcion').value : '',
-    'Unidades': $('t3a_unidades') ? $('t3a_unidades').value : '',
-    'Lote': $('t3a_lote') ? $('t3a_lote').value : '',
-    'Fecha Vencimiento': $('t3a_fechaVenc') ? $('t3a_fechaVenc').value : '',
-    'Recibido': $('t3a_recibido') ? $('t3a_recibido').value : '',
-    'Observacion Drive': $('t3a_observaciones_drive') ? $('t3a_observaciones_drive').value : '',
-    'Marca temporal': ahora(),
-    'Perfil': perfilActivo(),
-    'Usuario': nombreUsuario()
-  };
+  // VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_ASIGNACION_DE_TRASLADO
+  var btnGuardar = $('t3a_btnGuardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Verificando...'; }
 
-  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'asignacion', registro: registro })
+  apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: traslado })
+    .then(function (rExist) {
+      if (rExist && rExist.encontrado) {
+        showToast('&#9888; El traslado <strong>' + traslado + '</strong> ya tiene una Asignaci&oacute;n guardada. No se puede repetir.', 'danger');
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
+        return null; // senal para no continuar
+      }
+
+      var grupoAsignado = $('t3a_grupo_asignado') ? $('t3a_grupo_asignado').value : '';
+      var registro = {
+        'Documento Traslado': traslado,
+        'Fecha': $('t3a_fecha') ? $('t3a_fecha').value : '',
+        'Bodega Origen': $('t3a_bodega_origen') ? $('t3a_bodega_origen').value : '',
+        'Bodega Destino': $('t3a_destino') ? $('t3a_destino').value : '',
+        'Ruta': $('t3a_ruta') ? $('t3a_ruta').value : '',
+        'Zona': $('t3a_ruta') ? $('t3a_ruta').value : '',
+        'Urgente': urgenteVal,
+        'Quien Alisto': quienAlista,
+        'Quien Pito': quienPita,
+        'Quien Empaco': quienEmpaca,
+        'Grupo Asignado': grupoAsignado,
+        'Concepto': concepto,
+        'Recibido': $('t3a_recibido') ? $('t3a_recibido').value : '',
+        'Observacion Drive': $('t3a_observaciones_drive') ? $('t3a_observaciones_drive').value : '',
+        'Marca temporal': ahora(),
+        'Perfil': perfilActivo(),
+        'Usuario': nombreUsuario()
+      };
+
+      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'asignacion', registro: registro });
+    })
     .then(function (r) {
+      if (r === null) return; // duplicado, ya se mostro error
       if (r && r.ok) {
         showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.', 'success');
         t3aTrasladoValidado = null;
@@ -941,9 +950,11 @@ function t3aGuardarAsignacion() {
       } else {
         showToast('Error al guardar Asignaci&oacute;n: ' + (r.error || ''), 'danger');
       }
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
     })
     .catch(function (err) {
       showToast('Error de conexion: ' + err.message, 'danger');
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
     });
 }
 
@@ -996,6 +1007,7 @@ function t3bValidarTraslado() {
       if ($('t3b_quien_pita')) $('t3b_quien_pita').value = asig['Quien Pito'] || '';
       if ($('t3b_quien_empaca')) $('t3b_quien_empaca').value = asig['Quien Empaco'] || '';
       if ($('t3b_concepto')) $('t3b_concepto').value = asig['Concepto'] || '';
+      if ($('t3b_grupo_asignado')) $('t3b_grupo_asignado').value = asig['Grupo Asignado'] || '';
 
       // Punto de captura
       if ($('t3b_punto_captura')) $('t3b_punto_captura').value = 'Punto ' + (asig['Punto'] || traslado);
@@ -1054,51 +1066,61 @@ function t3bGuardarEntrega() {
     showToast('Cantidad debe ser un numero entero mayor a 0.', 'danger'); return;
   }
 
-  // Datos de la asignacion (paso 1)
-  var asig = t3bTrasladoValidado;
-  // Datos consolidados adicionales
-  var consol = asig.__consolidado || {};
+  // VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_ENTREGA_A_LOGISTICA
+  var btnGuardar = $('t3b_btnGuardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Verificando...'; }
 
-  var registro = {
-    'Documento Traslado': traslado,
-    'Fecha': asig['Fecha'] || '',
-    'Bodega Origen': $('t3b_bodega_origen') ? $('t3b_bodega_origen').value : '',
-    'Bodega Destino': $('t3b_destino') ? $('t3b_destino').value : '',
-    'Ruta': $('t3b_ruta') ? $('t3b_ruta').value : '',
-    'Zona': $('t3b_ruta') ? $('t3b_ruta').value : '',
-    'Urgente': $('t3b_urgente') ? $('t3b_urgente').value : '',
-    'Quien Alisto': $('t3b_quien_alista') ? $('t3b_quien_alista').value : '',
-    'Quien Pito': $('t3b_quien_pita') ? $('t3b_quien_pita').value : '',
-    'Quien Empaco': $('t3b_quien_empaca') ? $('t3b_quien_empaca').value : '',
-    'Grupo': $('t3b_quien_alista') ? $('t3b_quien_alista').value + ', ' + $('t3b_quien_pita').value + ', ' + $('t3b_quien_empaca').value : '',
-    'Concepto': $('t3b_concepto') ? $('t3b_concepto').value : '',
-    'Cantidad': $('t3b_cantidad') ? $('t3b_cantidad').value : '',
-    'Tipo Carga': tipoCarga,
-    'Responsable Entrega CENDIS': responsableEntrega,
-    'Codigo': consol['Codigo'] || consol['Codigo Producto'] || '',
-    'Descripcion': consol['Descripcion'] || '',
-    'Unidades': consol['Unidades'] || '',
-    'Lote': consol['Lote'] || '',
-    'Fecha Vencimiento': consol['Fecha Vencimiento'] || consol['Vencimiento'] || '',
-    'Recibido': consol['Recibido'] || consol['Quien Recibe'] || '',
-    'Observacion Drive': asig['Observacion Drive'] || consol['Observacion'] || consol['Observaciones'] || '',
-    'Marca temporal': ahora(),
-    'Perfil': perfilActivo(),
-    'Usuario': nombreUsuario()
-  };
+  apiGet({ action: 'buscarEntrega', folderId: folderId, traslado: traslado })
+    .then(function (rExist) {
+      if (rExist && rExist.encontrado) {
+        showToast('&#9888; El traslado <strong>' + traslado + '</strong> ya tiene una Entrega a Log&iacute;stica guardada. No se puede repetir.', 'danger');
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
+        return null; // senal para no continuar
+      }
 
-  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'entrega', registro: registro })
+      // Datos de la asignacion (paso 1)
+      var asig = t3bTrasladoValidado;
+      var consol = asig.__consolidado || {};
+
+      var registro = {
+        'Documento Traslado': traslado,
+        'Fecha': asig['Fecha'] || '',
+        'Bodega Origen': $('t3b_bodega_origen') ? $('t3b_bodega_origen').value : '',
+        'Bodega Destino': $('t3b_destino') ? $('t3b_destino').value : '',
+        'Ruta': $('t3b_ruta') ? $('t3b_ruta').value : '',
+        'Zona': $('t3b_ruta') ? $('t3b_ruta').value : '',
+        'Urgente': $('t3b_urgente') ? $('t3b_urgente').value : '',
+        'Quien Alisto': $('t3b_quien_alista') ? $('t3b_quien_alista').value : '',
+        'Quien Pito': $('t3b_quien_pita') ? $('t3b_quien_pita').value : '',
+        'Quien Empaco': $('t3b_quien_empaca') ? $('t3b_quien_empaca').value : '',
+        'Grupo Asignado': asig['Grupo Asignado'] || '',
+        'Concepto': $('t3b_concepto') ? $('t3b_concepto').value : '',
+        'Cantidad': $('t3b_cantidad') ? $('t3b_cantidad').value : '',
+        'Tipo Carga': tipoCarga,
+        'Responsable Entrega CENDIS': responsableEntrega,
+        'Recibido': asig['Recibido'] || consol['Quien Recibe'] || '',
+        'Observacion Drive': asig['Observacion Drive'] || consol['Observacion'] || consol['Observaciones'] || '',
+        'Marca temporal': ahora(),
+        'Perfil': perfilActivo(),
+        'Usuario': nombreUsuario()
+      };
+
+      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'entrega', registro: registro });
+    })
     .then(function (r) {
+      if (r === null) return; // duplicado, ya se mostro error
       if (r && r.ok) {
-        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en BD_ENTREGA_A_LOG&Iacute;STICA.', 'success');
+        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en BD_ENTREGA_A_LOGISTICA.', 'success');
         t3bTrasladoValidado = null;
         limpiarSeccionB();
       } else {
         showToast('Error al guardar Entrega: ' + (r.error || ''), 'danger');
       }
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
     })
     .catch(function (err) {
       showToast('Error de conexion: ' + err.message, 'danger');
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
     });
 }
 
