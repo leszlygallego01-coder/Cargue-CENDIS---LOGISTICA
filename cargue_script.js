@@ -852,6 +852,30 @@ var GRUPOS_FIJOS_CARGUE = [
   });
 })();
 
+/* ── Normalizar Grupo Asignado — convierte numero o texto corto al formato completo del select ── */
+function normalizarGrupoAsignado(valorRaw) {
+  if (!valorRaw) return '';
+  var v = String(valorRaw).trim();
+  // Si ya tiene el formato completo (contiene "Grupo"), devolverlo tal cual
+  if (v.indexOf('Grupo') >= 0) return v;
+  // Si es solo un numero (1-8), convertir al formato completo
+  var num = parseInt(v, 10);
+  if (isNaN(num) || num < 1 || num > 8) return v;
+  var grupo = null;
+  for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
+    if (GRUPOS_FIJOS_CARGUE[i].numero === num) { grupo = GRUPOS_FIJOS_CARGUE[i]; break; }
+  }
+  if (!grupo) return v;
+  // Para Gris (8): agregar una persona aleatoria
+  if (grupo.nombre === 'Gris') {
+    var idx = Math.floor(Math.random() * grupo.miembros.length);
+    var persona = grupo.miembros[idx];
+    return 'Grupo Especial Gris (8) \u2014 ' + persona;
+  }
+  // Para los demas: formato completo con miembros
+  return 'Grupo ' + grupo.nombre + ' (' + grupo.numero + ') \u2014 ' + grupo.miembros.join(', ');
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────────
    8A. SECCION A — ASIGNACION DE TRASLADO (Paso 1)
    Busca en la carpeta trasladosConsulta, autocompleta campos bloqueados,
@@ -1026,9 +1050,9 @@ function limpiarSeccionA() {
     ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = '';
     // Restaurar opcion Gris a su valor/texto por defecto (B05 la modifica dinamicamente)
     for (var i = 0; i < ga.options.length; i++) {
-      if (ga.options[i].value === '8' || ga.options[i].value.indexOf('Gris') > -1) {
-        ga.options[i].value = '8';
-        ga.options[i].text = 'Grupo Especial Gris (8)';
+      if (ga.options[i].value.indexOf('Gris') >= 0) {
+        ga.options[i].value = 'Grupo Especial Gris (8)';
+        ga.options[i].textContent = 'Especial Gris (8) \u2014 Alto Costo';
         break;
       }
     }
@@ -1079,26 +1103,26 @@ function t3bValidarTraslado() {
       if ($('t3b_urgente')) $('t3b_urgente').value = asig['Urgente'] || 'NO';
       if ($('t3b_concepto')) $('t3b_concepto').value = asig['Concepto'] || '';
 
-      // Formatear Grupo Asignado con color y numero
+      // Formatear Grupo Asignado — normalizar numero o texto corto al formato completo
       var grupoNombreRaw = asig['Grupo Asignado'] || '';
+      var grupoNormalizado = normalizarGrupoAsignado(grupoNombreRaw);
       var grupoAsignadoEl = $('t3b_grupo_asignado');
-      if (grupoAsignadoEl && grupoNombreRaw) {
-        // Extraer nombre del grupo del texto (puede venir como "Grupo Especial Gris (8) — Claudia Echeverry, Camila Posada..." o "Grupo Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio")
-        var matchNombre = grupoNombreRaw.match(/Grupo\s+(?:Especial\s+)?(\w+)/i);
-        var nombreGrupo = matchNombre ? matchNombre[1] : '';
+      if (grupoAsignadoEl) {
+        grupoAsignadoEl.value = grupoNormalizado;
+        // Colorear segun el grupo
         var grupoInfo = null;
         for (var gi = 0; gi < GRUPOS_FIJOS_CARGUE.length; gi++) {
-          if (GRUPOS_FIJOS_CARGUE[gi].nombre === nombreGrupo) { grupoInfo = GRUPOS_FIJOS_CARGUE[gi]; break; }
+          if (grupoNormalizado.indexOf(GRUPOS_FIJOS_CARGUE[gi].nombre) >= 0) { grupoInfo = GRUPOS_FIJOS_CARGUE[gi]; break; }
         }
         if (grupoInfo) {
-          grupoAsignadoEl.value = grupoNombreRaw;
           grupoAsignadoEl.style.borderColor = grupoInfo.hex;
           grupoAsignadoEl.style.color = grupoInfo.hex;
+          grupoAsignadoEl.style.fontWeight = 'bold';
         } else {
-          grupoAsignadoEl.value = grupoNombreRaw;
+          grupoAsignadoEl.style.borderColor = '';
+          grupoAsignadoEl.style.color = '';
+          grupoAsignadoEl.style.fontWeight = '';
         }
-      } else if (grupoAsignadoEl) {
-        grupoAsignadoEl.value = grupoNombreRaw;
       }
 
       // Punto de captura — muestra traslado general (completo)
@@ -1184,7 +1208,7 @@ function t3bGuardarEntrega() {
         'Ruta': $('t3b_ruta') ? $('t3b_ruta').value : '',
         'Zona': $('t3b_ruta') ? $('t3b_ruta').value : '',
         'Urgente': $('t3b_urgente') ? $('t3b_urgente').value : '',
-        'Grupo Asignado': asig['Grupo Asignado'] || '',
+        'Grupo Asignado': $('t3b_grupo_asignado') ? $('t3b_grupo_asignado').value : (asig['Grupo Asignado'] || ''),
         'Concepto': $('t3b_concepto') ? $('t3b_concepto').value : '',
         'Cantidad': $('t3b_cantidad') ? $('t3b_cantidad').value : '',
         'Tipo Carga': tipoCarga,
