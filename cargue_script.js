@@ -279,18 +279,20 @@ var CONFIG_DEFAULT = {
     facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
     inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
     rotacion:          '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
+    entrega:           '1tUXm2FVVFWBnyeBrzTIRpobYTKxk7OH8',
     backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
   },
   perfiles: {
     seguridad:   { file: 'BD_SEGURIDAD_DESPACHOS',         sheet: 'DATOS' },
     despachos:   { file: 'BD_PLANILLA_ENTREGA_DESPACHOS',  sheet: 'DATOS' },
-    asignacion:  { file: 'BD_ASIGNACION_TRASLADOS',       sheet: 'DATOS' },
+    asignacion:  { file: 'BD_ASIGNACION_DE_TRASLADO',    sheet: 'DATOS' },
     logistica:   { file: 'BD_LOGISTICA_DESPACHOS',        sheet: 'DATOS' },
     recepcion:   { file: 'BD_RECEPCION_TECNICA',          sheet: 'DATOS' },
     facturacion: { file: 'BD_CARGUE_FACTURA_TRANSPORTE',  sheet: 'DATOS' },
     inventario:  { file: 'BD_VERIFICACION_INVENTARIO',    sheet: 'DATOS' },
     novedades:   { file: 'BD_NOVEDADES_MODIFICACIONES',   sheet: 'DATOS' },
-    rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' }
+    rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' },
+    entrega:     { file: 'BD_ENTREGA_A_LOGÍSTICA',        sheet: 'DATOS' }
   },
   conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS']
 };
@@ -334,7 +336,7 @@ var PERFILES = {
 };
 
 /* Modulos (orden de carpetas/backend) */
-var MODULOS = ['seguridad','recepcion','asignacion','despachos','logistica','facturacion','inventario'];
+var MODULOS = ['seguridad','recepcion','asignacion','entrega','despachos','logistica','facturacion','inventario'];
 
 /* ═════════════════════════════════════════════════════════════════════════════════
    3. CONFIGURACION EN MEMORIA + GUARDADO EN LOCALSTORAGE
@@ -345,6 +347,8 @@ function cargarConfig() {
   CONFIG = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(CONFIG_DEFAULT));
   if (!CONFIG.folders.seguridad) CONFIG.folders.seguridad = CONFIG_DEFAULT.folders.seguridad;
   if (!CONFIG.folders.rotacion)  CONFIG.folders.rotacion  = CONFIG_DEFAULT.folders.rotacion;
+  if (!CONFIG.folders.entrega)   CONFIG.folders.entrega   = CONFIG_DEFAULT.folders.entrega;
+  if (!CONFIG.perfiles.entrega)  CONFIG.perfiles.entrega  = CONFIG_DEFAULT.perfiles.entrega;
   if (!CONFIG.conductores || !CONFIG.conductores.length) CONFIG.conductores = CONFIG_DEFAULT.conductores.slice();
   var el = $('cfg_api_url'); if (el) el.value = CONFIG.api_url;
   var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
@@ -708,39 +712,44 @@ function t3CargarRotacion() {
 }
 
 /** Pre-llena los campos Quien Alista / Quien Pita / Quien Empaca en SECCION A
- *  segun la rotacion del dia.
- *  Si el traslado comienza con TB5, asigna el Grupo Especial Gris (todas hacen los 3 roles).
- *  Si no, aplica la rotacion de trios (primer miembro disponible de cada rol en el trio del dia).
+ *  segun Bodega Origen.
+ *  Si Bodega Origen contiene "B05 ALTO COSTO" → asigna miembros del Grupo Gris.
+ *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → asigna trio de Apertura del Dia.
  */
 function t3AplicarRotacionA() {
   if (!t3RotacionHoy) return;
-  var traslado = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
-  var esTB5 = traslado.length >= 3 && traslado.substring(0, 3).toUpperCase() === 'TB5';
+  var bodega = $('t3a_bodega_origen') ? $('t3a_bodega_origen').value.trim() : '';
+  var esB05AltoCosto = bodega.toUpperCase().indexOf('B05 ALTO COSTO') >= 0;
+  var esCendis = bodega.toUpperCase().indexOf('CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL') >= 0;
 
-  if (esTB5) {
-    var tb5 = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris (TB5)'; });
-    if (tb5.length) {
-      var alistarTB5 = tb5.filter(function (a) { return a.rol === 'Alistar'; });
-      var pitarTB5 = tb5.filter(function (a) { return a.rol === 'Pitar'; });
-      var empacarTB5 = tb5.filter(function (a) { return a.rol === 'Empacar'; });
-      seleccionarOpcion('t3a_quien_alista', alistarTB5.length ? alistarTB5[0].nombre : '');
-      seleccionarOpcion('t3a_quien_pita', pitarTB5.length ? pitarTB5[0].nombre : '');
-      seleccionarOpcion('t3a_quien_empaca', empacarTB5.length ? empacarTB5[0].nombre : '');
+  if (esB05AltoCosto) {
+    // Grupo Gris — asignar primer miembro a cada rol
+    var gris = t3RotacionHoy.filter(function (a) { return a.grupo === 'Gris'; });
+    if (gris.length) {
+      seleccionarOpcion('t3a_quien_alista', gris[0].nombre);
+      seleccionarOpcion('t3a_quien_pita', gris.length > 1 ? gris[1].nombre : gris[0].nombre);
+      seleccionarOpcion('t3a_quien_empaca', gris.length > 2 ? gris[2].nombre : gris[0].nombre);
     }
-  } else {
-    var alistar = t3RotacionHoy.filter(function (a) { return a.rol === 'Alistar' && a.grupo !== 'Gris (TB5)'; });
-    var pitar = t3RotacionHoy.filter(function (a) { return a.rol === 'Pitar' && a.grupo !== 'Gris (TB5)'; });
-    var empacar = t3RotacionHoy.filter(function (a) { return a.rol === 'Empacar' && a.grupo !== 'Gris (TB5)'; });
-    if (alistar.length) { seleccionarOpcion('t3a_quien_alista', alistar[0].nombre); }
-    if (pitar.length) { seleccionarOpcion('t3a_quien_pita', pitar[0].nombre); }
-    if (empacar.length) { seleccionarOpcion('t3a_quien_empaca', empacar[0].nombre); }
+  } else if (esCendis) {
+    // Asignar trio de Apertura del Dia — filtrar por grupo (no Gris)
+    var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
+    if (noGris.length >= 3) {
+      seleccionarOpcion('t3a_quien_alista', noGris[0].nombre);
+      seleccionarOpcion('t3a_quien_pita', noGris[1].nombre);
+      seleccionarOpcion('t3a_quien_empaca', noGris[2].nombre);
+    } else {
+      // Usar primeros disponibles
+      if (noGris.length >= 1) seleccionarOpcion('t3a_quien_alista', noGris[0].nombre);
+      if (noGris.length >= 2) seleccionarOpcion('t3a_quien_pita', noGris[1].nombre);
+      if (noGris.length >= 3) seleccionarOpcion('t3a_quien_empaca', noGris[2].nombre);
+    }
   }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────────
    8A. SECCION A — ASIGNACION DE TRASLADO (Paso 1)
    Busca en la carpeta trasladosConsulta, autocompleta campos bloqueados,
-   carga la rotacion del dia, y guarda en BD_ASIGNACION_TRASLADOS.
+   carga la rotacion del dia, y guarda en BD_ASIGNACION_DE_TRASLADO.
    ───────────────────────────────────────────────────────────────────────────────── */
 function t3aValidarTraslado() {
   var traslado = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
@@ -908,24 +917,24 @@ function limpiarSeccionA() {
 
 /* ─────────────────────────────────────────────────────────────────────────────────
    8B. SECCION B — ENTREGA A LOGISTICA (Paso 2 — Depende de A)
-   1. Verifica que el traslado exista en BD_ASIGNACION_TRASLADOS (buscarAsignacion).
+   1. Verifica que el traslado exista en BD_ASIGNACION_DE_TRASLADO (buscarAsignacion).
    2. Si existe, trae los datos de la asignacion (Urgente, Grupo, Concepto).
    3. Luego busca el traslado en la hoja consolidada de despachos para
       autocompletar campos bloqueados.
    4. El usuario completa Responsable Entrega CENDIS, Cantidad, Tipo Carga.
-   5. Guarda en BD_PLANILLA_ENTREGA_DESPACHOS (modulo 'despachos').
+   5. Guarda en BD_ENTREGA_A_LOGISTICA (modulo 'entrega').
    ───────────────────────────────────────────────────────────────────────────────── */
 function t3bValidarTraslado() {
   var traslado = $('t3b_traslado') ? $('t3b_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado asignado.', 'danger'); return; }
 
-  var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
-  if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
+  var folderId = $('folder_asignacion') ? $('folder_asignacion').value.trim() : CONFIG.folders.asignacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Asignaci&oacute;n.', 'danger'); return; }
 
   var estado = $('t3b_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Verificando asignaci&oacute;n...</span>';
 
-  // PASO 1: Verificar que el traslado fue asignado (existe en BD_ASIGNACION_TRASLADOS)
+  // PASO 1: Verificar que el traslado fue asignado (existe en BD_ASIGNACION_DE_TRASLADO)
   apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: traslado })
     .then(function (rAsig) {
       if (!rAsig || !rAsig.encontrado || !rAsig.registro) {
@@ -987,8 +996,8 @@ function t3bGuardarEntrega() {
   if (!traslado) { showToast('Primero consulte un traslado en la Secci&oacute;n B.', 'danger'); return; }
   if (!t3bTrasladoValidado) { showToast('Valide la asignaci&oacute;n del traslado antes de guardar.', 'danger'); return; }
 
-  var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
-  if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
+  var folderId = $('folder_entrega') ? $('folder_entrega').value.trim() : CONFIG.folders.entrega;
+  if (!folderId) { showToast('Configure la carpeta Drive de Entrega a Log&iacute;stica.', 'danger'); return; }
 
   var responsableEntrega = $('t3b_responsable_entrega') ? $('t3b_responsable_entrega').value : '';
   var cantidadVal = $('t3b_cantidad') ? $('t3b_cantidad').value : '';
@@ -1037,10 +1046,10 @@ function t3bGuardarEntrega() {
     'Usuario': nombreUsuario()
   };
 
-  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'despachos', registro: registro })
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'entrega', registro: registro })
     .then(function (r) {
       if (r && r.ok) {
-        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en Drive.', 'success');
+        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en BD_ENTREGA_A_LOG&Iacute;STICA.', 'success');
         t3bTrasladoValidado = null;
         limpiarSeccionB();
       } else {
