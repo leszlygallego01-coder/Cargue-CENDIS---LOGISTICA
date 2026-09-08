@@ -722,23 +722,34 @@ function t3CargarRotacion() {
  */
 function t3AplicarRotacionA() {
   var bodega = $('t3a_bodega_origen') ? $('t3a_bodega_origen').value.trim() : '';
-  var grupoAsignadoEl = $('t3a_grupo_asignado');
+  var grupoSelect = $('t3a_grupo_asignado');
   var esB05AltoCosto = bodega.toUpperCase().indexOf('B05 ALTO COSTO') >= 0;
   var esCendis = bodega.toUpperCase().indexOf('CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL') >= 0;
 
   if (esB05AltoCosto) {
-    // ── Grupo Especial Gris (8) — todos sus integrantes ──
+    // ── Grupo Especial Gris (8) — UNA persona aleatoria del grupo ──
     var grupoGris = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === 'Gris'; })[0];
     if (grupoGris) {
-      var textoGris = 'Grupo Especial Gris (8) — ' + grupoGris.miembros.join(', ');
-      if (grupoAsignadoEl) {
-        grupoAsignadoEl.value = textoGris;
-        grupoAsignadoEl.style.borderColor = grupoGris.hex;
-        grupoAsignadoEl.style.color = grupoGris.hex;
+      var idx = Math.floor(Math.random() * grupoGris.miembros.length);
+      var personaAleatoria = grupoGris.miembros[idx];
+      var textoGris = 'Grupo Especial Gris (8) — ' + personaAleatoria;
+      // Seleccionar la opcion de Gris en el select y personalizar texto
+      if (grupoSelect) {
+        // Buscar la opcion de Gris
+        for (var i = 0; i < grupoSelect.options.length; i++) {
+          if (grupoSelect.options[i].value.indexOf('Gris') >= 0) {
+            grupoSelect.options[i].value = textoGris;
+            grupoSelect.options[i].textContent = 'Especial Gris (8) — ' + personaAleatoria;
+            grupoSelect.selectedIndex = i;
+            grupoSelect.style.borderColor = grupoGris.hex;
+            grupoSelect.style.color = grupoGris.hex;
+            break;
+          }
+        }
       }
     }
   } else if (esCendis) {
-    // ── Grupo de la Apertura del Dia — integrantes de la rotacion ──
+    // ── Grupo de la Apertura del Dia — preseleccionar grupo automaticamente ──
     if (t3RotacionHoy && t3RotacionHoy.length) {
       var gruposNoGris = {};
       t3RotacionHoy.forEach(function (a) {
@@ -748,54 +759,63 @@ function t3AplicarRotacionA() {
         }
       });
       var grupoNombre = '';
-      var grupoMiembros = [];
       var claves = Object.keys(gruposNoGris);
       for (var i = 0; i < claves.length; i++) {
         if (gruposNoGris[claves[i]].length >= 3) {
           grupoNombre = claves[i];
-          grupoMiembros = gruposNoGris[claves[i]].slice(0, 3);
           break;
         }
       }
-      var grupoInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === grupoNombre; })[0];
-      if (grupoNombre && grupoMiembros.length >= 3) {
-        var numGrupo = grupoInfo ? grupoInfo.numero : '?';
-        var textoCendis = 'Grupo ' + grupoNombre + ' (' + numGrupo + ') — ' + grupoMiembros.join(', ');
-        if (grupoAsignadoEl) {
-          grupoAsignadoEl.value = textoCendis;
-          if (grupoInfo) {
-            grupoAsignadoEl.style.borderColor = grupoInfo.hex;
-            grupoAsignadoEl.style.color = grupoInfo.hex;
+      if (grupoNombre) {
+        var grupoInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === grupoNombre; })[0];
+        if (grupoSelect && grupoInfo) {
+          for (var j = 0; j < grupoSelect.options.length; j++) {
+            if (grupoSelect.options[j].value.indexOf(grupoNombre) >= 0) {
+              grupoSelect.selectedIndex = j;
+              grupoSelect.style.borderColor = grupoInfo.hex;
+              grupoSelect.style.color = grupoInfo.hex;
+              break;
+            }
           }
         }
       } else {
-        // Fallback: primeros 3 no-Gris de la rotacion
+        // Fallback: primer grupo no-Gris
         var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
-        if (noGris.length >= 3) {
-          var infoFallback = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === noGris[0].grupo; })[0];
-          var numFallback = infoFallback ? infoFallback.numero : '?';
-          var miembrosFallback = [noGris[0].nombre, noGris[1].nombre, noGris[2].nombre];
-          var textoFallback = 'Grupo ' + (noGris[0].grupo || '?') + ' (' + numFallback + ') — ' + miembrosFallback.join(', ');
-          if (grupoAsignadoEl) {
-            grupoAsignadoEl.value = textoFallback;
-            if (infoFallback) {
-              grupoAsignadoEl.style.borderColor = infoFallback.hex;
-              grupoAsignadoEl.style.color = infoFallback.hex;
+        if (noGris.length && grupoSelect) {
+          var fbGrupo = noGris[0].grupo;
+          var fbInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === fbGrupo; })[0];
+          if (fbInfo) {
+            for (var k = 0; k < grupoSelect.options.length; k++) {
+              if (grupoSelect.options[k].value.indexOf(fbGrupo) >= 0) {
+                grupoSelect.selectedIndex = k;
+                grupoSelect.style.borderColor = fbInfo.hex;
+                grupoSelect.style.color = fbInfo.hex;
+                break;
+              }
             }
           }
-        } else {
-          if (grupoAsignadoEl) grupoAsignadoEl.value = 'Sin grupo disponible (CENDIS)';
         }
       }
-    } else {
-      if (grupoAsignadoEl) grupoAsignadoEl.value = 'Sin rotacion del dia (CENDIS)';
     }
   } else {
-    // Bodega no reconocida
-    if (grupoAsignadoEl) {
-      grupoAsignadoEl.value = bodega ? 'Sin asignacion automatica' : '';
-      grupoAsignadoEl.style.borderColor = '';
-      grupoAsignadoEl.style.color = '';
+    // Bodega no reconocida — grupo aleatorio como sugerencia
+    if (grupoSelect && bodega) {
+      var idxRand = 1 + Math.floor(Math.random() * 7); // 1-7 (excluye Gris)
+      var opciones = grupoSelect.options;
+      for (var m = 1; m < opciones.length - 1; m++) { // saltar placeholder y Gris
+        var optGrupo = opciones[m].value;
+        var optInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return optGrupo.indexOf(g.nombre) >= 0; })[0];
+        if (optInfo && optInfo.numero === idxRand) {
+          grupoSelect.selectedIndex = m;
+          grupoSelect.style.borderColor = optInfo.hex;
+          grupoSelect.style.color = optInfo.hex;
+          break;
+        }
+      }
+    } else if (grupoSelect) {
+      grupoSelect.selectedIndex = 0;
+      grupoSelect.style.borderColor = '';
+      grupoSelect.style.color = '';
     }
   }
 }
@@ -813,6 +833,24 @@ var GRUPOS_FIJOS_CARGUE = [
   { nombre: 'Fucsia',  numero: 7, hex: '#FF00FF', miembros: ['Manuel David Salazar', 'Luz Nelly Chaves', 'Luis Felipe Marin'], lider: 'Luz Nelly Chaves' },
   { nombre: 'Gris',    numero: 8, hex: '#6c757d', miembros: ['Claudia Echeverry', 'Camila Posada', 'Angela Vera', 'Mayra Alejandra Franco', 'Andrea Vanegas'], lider: 'Andrea Vanegas' }
 ];
+
+/* ── Listener de cambio en Grupo Asignado — colorea el select al cambiar manualmente ── */
+(function initGrupoSelectListener() {
+  var gs = $('t3a_grupo_asignado');
+  if (!gs) return;
+  gs.addEventListener('change', function () {
+    var val = this.value || '';
+    var hex = '';
+    for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
+      if (val.indexOf(GRUPOS_FIJOS_CARGUE[i].nombre) >= 0) {
+        hex = GRUPOS_FIJOS_CARGUE[i].hex; break;
+      }
+    }
+    this.style.borderColor = hex || '';
+    this.style.color = hex || '';
+    this.style.fontWeight = hex ? 'bold' : '';
+  });
+})();
 
 /* ─────────────────────────────────────────────────────────────────────────────────
    8A. SECCION A — ASIGNACION DE TRASLADO (Paso 1)
@@ -874,10 +912,11 @@ function t3aValidarTraslado() {
           if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
         }
 
-        // Punto de captura
-        if ($('t3a_punto_captura')) $('t3a_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
+        // Punto de captura — muestra traslado general (completo)
+        var trasladoCompleto = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+        if ($('t3a_punto_captura')) $('t3a_punto_captura').value = trasladoCompleto;
         if ($('t3a_punto_row')) $('t3a_punto_row').style.display = '';
-        if ($('t3a_punto_info')) $('t3a_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Punto capturado</span>';
+        if ($('t3a_punto_info')) $('t3a_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Traslado capturado</span>';
 
         // Autocompletar Ruta segun Bodega Destino
         autocompletarRuta('t3a_destino', 't3a_ruta');
@@ -983,7 +1022,18 @@ function t3aGuardarAsignacion() {
 function limpiarSeccionA() {
   limpiarCampos('t3a_');
   var ga = $('t3a_grupo_asignado');
-  if (ga) { ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = ''; }
+  if (ga) {
+    ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = '';
+    // Restaurar opcion Gris a su valor/texto por defecto (B05 la modifica dinamicamente)
+    for (var i = 0; i < ga.options.length; i++) {
+      if (ga.options[i].value === '8' || ga.options[i].value.indexOf('Gris') > -1) {
+        ga.options[i].value = '8';
+        ga.options[i].text = 'Grupo Especial Gris (8)';
+        break;
+      }
+    }
+    ga.selectedIndex = 0; // reset a opcion placeholder
+  }
   if ($('t3a_punto_row')) $('t3a_punto_row').style.display = 'none';
   if ($('t3a_estadoTraslado')) $('t3a_estadoTraslado').innerHTML = '';
   if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
@@ -1051,8 +1101,9 @@ function t3bValidarTraslado() {
         grupoAsignadoEl.value = grupoNombreRaw;
       }
 
-      // Punto de captura
-      if ($('t3b_punto_captura')) $('t3b_punto_captura').value = 'Punto ' + (asig['Punto'] || traslado);
+      // Punto de captura — muestra traslado general (completo)
+      var trasladoCompletoB = asig['Traslado'] || asig['Documento Traslado'] || asig['Numero Traslado'] || traslado;
+      if ($('t3b_punto_captura')) $('t3b_punto_captura').value = trasladoCompletoB;
       if ($('t3b_punto_row')) $('t3b_punto_row').style.display = '';
 
       if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Asignaci&oacute;n verificada</span>';
@@ -1070,7 +1121,8 @@ function t3bValidarTraslado() {
             var reg = rConsol.registro;
             // Completar campos adicionales en Seccion B (no sobreescribir los ya llenos)
             if ($('t3b_punto_captura') && !$('t3b_punto_captura').value) {
-              $('t3b_punto_captura').value = 'Punto ' + (reg['Punto'] || reg['Punto de Captura'] || traslado);
+              var trasladoCompletoConsol = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+              $('t3b_punto_captura').value = trasladoCompletoConsol;
             }
             // Guardar referencia completa para el guardado
             t3bTrasladoValidado.__consolidado = reg;
