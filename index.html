@@ -296,7 +296,8 @@
 
           <div class="row g-3">
             <div class="col-md-3"><label class="form-label">Guia *</label><input class="form-control" id="s_guia" placeholder="Numero de guia"></div>
-            <div class="col-md-3"><label class="form-label">Factura *</label><input class="form-control" id="s_factura" placeholder="Numero de factura"></div>
+            <div class="col-md-3"><label class="form-label">Factura *</label><input class="form-control" id="s_factura" placeholder="Numero de factura">
+              <small class="text-muted">Nota: Si el registro de la factura es muy extenso, puede ingresar una abreviatura. Ejemplo: en lugar de FDO000045943, puede registrarlo como FDO45943.</small></div>
             <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="s_proveedor" placeholder="Nombre del proveedor"></div>
             <div class="col-md-2"><label class="form-label">Unidades *</label><input type="number" class="form-control" id="s_unidades" placeholder="0"></div>
             <div class="col-md-3"><label class="form-label">Quien Recibe *</label>
@@ -768,13 +769,13 @@
     <!-- ==================================================================== -->
     <div class="tab-pane fade" id="t3">
       <div class="mf-card">
-        <div class="mf-card-header text-success">&#128230; TARJETA 3 &middot; PLANILLA ENTREGA DESPACHOS (Consolidado)</div>
+        <div class="mf-card-header text-success">&#128230; TARJETA 3 &middot; PLANILLA ENTREGA DESPACHOS</div>
         <div class="mf-card-body">
 
           <div class="mf-drive-panel no-print">
             <div class="row g-2 align-items-end mb-2">
               <div class="col-md-7">
-                <label class="text-info">&#128218; Carpeta Traslados (solo lectura — fija)</label>
+                <label class="text-info">&#128218; Carpeta Traslados (solo lectura &mdash; fija)</label>
                 <input type="text" class="form-control form-control-sm campo-bloqueado" id="folder_traslados_consulta"
                        value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_" readonly>
               </div>
@@ -795,154 +796,208 @@
             </div>
           </div>
 
-          <!-- Validacion del traslado -->
-          <div class="row g-3 align-items-end mb-3">
-            <div class="col-md-4">
-              <label class="form-label">Documento TRASLADO *</label>
-              <input type="text" class="form-control" id="t3_traslado" placeholder="Numero de traslado o ultimos 5 digitos">
-            </div>
-            <div class="col-md-3">
-              <button class="btn btn-mf-azul w-100" id="t3_btnValidar">&#128269; Validar y traer datos</button>
-            </div>
-            <div class="col-md-5">
-              <div id="t3_estadoTraslado" class="mf-estado"></div>
-            </div>
-          </div>
+          <!-- ============================================================ -->
+          <!-- SECCION A: ASIGNACION DE TRASLADO (Paso 1 - Obligatorio)   -->
+          <!-- ============================================================ -->
+          <div class="border border-success rounded-3 p-3 mb-3 mt-3" id="t3_seccionA">
+            <h6 class="text-success fw-bold mb-3">&#9312; ASIGNACION DE TRASLADO (Paso 1 &mdash; Obligatorio)</h6>
 
-          <!-- Punto de captura automatica -->
-          <div class="row g-3 mb-3" id="t3_punto_row" style="display:none">
-            <div class="col-md-4">
-              <label class="form-label">&#128205; Punto de Captura Automatico</label>
-              <input class="form-control campo-bloqueado" id="t3_punto_captura" readonly>
-            </div>
-            <div class="col-md-8">
-              <span id="t3_punto_info" class="mf-estado"></span>
-            </div>
-          </div>
-
-          <!-- Campos autocompletados (SOLO LECTURA) -->
-          <h6 class="text-primary fw-bold">Datos traidos desde Google Drive (bloqueados)</h6>
-          <div class="row g-3 mb-3">
-            <div class="col-md-4"><label class="form-label">Bodega Origen</label>
-              <input class="form-control campo-bloqueado" id="t3_bodega_origen" readonly></div>
-            <div class="col-md-4"><label class="form-label">Bodega Destino</label>
-              <input class="form-control campo-bloqueado" id="t3_destino" readonly></div>
-            <div class="col-md-4"><label class="form-label">Ruta</label>
-              <input class="form-control campo-bloqueado" id="t3_ruta" readonly></div>
-            <div class="col-md-2"><label class="form-label">Cantidad</label>
-              <input type="number" class="form-control" id="t3_cantidad" min="1" step="1" placeholder="0"></div>
-            <div class="col-md-2"><label class="form-label">Tipo *</label>
-              <select class="form-select" id="t3_tipo">
-                <option value="">Seleccione...</option>
-                <option>Paquete</option>
-                <option>Caja</option>
-                <option>Electr&oacute;nico</option>
-                <option>Nevera</option>
-                <option>Nutriciones</option>
-                <option>Pa&ntilde;ales</option>
-                <option>Sobre</option>
-                <option>Caja y Pa&ntilde;al</option>
-                <option>Caja y Nutriciones</option>
-              </select></div>
-            <div class="col-md-2"><label class="form-label">Urgente *</label>
-              <select class="form-select" id="t3_urgente">
-                <option value="NO">NO</option>
-                <option value="SI">SI</option>
-              </select></div>
-            <div class="col-md-2 d-flex align-items-end">
-              <span id="t3_badgeUrgente"></span>
-            </div>
-            <!-- Ocultos -->
-            <div class="d-none"><input id="t3_traslado_mostrar" readonly></div>
-            <div class="d-none"><input id="t3_fecha" readonly></div>
-            <div class="d-none"><input id="t3_recibido" readonly></div>
-            <div class="d-none"><input id="t3_codigo" readonly></div>
-            <div class="d-none"><input id="t3_descripcion" readonly></div>
-            <div class="d-none"><input id="t3_unidades" readonly></div>
-            <div class="d-none"><input id="t3_usuario" readonly></div>
-            <div class="d-none"><input id="t3_lote" readonly></div>
-            <div class="d-none"><input id="t3_fechaVenc" readonly></div>
-            <div class="d-none"><input id="t3_observaciones_drive" readonly></div>
-          </div>
-
-          <!-- Campos editables originales -->
-          <h6 class="text-success fw-bold">Informacion a suministrar</h6>
-          <div class="row g-3">
-            <div class="col-md-4"><label class="form-label">Responsable de Entrega CENDIS *</label>
-              <select class="form-select" id="t3_responsable_entrega">
-                <option value="">Seleccione...</option>
-                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-              </select></div>
-            <div class="col-md-4"><label class="form-label">Quien Alista *</label>
-              <select class="form-select" id="t3_quien_alista">
-                <option value="">Seleccione...</option>
-                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-              </select></div>
-            <div class="col-md-4"><label class="form-label">Quien Pita *</label>
-              <select class="form-select" id="t3_quien_pita">
-                <option value="">Seleccione...</option>
-                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-              </select></div>
-            <div class="col-md-4"><label class="form-label">Quien Empaca *</label>
-              <select class="form-select" id="t3_quien_empaca">
-                <option value="">Seleccione...</option>
-                <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-              </select></div>
-            <div class="col-md-3"><label class="form-label">Tipo Carga *</label>
-              <select class="form-select" id="t3_tipo_carga">
-                <option value="">Seleccione...</option>
-                <option>Nevera</option><option>Carga Seca</option>
-              </select></div>
-            <div class="col-md-3"><label class="form-label">Concepto</label>
-              <input class="form-control" id="t3_concepto" placeholder="Concepto del traslado"></div>
-          </div>
-
-          <!-- Rotacion del dia (auto-rellenado) -->
-          <div class="row g-3 mt-3" id="t3_rotacion_info">
-            <div class="col-12">
-              <div class="alert alert-info py-2 small">
-                &#128337; <strong>Rotacion del dia:</strong> Los campos Quien Alista / Pita / Empaca se pre-llenaran
-                con la asignacion de la <em>Apertura del Dia</em> del Visor. Si no hay rotacion activa, seleccione manualmente.
+            <!-- Buscador de traslado -->
+            <div class="row g-3 align-items-end mb-3">
+              <div class="col-md-4">
+                <label class="form-label">Documento TRASLADO *</label>
+                <input type="text" class="form-control" id="t3a_traslado" placeholder="Numero de traslado o ultimos 5 digitos">
+              </div>
+              <div class="col-md-3">
+                <button class="btn btn-mf-azul w-100" id="t3a_btnValidar">&#128269; Validar y traer datos</button>
+              </div>
+              <div class="col-md-5">
+                <div id="t3a_estadoTraslado" class="mf-estado"></div>
               </div>
             </div>
+
+            <!-- Punto de captura automatica -->
+            <div class="row g-3 mb-3" id="t3a_punto_row" style="display:none">
+              <div class="col-md-4">
+                <label class="form-label">&#128205; Punto de Captura Automatico</label>
+                <input class="form-control campo-bloqueado" id="t3a_punto_captura" readonly>
+              </div>
+              <div class="col-md-8">
+                <span id="t3a_punto_info" class="mf-estado"></span>
+              </div>
+            </div>
+
+            <!-- Campos autocompletados Seccion A -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-4"><label class="form-label">Bodega Origen</label>
+                <input class="form-control campo-bloqueado" id="t3a_bodega_origen" readonly></div>
+              <div class="col-md-4"><label class="form-label">Bodega Destino</label>
+                <input class="form-control campo-bloqueado" id="t3a_destino" readonly></div>
+              <div class="col-md-4"><label class="form-label">Ruta</label>
+                <input class="form-control campo-bloqueado" id="t3a_ruta" readonly></div>
+              <!-- Ocultos auxiliares -->
+              <div class="d-none"><input id="t3a_traslado_mostrar" readonly></div>
+              <div class="d-none"><input id="t3a_fecha" readonly></div>
+              <div class="d-none"><input id="t3a_recibido" readonly></div>
+              <div class="d-none"><input id="t3a_codigo" readonly></div>
+              <div class="d-none"><input id="t3a_descripcion" readonly></div>
+              <div class="d-none"><input id="t3a_unidades" readonly></div>
+              <div class="d-none"><input id="t3a_usuario" readonly></div>
+              <div class="d-none"><input id="t3a_lote" readonly></div>
+              <div class="d-none"><input id="t3a_fechaVenc" readonly></div>
+              <div class="d-none"><input id="t3a_observaciones_drive" readonly></div>
+            </div>
+
+            <!-- Campos editables Seccion A -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-3"><label class="form-label">Urgente *</label>
+                <select class="form-select" id="t3a_urgente">
+                  <option value="NO">NO</option>
+                  <option value="SI">SI</option>
+                </select></div>
+              <div class="col-md-3"><label class="form-label">Concepto</label>
+                <input class="form-control" id="t3a_concepto" placeholder="Concepto del traslado"></div>
+              <div class="col-md-2 d-flex align-items-end">
+                <span id="t3a_badgeUrgente"></span>
+              </div>
+            </div>
+
+            <!-- Grupo de operacion (Alista, Pita, Empaca) -->
+            <h6 class="text-info fw-bold">Grupo de Operaci&oacute;n (Rotaci&oacute;n del d&iacute;a)</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4"><label class="form-label">Quien Alista *</label>
+                <select class="form-select" id="t3a_quien_alista">
+                  <option value="">Seleccione...</option>
+                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
+                </select></div>
+              <div class="col-md-4"><label class="form-label">Quien Pita *</label>
+                <select class="form-select" id="t3a_quien_pita">
+                  <option value="">Seleccione...</option>
+                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
+                </select></div>
+              <div class="col-md-4"><label class="form-label">Quien Empaca *</label>
+                <select class="form-select" id="t3a_quien_empaca">
+                  <option value="">Seleccione...</option>
+                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
+                </select></div>
+            </div>
+
+            <!-- Rotacion del dia -->
+            <div class="alert alert-info py-2 small mb-3">
+              &#128337; <strong>Rotacion del dia:</strong> Los campos Quien Alista / Pita / Empaca se pre-llenaran
+              con la asignacion de la <em>Apertura del Dia</em> del Visor. Si no hay rotacion activa, seleccione manualmente.
+            </div>
+
+            <div class="d-flex gap-2 no-print">
+              <button class="btn btn-mf-azul" id="t3a_btnGuardar">&#128190; Guardar en el Drive Asignaci&oacute;n de Traslado</button>
+              <button class="btn btn-outline-secondary" onclick="limpiarSeccionA()">Limpiar</button>
+            </div>
           </div>
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-azul" id="t3_btnGuardar">&#128190; Guardar en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(3)">Limpiar</button>
+          <!-- ============================================================ -->
+          <!-- SECCION B: ENTREGA A LOGISTICA (Paso 2 - Depende de A)      -->
+          <!-- ============================================================ -->
+          <div class="border border-primary rounded-3 p-3 mb-3" id="t3_seccionB">
+            <h6 class="text-primary fw-bold mb-3">&#9313; ENTREGA A LOG&Iacute;STICA (Paso 2 &mdash; Depende del Paso 1)</h6>
+
+            <!-- Buscador de traslado en Asignacion -->
+            <div class="row g-3 align-items-end mb-3">
+              <div class="col-md-4">
+                <label class="form-label">Documento TRASLADO *</label>
+                <input type="text" class="form-control" id="t3b_traslado" placeholder="Numero de traslado asignado">
+              </div>
+              <div class="col-md-3">
+                <button class="btn btn-mf-azul w-100" id="t3b_btnValidar">&#128269; Consultar asignaci&oacute;n</button>
+              </div>
+              <div class="col-md-5">
+                <div id="t3b_estadoTraslado" class="mf-estado"></div>
+              </div>
+            </div>
+
+            <!-- Punto de captura automatica -->
+            <div class="row g-3 mb-3" id="t3b_punto_row" style="display:none">
+              <div class="col-md-4">
+                <label class="form-label">&#128205; Punto de Captura Automatico</label>
+                <input class="form-control campo-bloqueado" id="t3b_punto_captura" readonly>
+              </div>
+            </div>
+
+            <!-- Datos autocompletados (bloqueados) desde Seccion A -->
+            <h6 class="text-primary fw-bold">Datos de la Asignaci&oacute;n (bloqueados)</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4"><label class="form-label">Bodega Origen</label>
+                <input class="form-control campo-bloqueado" id="t3b_bodega_origen" readonly></div>
+              <div class="col-md-4"><label class="form-label">Bodega Destino</label>
+                <input class="form-control campo-bloqueado" id="t3b_destino" readonly></div>
+              <div class="col-md-4"><label class="form-label">Ruta</label>
+                <input class="form-control campo-bloqueado" id="t3b_ruta" readonly></div>
+              <div class="col-md-3"><label class="form-label">Urgente</label>
+                <input class="form-control campo-bloqueado" id="t3b_urgente" readonly></div>
+              <div class="col-md-3"><label class="form-label">Grupo (Alista)</label>
+                <input class="form-control campo-bloqueado" id="t3b_quien_alista" readonly></div>
+              <div class="col-md-3"><label class="form-label">Grupo (Pita)</label>
+                <input class="form-control campo-bloqueado" id="t3b_quien_pita" readonly></div>
+              <div class="col-md-3"><label class="form-label">Grupo (Empaca)</label>
+                <input class="form-control campo-bloqueado" id="t3b_quien_empaca" readonly></div>
+              <div class="col-md-4"><label class="form-label">Concepto</label>
+                <input class="form-control campo-bloqueado" id="t3b_concepto" readonly></div>
+            </div>
+
+            <!-- Entradas a completar Seccion B -->
+            <h6 class="text-success fw-bold">Datos a completar para Entrega</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4"><label class="form-label">Responsable de Entrega CENDIS *</label>
+                <select class="form-select" id="t3b_responsable_entrega">
+                  <option value="">Seleccione...</option>
+                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
+                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
+                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
+                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
+                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
+                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
+                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
+                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
+                </select></div>
+              <div class="col-md-2"><label class="form-label">Cantidad *</label>
+                <input type="number" class="form-control" id="t3b_cantidad" min="1" step="1" placeholder="0"></div>
+              <div class="col-md-3"><label class="form-label">Tipo Carga *</label>
+                <select class="form-select" id="t3b_tipo_carga">
+                  <option value="">Seleccione...</option>
+                  <option>Nevera</option><option>Carga Seca</option>
+                </select></div>
+            </div>
+
+            <div class="d-flex gap-2 no-print">
+              <button class="btn btn-mf-azul" id="t3b_btnGuardar">&#128190; Guardar en el Drive Entrega a Log&iacute;stica</button>
+              <button class="btn btn-outline-secondary" onclick="limpiarSeccionB()">Limpiar</button>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
