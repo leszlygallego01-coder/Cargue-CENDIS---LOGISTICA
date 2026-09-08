@@ -11,6 +11,7 @@
   --mf-gris: #f4f7fb;
   --mf-borde: #dbe4f0;
   --mf-rojo: #dc3545;
+  --mf-fucsia: #FF00FF;
 }
 
 body {
@@ -332,7 +333,7 @@ body.mf-login-activo {
   vertical-align: middle;
   margin: 2px;
 }
-.rot-grupo-verde-menta { background: #3eb489; }
+.rot-grupo-fucsia  { background: #FF00FF; }
 .rot-grupo-naranja     { background: #FF8C00; }
 .rot-grupo-verde       { background: #2fb457; }
 .rot-grupo-rojo        { background: #dc3545; }
@@ -340,7 +341,6 @@ body.mf-login-activo {
 .rot-grupo-amarillo    { background: #ffc107; color: #5a4200; }
 .rot-grupo-azul        { background: #0d6efd; }
 .rot-grupo-gris        { background: #6c757d; }
-.rot-grupo-tb5         { background: #6c757d; border: 2px dashed #495057; }
 
 /* ---------- Rotacion: campo de solo lectura con fondo ---------- */
 .campo-rotacion {
