@@ -886,57 +886,15 @@
 
             <!-- Grupo de operacion -->
             <h6 class="text-info fw-bold">Grupo de Operaci&oacute;n</h6>
-            <div class="row g-3 mb-2">
-              <div class="col-md-6"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado</label>
-                <input type="text" class="form-control form-control-sm campo-rotacion" id="t3a_grupo_asignado" readonly placeholder="Se asigna seg&uacute;n Bodega Origen" style="font-weight:bold"></div>
-            </div>
             <div class="row g-3 mb-3">
-              <div class="col-md-4"><label class="form-label">Quien Alista *</label>
-                <select class="form-select" id="t3a_quien_alista">
-                  <option value="">Seleccione...</option>
-                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-                </select></div>
-              <div class="col-md-4"><label class="form-label">Quien Pita *</label>
-                <select class="form-select" id="t3a_quien_pita">
-                  <option value="">Seleccione...</option>
-                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-                </select></div>
-              <div class="col-md-4"><label class="form-label">Quien Empaca *</label>
-                <select class="form-select" id="t3a_quien_empaca">
-                  <option value="">Seleccione...</option>
-                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-                </select></div>
+              <div class="col-12"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado</label>
+                <input type="text" class="form-control campo-rotacion" id="t3a_grupo_asignado" readonly placeholder="Se asigna autom&aacute;ticamente seg&uacute;n Bodega Origen" style="font-weight:bold;font-size:0.95rem;padding:10px 12px"></div>
             </div>
 
-            <!-- Asignacion por Bodega Origen -->
+            <!-- Info de asignacion -->
             <div class="alert alert-info py-2 small mb-3">
-              &#128337; <strong>Asignaci&oacute;n autom&aacute;tica:</strong> Si la <em>Bodega Origen</em> es <strong>B05 ALTO COSTO</strong>, se asigna el <strong>Grupo Gris</strong>.
-              Si la <em>Bodega Origen</em> es <strong>CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL</strong>, se asigna el <strong>trio de la Apertura del D&iacute;a</strong>.
-              En otros casos, seleccione manualmente.
+              &#128337; <strong>Asignaci&oacute;n autom&aacute;tica:</strong> Si la <em>Bodega Origen</em> es <strong>B05 ALTO COSTO</strong>, se asigna el <strong>Grupo Especial Gris</strong> con todos sus integrantes.
+              Si la <em>Bodega Origen</em> es <strong>CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL</strong>, se asigna el <strong>grupo de la Apertura del D&iacute;a</strong> con sus integrantes.
             </div>
 
             <div class="d-flex gap-2 no-print">
@@ -982,16 +940,10 @@
                 <input class="form-control campo-bloqueado" id="t3b_destino" readonly></div>
               <div class="col-md-4"><label class="form-label">Ruta</label>
                 <input class="form-control campo-bloqueado" id="t3b_ruta" readonly></div>
-              <div class="col-md-3"><label class="form-label">Urgente</label>
+              <div class="col-md-4"><label class="form-label">Urgente</label>
                 <input class="form-control campo-bloqueado" id="t3b_urgente" readonly></div>
-              <div class="col-md-3"><label class="form-label">Quien Alista</label>
-                <input class="form-control campo-bloqueado" id="t3b_quien_alista" readonly></div>
-              <div class="col-md-3"><label class="form-label">Quien Pita</label>
-                <input class="form-control campo-bloqueado" id="t3b_quien_pita" readonly></div>
-              <div class="col-md-3"><label class="form-label">Quien Empaca</label>
-                <input class="form-control campo-bloqueado" id="t3b_quien_empaca" readonly></div>
-              <div class="col-md-4"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado</label>
-                <input class="form-control campo-bloqueado" id="t3b_grupo_asignado" readonly style="font-weight:bold"></div>
+              <div class="col-md-8"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado</label>
+                <input class="form-control campo-bloqueado" id="t3b_grupo_asignado" readonly style="font-weight:bold;font-size:0.95rem;padding:10px 12px"></div>
               <div class="col-md-4"><label class="form-label">Concepto</label>
                 <input class="form-control campo-bloqueado" id="t3b_concepto" readonly></div>
             </div>
