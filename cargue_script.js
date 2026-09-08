@@ -769,7 +769,8 @@ function t3ValidarTraslado() {
           't3_usuario': ['Usuario', 'Correo'],
           't3_lote': ['Lote'],
           't3_fechaVenc': ['Fecha Vencimiento', 'Vencimiento'],
-          't3_observaciones_drive': ['Observacion', 'Observaciones']
+          't3_observaciones_drive': ['Observacion', 'Observaciones'],
+          't3_concepto': ['Concepto', 'CONCEPTO']
         };
 
         // Autocompletar campos bloqueados con datos del registro
@@ -840,15 +841,14 @@ function t3Guardar() {
   var folderId = $('folder_despachos') ? $('folder_despachos').value.trim() : CONFIG.folders.despachos;
   if (!folderId) { showToast('Configure la carpeta Drive de Destino.', 'danger'); return; }
 
-  var responsableEntrega = $('t3_responsable_entrega') ? $('t3_responsable_entrega').value.trim() : '';
+  var responsableEntrega = $('t3_responsable_entrega') ? $('t3_responsable_entrega').value : '';
   var quienAlista = $('t3_quien_alista') ? $('t3_quien_alista').value : '';
   var quienPita = $('t3_quien_pita') ? $('t3_quien_pita').value : '';
   var quienEmpaca = $('t3_quien_empaca') ? $('t3_quien_empaca').value : '';
   var tipoCarga = $('t3_tipo_carga') ? $('t3_tipo_carga').value : '';
   var concepto = $('t3_concepto') ? $('t3_concepto').value.trim() : '';
-  var recomendado = $('t3_recomendado') ? $('t3_recomendado').value.trim() : '';
 
-  if (!responsableEntrega) { showToast('Ingrese el Responsable de Entrega.', 'danger'); return; }
+  if (!responsableEntrega) { showToast('Seleccione el Responsable de Entrega.', 'danger'); return; }
   if (!quienAlista || !quienPita || !quienEmpaca) { showToast('Seleccione Quien Alista, Quien Pita y Quien Empaca.', 'danger'); return; }
   if (!tipoCarga) { showToast('Seleccione el Tipo de Carga.', 'danger'); return; }
 
@@ -888,7 +888,6 @@ function t3Guardar() {
     'Quien Empaco': quienEmpaca,
     'Tipo Carga': tipoCarga,
     'Concepto': concepto,
-    'Recomendado': recomendado,
     'Observacion Drive': $('t3_observaciones_drive') ? $('t3_observaciones_drive').value : '',
     'Marca temporal': ahora(),
     'Perfil': perfilActivo(),
