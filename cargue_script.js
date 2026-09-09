@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwVZ2pOWf64TCY7BD7aK69C5-aL4l6cpfGlKEqrblTcYReC80SEF2cn1Dlf5kxK32Od/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzd86TNwWgfmjMUyum04LQrezNIEY60NcVxEdoIuUoavgsk_awbaski-gMUHg8Zz_ar/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -370,12 +370,15 @@ function cargarConfig() {
   if (!CONFIG.conductores || !CONFIG.conductores.length) CONFIG.conductores = CONFIG_DEFAULT.conductores.slice();
   if (!CONFIG.fileIds) CONFIG.fileIds = JSON.parse(JSON.stringify(CONFIG_DEFAULT.fileIds));
   if (!CONFIG.fileIds.trasladosEntrega) CONFIG.fileIds.trasladosEntrega = CONFIG_DEFAULT.fileIds.trasladosEntrega;
-  var el = $('cfg_api_url'); if (el) el.value = CONFIG.api_url;
+  /* URL fija — siempre sobreescribir con el valor por defecto */
+  CONFIG.api_url = CONFIG_DEFAULT.api_url;
+  var el = $('cfg_api_url'); if (el) { el.value = CONFIG.api_url; el.readOnly = true; el.style.opacity = '0.65'; el.title = 'URL fija — no editable'; }
   var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
   var cc = $('cfg_conductores'); if (cc) cc.value = (CONFIG.conductores || []).join('\n');
 }
 function guardarConfig() {
-  var el = $('cfg_api_url'); if (el) CONFIG.api_url = el.value.trim();
+  /* URL fija — ignorar lo que diga el campo, siempre usar default */
+  CONFIG.api_url = CONFIG_DEFAULT.api_url;
   var fb = $('cfg_folder_backup'); if (fb) CONFIG.folders.backup = fb.value.trim();
   var cc = $('cfg_conductores'); if (cc) CONFIG.conductores = cc.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
   localStorage.setItem('MF_CARGUE_CONFIG', JSON.stringify(CONFIG));
