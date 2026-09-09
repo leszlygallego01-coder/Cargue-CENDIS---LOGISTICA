@@ -1458,6 +1458,12 @@ function logBuscar() {
         /* Grupo Asignado: FIJO del consolidado de entrega */
         if ($('log_grupo_asignado')) $('log_grupo_asignado').value = reg['Grupo Asignado'] || reg['GRUPO ASIGNADO'] || reg['Grupo'] || '';
 
+        /* Tipo: del consolidado de entrega */
+        if ($('log_tipo')) $('log_tipo').value = reg['Tipo'] || reg['TIPO'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '';
+
+        /* Cantidad: del consolidado de entrega */
+        if ($('log_cantidad')) $('log_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || reg['Cantidad Enviada'] || reg['Cant.'] || '';
+
         /* Mensaje detallado del tipo de coincidencia */
         var msgLog = '';
         if (tipoMatch === 'exacta') {
@@ -1508,6 +1514,8 @@ function logGuardarRecepcion() {
     'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
     'Grupo Asignado': $('log_grupo_asignado') ? $('log_grupo_asignado').value : '',
     'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
+    'Tipo': $('log_tipo') ? $('log_tipo').value : '',
+    'Cantidad': $('log_cantidad') ? $('log_cantidad').value : '',
     'Quien Recibio': quienRecibio,
     'Revisado': revisadoVal,
     'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
@@ -1532,7 +1540,7 @@ function logGuardarRecepcion() {
 
 function logLimpiar() {
   var campos = ['log_documento_traslado','log_bodega_origen','log_destino','log_ruta',
-    'log_urgente','log_grupo_asignado','log_concepto','log_observaciones'];
+    'log_urgente','log_grupo_asignado','log_concepto','log_tipo','log_cantidad','log_observaciones'];
   for (var i = 0; i < campos.length; i++) {
     var el = $(campos[i]);
     if (el) el.value = '';
@@ -1607,11 +1615,11 @@ function logConsultarDespacho() {
             '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
             '<td>' + (reg['Ruta'] || reg['Zona'] || '') + '</td>' +
             '<td>' + (reg['Cantidad'] || '') + '</td>' +
+            '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
             '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
-            '<td>' + (reg['Grupo Asignado'] || '') + '</td>' +
-            '<td>' + (reg['Responsable Entrega CENDIS'] || '') + '</td>' +
             '<td>' + (reg['Quien Recibio'] || '') + '</td>' +
             '<td>' + (reg['Revisado'] || 'NO') + '</td>' +
+            '<td><input type="text" class="form-control form-control-sm log-obs-fila" data-idx="' + i + '" placeholder="Obs..."></td>' +
             '<td>' + (reg['Marca temporal'] || '') + '</td>';
           tr.innerHTML += tds;
           tbody.appendChild(tr);
@@ -1653,20 +1661,31 @@ function logGuardarDespacho() {
   var seleccionados = logObtenerSeleccion();
   if (!seleccionados.length) { showToast('Seleccione al menos un traslado en la tabla.', 'danger'); return; }
 
+  var obsGlobal = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
   var registrosPlanilla = [];
   for (var i = 0; i < seleccionados.length; i++) {
     var reg = seleccionados[i];
+    /* Leer observacion individual de la fila */
+    var obsFila = obsGlobal;
+    var idxReg = -1;
+    for (var f = 0; f < logDatosDespacho.length; f++) {
+      if (logDatosDespacho[f]['Documento Traslado'] === reg['Documento Traslado']) { idxReg = f; break; }
+    }
+    if (idxReg >= 0) {
+      var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
+      if (inpObs && inpObs.value.trim()) obsFila = inpObs.value.trim();
+    }
     registrosPlanilla.push({
       'Documento Traslado': reg['Documento Traslado'] || '',
       'Bodega Origen': reg['Bodega Origen'] || '',
       'Bodega Destino': reg['Bodega Destino'] || '',
       'Ruta': reg['Ruta'] || reg['Zona'] || '',
       'Cantidad': reg['Cantidad'] || '',
+      'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
       'Urgente': reg['Urgente'] || 'NO',
-      'Grupo Asignado': reg['Grupo Asignado'] || '',
-      'Responsable Entrega CENDIS': reg['Responsable Entrega CENDIS'] || '',
       'Quien Recibio': reg['Quien Recibio'] || '',
       'Revisado': reg['Revisado'] || 'NO',
+      'Observaciones Planilla': obsFila,
       'Planilla': planilla,
       'Conductor': conductor,
       'Placa del Vehiculo': placa,
@@ -1694,8 +1713,13 @@ function logGuardarDespacho() {
         if ($('log_planilla')) $('log_planilla').value = '';
         if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
         if ($('log_placa')) $('log_placa').value = '';
+        if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
       } else {
-        showToast('Error al guardar Despacho: ' + (r.error || ''), 'danger');
+        var errMsg = 'Error al guardar Despacho: ' + (r.error || '');
+        if (r.duplicados && r.duplicados.length > 0) {
+          errMsg = '&#9888;&#65039; <strong>Traslados duplicados</strong> — ya existen en la planilla de despacho:<br><strong>' + r.duplicados.join(', ') + '</strong>';
+        }
+        showToast(errMsg, 'danger');
       }
     })
     .catch(function (err) {
@@ -1712,7 +1736,9 @@ function logDescargarPDF() {
   var placa = $('log_placa') ? $('log_placa').value.trim().toUpperCase() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
 
-  /* Agregar Conductor y Placa a los registros seleccionados para el PDF */
+  var obsGlobal = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
+
+  /* Agregar Conductor, Placa y Observaciones a los registros seleccionados para el PDF */
   var regsPDF = [];
   for (var i = 0; i < seleccionados.length; i++) {
     var reg = seleccionados[i];
@@ -1720,6 +1746,16 @@ function logDescargarPDF() {
     for (var k in reg) { if (reg.hasOwnProperty(k)) copia[k] = reg[k]; }
     copia['Conductor'] = conductor;
     copia['Placa del Vehiculo'] = placa;
+    /* Leer observacion individual de la fila */
+    var idxReg = -1;
+    for (var f = 0; f < logDatosDespacho.length; f++) {
+      if (logDatosDespacho[f]['Documento Traslado'] === reg['Documento Traslado']) { idxReg = f; break; }
+    }
+    if (idxReg >= 0) {
+      var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
+      if (inpObs && inpObs.value.trim()) copia['Observaciones Planilla'] = inpObs.value.trim();
+    }
+    if (!copia['Observaciones Planilla'] && obsGlobal) copia['Observaciones Planilla'] = obsGlobal;
     regsPDF.push(copia);
   }
 
