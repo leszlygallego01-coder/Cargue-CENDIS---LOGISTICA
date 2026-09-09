@@ -1464,7 +1464,7 @@ function logBuscar() {
         /* Cantidad: del consolidado de entrega */
         if ($('log_cantidad')) $('log_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || reg['Cantidad Enviada'] || reg['Cant.'] || '';
 
-        /* Revisado: SI=fijo readonly, NO=deshabilitado sin opcion a cambiar */
+        /* Revisado Seccion 1: SI=fijo readonly, NO=libre para que el usuario pueda cambiarlo */
         var revVal = (reg['Revisado'] || 'NO').toString().toUpperCase();
         var revEl = $('log_revisado');
         if (revEl) {
@@ -1474,8 +1474,8 @@ function logBuscar() {
             revEl.className = 'form-select log-revisado-readonly';
           } else {
             revEl.value = 'NO';
-            revEl.disabled = true;
-            revEl.className = 'form-select log-revisado-disabled';
+            revEl.disabled = false;
+            revEl.className = 'form-select';
           }
         }
 
@@ -1649,7 +1649,7 @@ function logConsultarDespacho() {
             '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
             '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
             '<td>' + (reg['Quien Recibio'] || '') + '</td>' +
-            '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo">SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" disabled><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
+            '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo" data-idx="' + i + '">SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" data-idx="' + i + '" data-orig="NO"><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
             '<td><input type="text" class="form-control form-control-sm log-obs-fila" data-idx="' + i + '" placeholder="Obs..."></td>' +
             '<td>' + (reg['Marca temporal'] || '') + '</td>';
           tr.innerHTML += tds;
@@ -1706,6 +1706,14 @@ function logGuardarDespacho() {
       var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
       if (inpObs && inpObs.value.trim()) obsFila = inpObs.value.trim();
     }
+    /* Leer Revisado actualizado desde la fila de la tabla */
+    var revisadoFinal = reg['Revisado'] || 'NO';
+    if (idxReg >= 0) {
+      var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
+      if (selRev && selRev.value) revisadoFinal = selRev.value;
+      var badgeRev = document.querySelector('.log-revisado-fijo[data-idx="' + idxReg + '"]');
+      if (badgeRev) revisadoFinal = 'SI';
+    }
     registrosPlanilla.push({
       'Documento Traslado': reg['Documento Traslado'] || '',
       'Bodega Origen': reg['Bodega Origen'] || '',
@@ -1715,7 +1723,7 @@ function logGuardarDespacho() {
       'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
       'Urgente': reg['Urgente'] || 'NO',
       'Quien Recibio': reg['Quien Recibio'] || '',
-      'Revisado': reg['Revisado'] || 'NO',
+      'Revisado': revisadoFinal,
       'Observaciones Planilla': obsFila,
       'Planilla': planilla,
       'Conductor': conductor,
@@ -1794,6 +1802,11 @@ function logDescargarPDF() {
     if (idxReg >= 0) {
       var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
       if (inpObs && inpObs.value.trim()) copia['Observaciones Planilla'] = inpObs.value.trim();
+      /* Leer Revisado actualizado de la fila */
+      var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
+      if (selRev && selRev.value) copia['Revisado'] = selRev.value;
+      var badgeRev = document.querySelector('.log-revisado-fijo[data-idx="' + idxReg + '"]');
+      if (badgeRev) copia['Revisado'] = 'SI';
     }
     if (!copia['Observaciones Planilla'] && obsGlobal) copia['Observaciones Planilla'] = obsGlobal;
     regsPDF.push(copia);
