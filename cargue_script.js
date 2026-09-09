@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzC4FCtbZg8lDioLnpQugxhGr8q-1VUy8CWeo9vruPNCTv5f9ovmdL6aNzrpRD6ShpX/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxYN3g4wm98w82QiyvvT-mwgVKiQ1auPMx8mqWsenSgUKBQggFHnr0XiYi-TUMsOKBl/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -298,7 +298,7 @@ var CONFIG_DEFAULT = {
     rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' },
     entrega:     { fileId: '1xC5Nj2VMNgh6N5XIfMTN-aJ2i8nQExANAEhgthWRNpU', sheet: 'DATOS', gid: 1372653954 }
   },
-  conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS']
+  conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS', 'EDINSON JAIR SANCHEZ', 'ELKIN MAZABUEL', 'ALEX YAIRO ANGUCHO', 'BRAYANT TUMINA', 'JOSE LUIS GIRALDO', 'MARVIN URRUTIA', 'ALEXANDER OSORIO', 'SEBASTIAN MORENO', 'SEBASTIAN BOHORQUEZ', 'YEISON CORRALES', 'JOHN ALEXANDER GUTIERREZ', 'HENRY CORONADO', 'MARCOS MEJIA', 'JULIO MERCADO', 'JULIAN CHAVEZ', 'SANTIAGO MANZANO MEXT', 'DIEGO JARAMILLO MEXT', 'JULIAN GONZALEZ', 'EDITH RIVERA MEXT', 'SEBASTIAN MORALES', 'JESSICA ROLON', 'JENNY SIN INFORMACION CONDUCTOR', 'JORGE JARAMILLO CONDUCTOR EXTERNO', 'RUBEN ELIECER GRISALES CONDUCTOR EXTERNO', 'JUAN DIEGO GARCIA EXT', 'ANULADO', 'SUPERVISORES REVISAR', 'DEIBI ESPITIA EXT', 'GELVER MARIN GRANDA', 'ELKIN DUQUE EXT', 'JOHN RUEDA', 'BRYAN CIFUENTES']
 };
 
 /* ═════════════════════════════════════════════════════════════════════════════════
@@ -1672,6 +1672,7 @@ function logLimpiar() {
 function logConsultarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
+  var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
@@ -1698,7 +1699,8 @@ function logConsultarDespacho() {
     folderId: folderId,
     modulo: 'logistica',
     filtroRevisado: filtroRevisado,
-    filtroRuta: filtroRuta
+    filtroRuta: filtroRuta,
+    filtroUrgente: filtroUrgente
   })
     .then(function (r) {
       var tbody = $('log_tabla_body');
@@ -1735,12 +1737,10 @@ function logConsultarDespacho() {
           tr.innerHTML += tds;
           tbody.appendChild(tr);
         }
-        /* Inicializar seleccion y actualizar UI */
+        /* Inicializar seleccion y actualizar UI (esto habilita/deshabilita el boton combinado segun seleccion) */
         logActualizarSeleccion();
         if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">' + r.registros.length + ' registros</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">' + r.registros.length + ' traslados encontrados</span>';
-        /* Habilitar botones de Seccion 2 */
-        var btnComb2 = $('log_btnCombinado'); if (btnComb2) btnComb2.disabled = false;
         showToast(r.registros.length + ' traslados encontrados.', 'success');
       } else {
         if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-secondary">0 registros</span>';
