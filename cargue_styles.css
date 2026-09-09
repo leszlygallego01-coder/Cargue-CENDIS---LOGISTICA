@@ -462,3 +462,64 @@ body.mf-login-activo {
 }
 .rec-doc-label.externa { color: #dc3545; }
 .rec-doc-label.interna { color: var(--mf-azul); }
+
+/* ---------- Revisado: SI fijo / NO deshabilitado ---------- */
+.log-revisado-col {
+  text-align: center;
+  vertical-align: middle;
+  min-width: 70px;
+}
+.log-revisado-fijo {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-size: .78rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--mf-verde);
+  letter-spacing: .5px;
+  pointer-events: none;
+  user-select: none;
+}
+.log-revisado-select {
+  font-size: .78rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  opacity: 0.65;
+  cursor: not-allowed;
+  pointer-events: none;
+  user-select: none;
+  background: #e9ecef;
+  color: #495057;
+}
+
+/* ---------- Seccion 1: Revisado SI readonly / NO disabled ---------- */
+.log-revisado-readonly {
+  background-color: var(--mf-verde) !important;
+  color: #fff !important;
+  font-weight: 700;
+  opacity: 1 !important;
+  cursor: not-allowed;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.log-revisado-disabled {
+  background-color: #e9ecef !important;
+  color: #6c757d !important;
+  opacity: 0.65;
+  cursor: not-allowed;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ---------- Logo en encabezado Seccion 2 ---------- */
+.log-logo-header {
+  height: 32px;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 6px;
+  border-radius: 6px;
+}
