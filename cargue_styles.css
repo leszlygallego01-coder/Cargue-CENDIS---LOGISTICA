@@ -588,3 +588,100 @@ body.mf-login-activo {
   box-shadow: none;
   cursor: not-allowed;
 }
+
+/* ---------- Modal de multiples coincidencias (Seccion 1) ---------- */
+.log-modal-multiples-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 10999;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: logFadeIn .2s ease;
+}
+@keyframes logFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.log-modal-multiples {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  max-width: 520px;
+  width: 96%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 28px 26px 20px;
+  animation: logSlideUp .25s ease;
+}
+@keyframes logSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.log-modal-multiples-titulo {
+  text-align: center;
+  margin-bottom: 18px;
+  font-size: .95rem;
+  color: var(--mf-azul-osc);
+  line-height: 1.4;
+}
+.log-modal-multiples-titulo strong {
+  font-size: 1.15rem;
+}
+.log-modal-multiples-titulo small {
+  font-size: .82rem;
+  color: #6c757d;
+}
+.log-modal-multiples-card {
+  background: #f8fbff;
+  border: 2px solid var(--mf-borde);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all .18s ease;
+  user-select: none;
+}
+.log-modal-multiples-card:hover {
+  border-color: var(--mf-azul);
+  background: #eef6ff;
+  box-shadow: 0 4px 12px rgba(13, 110, 253, .15);
+  transform: translateY(-2px);
+}
+.log-modal-multiples-card:active {
+  transform: translateY(0);
+  border-color: var(--mf-verde);
+}
+.log-card-numero {
+  font-size: .95rem;
+  margin-bottom: 6px;
+}
+.log-card-numero strong {
+  color: var(--mf-azul-osc);
+  font-size: 1.05rem;
+}
+.log-card-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: .82rem;
+  color: #465063;
+}
+.log-card-detalle i {
+  color: var(--mf-azul);
+  margin-right: 4px;
+  width: 16px;
+  text-align: center;
+}
+.log-modal-multiples-cerrar {
+  display: block;
+  margin: 12px auto 0;
+  font-size: .82rem;
+}
+.log-modal-multiples-cerrar:hover {
+  color: var(--mf-rojo);
+  border-color: var(--mf-rojo);
+}
