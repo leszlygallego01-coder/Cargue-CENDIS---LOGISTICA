@@ -296,7 +296,7 @@ var CONFIG_DEFAULT = {
     inventario:  { file: 'BD_VERIFICACION_INVENTARIO',    sheet: 'DATOS' },
     novedades:   { file: 'BD_NOVEDADES_MODIFICACIONES',   sheet: 'DATOS' },
     rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' },
-    entrega:     { file: 'BD_ENTREGA_A_LOGISTICA',        sheet: 'DATOS' }
+    entrega:     { fileId: '1xC5Nj2VMNgh6N5XIfMTN-aJ2i8nQExANAEhgthWRNpU', sheet: 'DATOS', gid: 1372653954 }
   },
   conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS']
 };
@@ -1424,94 +1424,34 @@ function logActualizarSeleccion() {
 function logBuscar() {
   var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
+  /* Seccion 1 busca en BD_ENTREGA_A_LOGISTICA (archivo consolidado de entrega) */
+  var fileId = '1xC5Nj2VMNgh6N5XIfMTN-aJ2i8nQExANAEhgthWRNpU';
+  var sheetGid = '1372653954';
   var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
-  var fileId = (CONFIG.fileIds && CONFIG.fileIds.trasladosEntrega) ? CONFIG.fileIds.trasladosEntrega : '';
-  var sheetGid = '103818183';
   var estado = $('log_estadoTraslado');
   var despachoEstado = $('log_despacho_estado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
   if (despachoEstado) despachoEstado.textContent = '';
 
-  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado, fileId: fileId, sheetGid: sheetGid })
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'entrega', traslado: traslado, fileId: fileId, sheetGid: sheetGid })
     .then(function (r) {
-      if (r && r.encontrado && r.registro) {
+      if (r && r.encontrado) {
+        /* --- Multiples coincidencias: mostrar selector --- */
+        if (r.multiple && r.registros && r.registros.length > 1) {
+          if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">' + r.registros.length + ' coincidencias</span>';
+          logMostrarSelectorMultiples(r.registros, traslado);
+          return;
+        }
+        /* --- Coincidencia unica: auto-fill como antes --- */
         var reg = r.registro;
-        var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
-        var numCoincidencias = r.registro.__coincidencias || 1;
-        var numExactas = r.registro.__coincidenciasExactas || 0;
-        var digitosBuscados = r.registro.__buscadoDigitos || '';
-
-        /* Auto-fill Seccion 1 datos bloqueados */
-        var trasladoCompletoLog = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
-        if ($('log_traslado')) $('log_traslado').value = trasladoCompletoLog;
-        if ($('log_documento_traslado')) $('log_documento_traslado').value = trasladoCompletoLog;
-        if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
-        if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
-        if ($('log_ruta')) $('log_ruta').value = reg['Zona'] || reg['Ruta'] || '';
-        if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
-
-        /* Urgente: FIJO del consolidado, calculado segun Concepto */
-        var conceptoValL = $('log_concepto') ? $('log_concepto').value.trim().toUpperCase() : '';
-        var esConceptoUrgenteL = false;
-        var CONCEPTOS_URGENTES_L = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
-        for (var ciL = 0; ciL < CONCEPTOS_URGENTES_L.length; ciL++) {
-          if (conceptoValL === CONCEPTOS_URGENTES_L[ciL] || conceptoValL.indexOf(CONCEPTOS_URGENTES_L[ciL]) >= 0) {
-            esConceptoUrgenteL = true; break;
-          }
+        if (!reg) { reg = r.registros ? r.registros[0] : null; }
+        if (!reg) {
+          logTrasladoValidado = null;
+          if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+          showToast('Traslado no encontrado.', 'danger');
+          return;
         }
-        if (esConceptoUrgenteL) {
-          if ($('log_urgente')) $('log_urgente').value = 'SI';
-        } else if (reg['Urgente']) {
-          if ($('log_urgente')) $('log_urgente').value = reg['Urgente'];
-        } else {
-          if ($('log_urgente')) $('log_urgente').value = 'NO';
-        }
-
-        /* Grupo Asignado: FIJO del consolidado de entrega */
-        if ($('log_grupo_asignado')) $('log_grupo_asignado').value = reg['Grupo Asignado'] || reg['GRUPO ASIGNADO'] || reg['Grupo'] || '';
-
-        /* Tipo: del consolidado de entrega */
-        if ($('log_tipo')) $('log_tipo').value = reg['Tipo'] || reg['TIPO'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '';
-
-        /* Cantidad: del consolidado de entrega */
-        if ($('log_cantidad')) $('log_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || reg['Cantidad Enviada'] || reg['Cant.'] || '';
-
-        /* Temperatura: del consolidado de entrega (solo NEVERA) */
-        if ($('log_temperatura')) $('log_temperatura').value = reg['Temperatura'] || '';
-        toggleLogTemp();
-
-        /* Revisado Seccion 1: SI=fijo readonly, NO=libre para que el usuario pueda cambiarlo */
-        var revVal = (reg['Revisado'] || 'NO').toString().toUpperCase();
-        var revEl = $('log_revisado');
-        if (revEl) {
-          if (revVal === 'SI') {
-            revEl.value = 'SI';
-            revEl.disabled = true;
-            revEl.className = 'form-select log-revisado-readonly';
-          } else {
-            revEl.value = 'NO';
-            revEl.disabled = false;
-            revEl.className = 'form-select';
-          }
-        }
-
-        /* Mensaje detallado del tipo de coincidencia */
-        var msgLog = '';
-        if (tipoMatch === 'exacta') {
-          msgLog = 'Traslado <strong>' + trasladoCompletoLog + '</strong> encontrado (coincidencia exacta).';
-        } else {
-          var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
-          msgLog = 'Coincidencia numerica parcial (<strong>' + trasladoCompletoLog + '</strong>).' + digitosInfo;
-        }
-        if (numCoincidencias > 1) {
-          msgLog += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias';
-          if (numExactas > 0) msgLog += ', ' + numExactas + ' exacta(s)';
-          msgLog += ')</span>';
-        }
-
-        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
-        logTrasladoValidado = reg;
-        showToast(msgLog, 'success');
+        logLlenarCamposTraslado(reg, traslado, estado);
       } else {
         logTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
@@ -1524,6 +1464,131 @@ function logBuscar() {
       if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
       showToast('Error al buscar: ' + err.message, 'danger');
     });
+}
+
+/* Llena los campos de Seccion 1 con los datos del registro seleccionado */
+function logLlenarCamposTraslado(reg, trasladoOriginal, estado) {
+  var tipoMatch = reg.__tipoCoincidencia || 'exacta';
+  var numCoincidencias = reg.__coincidencias || 1;
+  var numExactas = reg.__coincidenciasExactas || 0;
+  var digitosBuscados = reg.__buscadoDigitos || '';
+
+  var trasladoCompletoLog = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || trasladoOriginal;
+  if ($('log_traslado')) $('log_traslado').value = trasladoCompletoLog;
+  if ($('log_documento_traslado')) $('log_documento_traslado').value = trasladoCompletoLog;
+  if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
+  if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
+  if ($('log_ruta')) $('log_ruta').value = reg['Zona'] || reg['Ruta'] || '';
+  if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
+
+  var conceptoValL = $('log_concepto') ? $('log_concepto').value.trim().toUpperCase() : '';
+  var esConceptoUrgenteL = false;
+  var CONCEPTOS_URGENTES_L = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
+  for (var ciL = 0; ciL < CONCEPTOS_URGENTES_L.length; ciL++) {
+    if (conceptoValL === CONCEPTOS_URGENTES_L[ciL] || conceptoValL.indexOf(CONCEPTOS_URGENTES_L[ciL]) >= 0) {
+      esConceptoUrgenteL = true; break;
+    }
+  }
+  if (esConceptoUrgenteL) {
+    if ($('log_urgente')) $('log_urgente').value = 'SI';
+  } else if (reg['Urgente']) {
+    if ($('log_urgente')) $('log_urgente').value = reg['Urgente'];
+  } else {
+    if ($('log_urgente')) $('log_urgente').value = 'NO';
+  }
+
+  if ($('log_grupo_asignado')) $('log_grupo_asignado').value = reg['Grupo Asignado'] || reg['GRUPO ASIGNADO'] || reg['Grupo'] || '';
+  if ($('log_tipo')) $('log_tipo').value = reg['Tipo'] || reg['TIPO'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '';
+  if ($('log_cantidad')) $('log_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || reg['Cantidad Enviada'] || reg['Cant.'] || '';
+  if ($('log_temperatura')) $('log_temperatura').value = reg['Temperatura'] || '';
+  toggleLogTemp();
+
+  var revVal = (reg['Revisado'] || 'NO').toString().toUpperCase();
+  var revEl = $('log_revisado');
+  if (revEl) {
+    if (revVal === 'SI') {
+      revEl.value = 'SI';
+      revEl.disabled = true;
+      revEl.className = 'form-select log-revisado-readonly';
+    } else {
+      revEl.value = 'NO';
+      revEl.disabled = false;
+      revEl.className = 'form-select';
+    }
+  }
+
+  var msgLog = '';
+  if (tipoMatch === 'exacta') {
+    msgLog = 'Traslado <strong>' + trasladoCompletoLog + '</strong> encontrado (coincidencia exacta).';
+  } else {
+    var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
+    msgLog = 'Coincidencia numerica parcial (<strong>' + trasladoCompletoLog + '</strong>).' + digitosInfo;
+  }
+
+  if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
+  logTrasladoValidado = reg;
+  showToast(msgLog, 'success');
+}
+
+/* Muestra modal de seleccion cuando hay multiples coincidencias */
+function logMostrarSelectorMultiples(registros, trasladoOriginal) {
+  /* Cerrar modal previo si existe */
+  var previo = $('log_modal_multiples');
+  if (previo) previo.parentNode.removeChild(previo);
+
+  var backdrop = document.createElement('div');
+  backdrop.id = 'log_modal_multiples';
+  backdrop.className = 'log-modal-multiples-backdrop';
+
+  var modal = document.createElement('div');
+  modal.className = 'log-modal-multiples';
+
+  var titulo = document.createElement('div');
+  titulo.className = 'log-modal-multiples-titulo';
+  titulo.innerHTML = '<strong>&#128269; Se encontraron ' + registros.length + ' traslados</strong><br><small>con los digitos <strong>' + trasladoOriginal + '</strong>. Seleccione el correcto:</small>';
+  modal.appendChild(titulo);
+
+  for (var i = 0; i < registros.length; i++) {
+    (function (idx) {
+      var reg = registros[idx];
+      var numDoc = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || trasladoOriginal;
+      var bodegaOrigen = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
+      var bodegaDestino = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
+      var tipoMatchLabel = (reg.__tipoMatch === 'texto_exacto') ? '<span class="badge bg-success">Exacta</span>' : '<span class="badge bg-warning text-dark">Parcial</span>';
+
+      var tarjeta = document.createElement('div');
+      tarjeta.className = 'log-modal-multiples-card';
+      tarjeta.innerHTML = '<div class="log-card-numero">' + tipoMatchLabel + ' <strong>' + numDoc + '</strong></div>' +
+        '<div class="log-card-detalle">' +
+        '<span><i class="bi bi-box-seam"></i> Origen: <strong>' + bodegaOrigen + '</strong></span>' +
+        '<span><i class="bi bi-geo-alt"></i> Destino: <strong>' + bodegaDestino + '</strong></span>' +
+        '</div>';
+
+      tarjeta.addEventListener('click', function () {
+        logLlenarCamposTraslado(reg, trasladoOriginal, $('log_estadoTraslado'));
+        /* Cerrar modal */
+        var m = $('log_modal_multiples');
+        if (m) m.parentNode.removeChild(m);
+      });
+
+      modal.appendChild(tarjeta);
+    })(i);
+  }
+
+  var btnCerrar = document.createElement('button');
+  btnCerrar.className = 'btn btn-sm btn-outline-secondary log-modal-multiples-cerrar';
+  btnCerrar.innerHTML = '&#10060; Cancelar';
+  btnCerrar.addEventListener('click', function () {
+    var m = $('log_modal_multiples');
+    if (m) m.parentNode.removeChild(m);
+    logTrasladoValidado = null;
+    var estado = $('log_estadoTraslado');
+    if (estado) estado.innerHTML = '<span class="badge bg-secondary">Sin seleccion</span>';
+  });
+  modal.appendChild(btnCerrar);
+
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
 }
 
 function logGuardarRecepcion() {
