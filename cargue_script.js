@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyvZDjnPRUnLJkRjHENBvXj_3n6ogDj-du_Kul47OgpoxVH8PAhqGIkjtb2s1uTbO5P/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwVZ2pOWf64TCY7BD7aK69C5-aL4l6cpfGlKEqrblTcYReC80SEF2cn1Dlf5kxK32Od/exec',
   folders: {
     trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
     seguridad:        '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
@@ -943,11 +943,13 @@ function t3aValidarTraslado() {
         var digitosBuscados = reg.__buscadoDigitos || '';
 
         // Mapeo de cabeceras → campos Seccion A
+        // Alias extendidos: la carpeta de traslados usa cabeceras con punto final
+        //   Traslado = Documento,  Fecha = Fecha.,  Bodega Origen = Bodega Origen.,  Bodega Destino = Bodega Destino.
         var campos = {
-          't3a_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
-          't3a_fecha': ['Fecha', 'Marca temporal'],
-          't3a_bodega_origen': ['Bodega Origen', 'Bodega'],
-          't3a_destino': ['Bodega Destino', 'Destino'],
+          't3a_traslado_mostrar': ['Traslado', 'Documento', 'Documento Traslado', 'Numero Traslado'],
+          't3a_fecha': ['Fecha', 'Fecha.', 'Marca temporal'],
+          't3a_bodega_origen': ['Bodega Origen', 'Bodega Origen.', 'Bodega'],
+          't3a_destino': ['Bodega Destino', 'Bodega Destino.', 'Destino'],
           't3a_ruta': ['Zona', 'Ruta'],
           't3a_codigo': ['Codigo', 'Codigo Producto'],
           't3a_descripcion': ['Descripcion'],
@@ -971,17 +973,34 @@ function t3aValidarTraslado() {
           }
         });
 
-        // Urgente: autocompletar select si viene del registro
-        if (reg['Urgente'] === 'SI' || reg['Urgente'] === 'Si' || reg['Urgente'] === 'si' || reg['urgente'] === 'SI') {
+        // ── Urgente: marcar automaticamente segun CONCEPTO ──
+        // Conceptos que siempre son Urgente: TUTELAS, DESACATO, PQRS, JORNADAS, ORDEN DE ARRESTO, SANCION
+        var conceptoVal = $('t3a_concepto') ? $('t3a_concepto').value.trim().toUpperCase() : '';
+        var CONCEPTOS_URGENTES = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
+        var esConceptoUrgente = false;
+        for (var ci = 0; ci < CONCEPTOS_URGENTES.length; ci++) {
+          if (conceptoVal === CONCEPTOS_URGENTES[ci] || conceptoVal.indexOf(CONCEPTOS_URGENTES[ci]) >= 0) {
+            esConceptoUrgente = true;
+            break;
+          }
+        }
+
+        // Urgente: autocompletar select — prioridad: Concepto urgente > campo Urgente del registro > NO
+        if (esConceptoUrgente) {
+          seleccionarOpcion('t3a_urgente', 'SI');
+          if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE (auto por Concepto: ' + conceptoVal + ')</span>';
+        } else if (reg['Urgente'] === 'SI' || reg['Urgente'] === 'Si' || reg['Urgente'] === 'si' || reg['urgente'] === 'SI') {
           seleccionarOpcion('t3a_urgente', 'SI');
           if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE</span>';
         } else {
           seleccionarOpcion('t3a_urgente', 'NO');
           if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
         }
+        // Nota: el usuario siempre puede cambiar manualmente el select Urgente despues de la auto-asignacion.
 
         // Punto de captura — muestra traslado general (completo)
-        var trasladoCompleto = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+        // Alias: 'Traslado' = 'Documento' en la carpeta de traslados
+        var trasladoCompleto = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
         // Actualizar el campo de entrada con el traslado completo
         if ($('t3a_traslado')) $('t3a_traslado').value = trasladoCompleto;
         if ($('t3a_punto_captura')) $('t3a_punto_captura').value = trasladoCompleto;
@@ -1029,7 +1048,7 @@ function t3aGuardarAsignacion() {
   if (!trasladoInput) { showToast('Primero valide un traslado en la Seccion A.', 'danger'); return; }
   if (!t3aTrasladoValidado) { showToast('Valide el traslado antes de guardar la Asignacion.', 'danger'); return; }
   // Usar el traslado COMPLETO de la API (no solo los digitos que escribio el usuario)
-  var trasladoCompletoGuardar = t3aTrasladoValidado['Traslado'] || t3aTrasladoValidado['Documento Traslado'] || t3aTrasladoValidado['Numero Traslado'] || trasladoInput;
+  var trasladoCompletoGuardar = t3aTrasladoValidado['Traslado'] || t3aTrasladoValidado['Documento'] || t3aTrasladoValidado['Documento Traslado'] || t3aTrasladoValidado['Numero Traslado'] || trasladoInput;
 
   var folderId = $('folder_asignacion') ? $('folder_asignacion').value.trim() : CONFIG.folders.asignacion;
   if (!folderId) { showToast('Configure la carpeta Drive de Asignaci&oacute;n.', 'danger'); return; }
@@ -1147,12 +1166,27 @@ function t3bValidarTraslado() {
       }
 
       // Asignacion encontrada — autocompletar campos bloqueados de Seccion B
+      // Alias con punto final: Bodega Origen = Bodega Origen., Bodega Destino = Bodega Destino.
       var asig = rAsig.registro;
-      if ($('t3b_bodega_origen')) $('t3b_bodega_origen').value = asig['Bodega Origen'] || '';
-      if ($('t3b_destino')) $('t3b_destino').value = asig['Bodega Destino'] || '';
+      if ($('t3b_bodega_origen')) $('t3b_bodega_origen').value = asig['Bodega Origen'] || asig['Bodega Origen.'] || '';
+      if ($('t3b_destino')) $('t3b_destino').value = asig['Bodega Destino'] || asig['Bodega Destino.'] || '';
       if ($('t3b_ruta')) $('t3b_ruta').value = asig['Ruta'] || asig['Zona'] || '';
-      if ($('t3b_urgente')) $('t3b_urgente').value = asig['Urgente'] || 'NO';
       if ($('t3b_concepto')) $('t3b_concepto').value = asig['Concepto'] || '';
+
+      // ── Urgente Seccion B: auto segun Concepto ──
+      var conceptoValB = $('t3b_concepto') ? $('t3b_concepto').value.trim().toUpperCase() : '';
+      var esConceptoUrgenteB = false;
+      var CONCEPTOS_URGENTES_B = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
+      for (var ciB = 0; ciB < CONCEPTOS_URGENTES_B.length; ciB++) {
+        if (conceptoValB === CONCEPTOS_URGENTES_B[ciB] || conceptoValB.indexOf(CONCEPTOS_URGENTES_B[ciB]) >= 0) {
+          esConceptoUrgenteB = true; break;
+        }
+      }
+      if (esConceptoUrgenteB) {
+        if ($('t3b_urgente')) $('t3b_urgente').value = 'SI';
+      } else {
+        if ($('t3b_urgente')) $('t3b_urgente').value = asig['Urgente'] || 'NO';
+      }
 
       // Formatear Grupo Asignado — normalizar numero o texto corto al formato completo
       var grupoNombreRaw = asig['Grupo Asignado'] || '';
@@ -1177,7 +1211,7 @@ function t3bValidarTraslado() {
       }
 
       // Punto de captura — muestra traslado general (completo)
-      var trasladoCompletoB = asig['Traslado'] || asig['Documento Traslado'] || asig['Numero Traslado'] || traslado;
+      var trasladoCompletoB = asig['Traslado'] || asig['Documento'] || asig['Documento Traslado'] || asig['Numero Traslado'] || traslado;
       // Actualizar el campo de entrada con el traslado completo
       if ($('t3b_traslado')) $('t3b_traslado').value = trasladoCompletoB;
       if ($('t3b_punto_captura')) $('t3b_punto_captura').value = trasladoCompletoB;
@@ -1220,7 +1254,7 @@ function t3bGuardarEntrega() {
   if (!trasladoInput) { showToast('Primero consulte un traslado en la Secci&oacute;n B.', 'danger'); return; }
   if (!t3bTrasladoValidado) { showToast('Valide la asignaci&oacute;n del traslado antes de guardar.', 'danger'); return; }
   // Usar el traslado COMPLETO de la asignacion validada (no solo los digitos que escribio el usuario)
-  var trasladoCompletoGuardarB = t3bTrasladoValidado['Traslado'] || t3bTrasladoValidado['Documento Traslado'] || t3bTrasladoValidado['Numero Traslado'] || trasladoInput;
+  var trasladoCompletoGuardarB = t3bTrasladoValidado['Traslado'] || t3bTrasladoValidado['Documento'] || t3bTrasladoValidado['Documento Traslado'] || t3bTrasladoValidado['Numero Traslado'] || trasladoInput;
   var traslado = trasladoCompletoGuardarB;
 
   var folderId = $('folder_entrega') ? $('folder_entrega').value.trim() : CONFIG.folders.entrega;
@@ -1328,16 +1362,33 @@ function logBuscar() {
         var digitosBuscados = r.registro.__buscadoDigitos || '';
 
         /* Auto-fill Recepcion y Entrega */
-        if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
-        if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        // Alias con punto final y 'Documento' = 'Traslado' en la carpeta de traslados
+        if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
+        if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
         if ($('log_ruta')) $('log_ruta').value = reg['Zona'] || reg['Ruta'] || '';
         autocompletarRuta('log_destino', 'log_ruta');
-        if ($('log_urgente') && reg['Urgente']) $('log_urgente').value = reg['Urgente'];
         if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
 
+        /* ── Urgente Logistica: auto segun Concepto ── */
+        var conceptoValL = $('log_concepto') ? $('log_concepto').value.trim().toUpperCase() : '';
+        var esConceptoUrgenteL = false;
+        var CONCEPTOS_URGENTES_L = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
+        for (var ciL = 0; ciL < CONCEPTOS_URGENTES_L.length; ciL++) {
+          if (conceptoValL === CONCEPTOS_URGENTES_L[ciL] || conceptoValL.indexOf(CONCEPTOS_URGENTES_L[ciL]) >= 0) {
+            esConceptoUrgenteL = true; break;
+          }
+        }
+        if (esConceptoUrgenteL) {
+          if ($('log_urgente')) $('log_urgente').value = 'SI';
+        } else if (reg['Urgente']) {
+          if ($('log_urgente')) $('log_urgente').value = reg['Urgente'];
+        } else {
+          if ($('log_urgente')) $('log_urgente').value = 'NO';
+        }
+
         /* Fill Despacho read-only panel */
-        if ($('log_d_bodega_origen')) $('log_d_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
-        if ($('log_d_destino')) $('log_d_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        if ($('log_d_bodega_origen')) $('log_d_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
+        if ($('log_d_destino')) $('log_d_destino').value = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
         if ($('log_d_ruta')) $('log_d_ruta').value = reg['Zona'] || reg['Ruta'] || '';
         if ($('log_d_cantidad')) $('log_d_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || '';
         if ($('log_d_urgente')) $('log_d_urgente').value = reg['Urgente'] || 'NO';
@@ -1363,7 +1414,7 @@ function logBuscar() {
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">Datos cargados</span>';
         logTrasladoValidado = reg;
         // Actualizar el campo de entrada con el traslado completo de la API
-        var trasladoCompletoLog = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+        var trasladoCompletoLog = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
         if ($('log_traslado')) $('log_traslado').value = trasladoCompletoLog;
         showToast(msgLog, 'success');
       } else {
@@ -1386,7 +1437,7 @@ function logGuardarRecepcion() {
   var trasladoInput = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!trasladoInput) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
   // Usar el traslado COMPLETO de la API si disponible
-  var trasladoCompletoLog = (logTrasladoValidado && (logTrasladoValidado['Traslado'] || logTrasladoValidado['Documento Traslado'] || logTrasladoValidado['Numero Traslado'])) || trasladoInput;
+  var trasladoCompletoLog = (logTrasladoValidado && (logTrasladoValidado['Traslado'] || logTrasladoValidado['Documento'] || logTrasladoValidado['Documento Traslado'] || logTrasladoValidado['Numero Traslado'])) || trasladoInput;
   var quienRecibio = $('log_quien_recibio') ? $('log_quien_recibio').value : '';
   if (!quienRecibio) { showToast('Seleccione quien recibio.', 'danger'); return; }
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
