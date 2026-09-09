@@ -43,6 +43,16 @@
           <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
           <option value="recibido_logistica">&#9989; Recibido Logistica</option>
           <option value="planillar_logistica">&#128203; Planillar Logistica</option>
+          <option disabled>────── LOGISTICA ──────</option>
+          <option value="log_diego">&#128666; Diego (Logistica)</option>
+          <option value="log_angelica">&#128666; Angelica (Logistica)</option>
+          <option value="log_lorena">&#128666; Lorena (Logistica)</option>
+          <option value="log_jenny">&#128666; Jenny (Logistica)</option>
+          <option disabled>────── LOGISTICA ──────</option>
+          <option value="log_diego">&#128666; Diego (Logistica)</option>
+          <option value="log_angelica">&#128666; Angelica (Logistica)</option>
+          <option value="log_lorena">&#128666; Lorena (Logistica)</option>
+          <option value="log_jenny">&#128666; Jenny (Logistica)</option>
           <option disabled>────────── AUXILIARES ──────────</option>
           <option value="yuri">&#128119; Yuri</option>
           <option value="julio">&#128119; Julio</option>
@@ -99,6 +109,8 @@
     administrador:'Medis2024Admin', lider:'Medis2024Lider',
     auxiliar_entrega:'Medis2024Aux', recibido_logistica:'Medis2024Recib',
     planillar_logistica:'Medis2024Plan',
+    log_diego:'Medis2024DiegoL', log_angelica:'Medis2024AngelicaL',
+    log_lorena:'Medis2024LorenaL', log_jenny:'Medis2024JennyL',
     yuri:'Medis2024Yuri', julio:'Medis2024Julio', hernan:'Medis2024Hernan',
     diego:'Medis2024Diego', brian:'Medis2024Brian', karina:'Medis2024Karina',
     jhony:'Medis2024Jhony', natalia:'Medis2024Natalia', manuel:'Medis2024Manuel',
@@ -116,6 +128,8 @@
     auxiliar_entrega:'AUXILIAR ENTREGA',
     recibido_logistica:'RECIBIDO LOGISTICA',
     planillar_logistica:'PLANILLAR LOGISTICA',
+    log_diego:'Diego (Logistica)', log_angelica:'Angelica (Logistica)',
+    log_lorena:'Lorena (Logistica)', log_jenny:'Jenny (Logistica)',
     yuri:'Yuri', julio:'Julio', hernan:'Hernan', diego:'Diego', brian:'Brian',
     karina:'Karina', jhony:'Jhony', natalia:'Natalia', manuel:'Manuel',
     claudia:'Claudia', daniela:'Daniela', juan:'Juan', luzl:'LuzL', liz:'Liz',
@@ -921,7 +935,7 @@
               <div class="col-12"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado *</label>
                 <select class="form-select" id="t3a_grupo_asignado" style="font-weight:bold;font-size:0.95rem;padding:10px 12px">
                   <option value="">Seleccione grupo...</option>
-                  <option value="Grupo Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio" data-color="#dc3545">Rojo (1) — Nicoll Triviño, Estefania Parra, Angie María Tascon Jiménez</option>
+                  <option value="Grupo Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio" data-color="#dc3545">Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio</option>
                   <option value="Grupo Naranja (2) — Daniela Noreña, Juan David Moreno, Kelly Beltran" data-color="#FF8C00">Naranja (2) — Daniela Noreña, Juan David Moreno, Kelly Beltran</option>
                   <option value="Grupo Azul (3) — Karina Riascos, Ana Lorena Ortiz, Vaneza Escobar" data-color="#0d6efd">Azul (3) — Karina Riascos, Ana Lorena Ortiz, Vaneza Escobar</option>
                   <option value="Grupo Verde (4) — Leidy Valencia, Bivian Lorena Rivera, Brayan Camilo Izquierdo" data-color="#2fb457">Verde (4) — Leidy Valencia, Bivian Lorena Rivera, Brayan Camilo Izquierdo</option>
@@ -1035,7 +1049,7 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- TARJETA 4: LOGISTICA Y DESPACHOS (Reestructurada: Recepción + Despacho) -->
+    <!-- TARJETA 4: LOGISTICA Y DESPACHOS (Reestructurada 2 Secciones) -->
     <!-- ==================================================================== -->
     <div class="tab-pane fade" id="t4">
       <div class="mf-card">
@@ -1045,17 +1059,7 @@
           <div class="mf-drive-panel no-print">
             <div class="row g-2 align-items-end mb-2">
               <div class="col-md-7">
-                <label>ID Carpeta Drive Logistica</label>
-                <input type="text" class="form-control form-control-sm" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
-              </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('logistica')">Validar carpeta</button>
-                <span class="mf-estado align-self-center" id="estado_folder_logistica"></span>
-              </div>
-            </div>
-            <div class="row g-2 align-items-end">
-              <div class="col-md-7">
-                <label>Carpeta Destino (escritura &mdash; misma de Planilla)</label>
+                <label>Carpeta Origen (lectura &mdash; Traslados de Entrega)</label>
                 <input type="text" class="form-control form-control-sm" id="folder_despachos_t4" value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
               </div>
               <div class="col-md-5 d-flex gap-2">
@@ -1063,89 +1067,158 @@
                 <span class="mf-estado align-self-center" id="estado_folder_despachos_t4"></span>
               </div>
             </div>
-          </div>
-
-          <!-- Busqueda de traslado -->
-          <div class="row g-3 align-items-end mb-3">
-            <div class="col-md-4">
-              <label class="form-label">Documento TRASLADO *</label>
-              <input type="text" class="form-control" id="log_traslado" placeholder="Numero de traslado o ultimos 5 digitos">
-            </div>
-            <div class="col-md-3">
-              <button class="btn btn-mf-azul w-100" id="log_btnBuscar">&#128269; Buscar traslado</button>
-            </div>
-            <div class="col-md-5">
-              <div id="log_estadoTraslado" class="mf-estado"></div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-7">
+                <label>Carpeta Destino (escritura &mdash; Recepciones y Despachos)</label>
+                <input type="text" class="form-control form-control-sm" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
+              </div>
+              <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('logistica')">Validar carpeta</button>
+                <span class="mf-estado align-self-center" id="estado_folder_logistica"></span>
+              </div>
             </div>
           </div>
 
-          <!-- ====== SUBPANEL A: RECEPCION Y ENTREGA ====== -->
+          <!-- ════════ SECCION 1: RECEPCION Y REVISION (Paso 1 - Obligatorio) ════════ -->
           <div class="log-subpanel">
             <div class="log-subpanel-header log-subpanel-recepcion">
-              <span>&#9989; RECEPCION Y ENTREGA</span>
+              <span>&#9989; SECCION 1 &middot; RECEPCION Y REVISION (Paso 1)</span>
             </div>
             <div class="log-subpanel-body">
+              <!-- Busqueda de traslado -->
+              <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Documento TRASLADO *</label>
+                  <input type="text" class="form-control" id="log_traslado" placeholder="Numero completo o ultimos 5 digitos">
+                </div>
+                <div class="col-md-3">
+                  <button class="btn btn-mf-azul w-100" id="log_btnBuscar">&#128269; Buscar traslado</button>
+                </div>
+                <div class="col-md-5">
+                  <div id="log_estadoTraslado" class="mf-estado"></div>
+                </div>
+              </div>
+
+              <!-- Datos autocompletados (bloqueados / lectura fija) -->
+              <h6 class="text-primary fw-bold mt-2 mb-2">&#128274; Datos del Traslado (Solo lectura)</h6>
               <div class="row g-3">
+                <div class="col-md-3"><label class="form-label">Documento Traslado</label>
+                  <input class="form-control campo-bloqueado" id="log_documento_traslado" readonly></div>
                 <div class="col-md-3"><label class="form-label">Bodega Origen</label>
                   <input class="form-control campo-bloqueado" id="log_bodega_origen" readonly></div>
                 <div class="col-md-3"><label class="form-label">Bodega Destino</label>
                   <input class="form-control campo-bloqueado" id="log_destino" readonly></div>
                 <div class="col-md-2"><label class="form-label">Ruta</label>
                   <input class="form-control campo-bloqueado" id="log_ruta" readonly></div>
-                <div class="col-md-2"><label class="form-label">Urgente *</label>
-                  <select class="form-select" id="log_urgente">
-                    <option value="NO">NO</option>
-                    <option value="SI">SI</option>
-                  </select></div>
-                <div class="col-md-4"><label class="form-label">Concepto</label>
-                  <input type="text" class="form-control" id="log_concepto" list="dl_conceptos" placeholder="Concepto del traslado"></div>
+                <div class="col-md-2"><label class="form-label">Urgente (Fijo)</label>
+                  <input class="form-control campo-bloqueado" id="log_urgente" readonly></div>
+                <div class="col-md-2"><label class="form-label">Grupo Asignado (Fijo)</label>
+                  <input class="form-control campo-bloqueado" id="log_grupo_asignado" readonly></div>
+                <div class="col-md-3"><label class="form-label">Concepto</label>
+                  <input type="text" class="form-control campo-bloqueado" id="log_concepto" readonly></div>
+              </div>
+
+              <!-- Formulario de Recepcion -->
+              <h6 class="text-success fw-bold mt-3 mb-2">&#128221; Formulario de Recepcion</h6>
+              <div class="row g-3">
                 <div class="col-md-3"><label class="form-label">Quien Recibio *</label>
                   <select class="form-select" id="log_quien_recibio">
                     <option value="">Seleccione...</option>
                     <option value="Diego">Diego</option>
                     <option value="Angelica">Angelica</option>
                     <option value="Lorena">Lorena</option>
-                    <option value="Yenny">Yenny</option>
+                    <option value="Jenny">Jenny</option>
+                  </select></div>
+                <div class="col-md-2"><label class="form-label">Reviso *</label>
+                  <select class="form-select" id="log_revisado">
+                    <option value="NO">NO</option>
+                    <option value="SI">SI</option>
                   </select></div>
                 <div class="col-12"><label class="form-label">Observaciones</label>
                   <textarea class="form-control" id="log_observaciones" rows="3" placeholder="Observaciones sobre la recepcion..."></textarea></div>
               </div>
-            </div>
-          </div>
 
-          <!-- ====== SUBPANEL B: DESPACHO — PLANILLA DE LECTURA Y REGISTRO ====== -->
-          <div class="log-subpanel mt-3">
-            <div class="log-subpanel-header log-subpanel-despacho">
-              <span>&#128203; DESPACHO &mdash; Planilla de Lectura y Registro</span>
-              <span class="log-subpanel-badge" id="log_despacho_estado"></span>
-            </div>
-            <div class="log-subpanel-body">
-              <div class="row g-3">
-                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
-                  <input class="form-control campo-bloqueado" id="log_d_bodega_origen" readonly></div>
-                <div class="col-md-3"><label class="form-label">Destino</label>
-                  <input class="form-control campo-bloqueado" id="log_d_destino" readonly></div>
-                <div class="col-md-2"><label class="form-label">Ruta</label>
-                  <input class="form-control campo-bloqueado" id="log_d_ruta" readonly></div>
-                <div class="col-md-2"><label class="form-label">Cantidad</label>
-                  <input class="form-control campo-bloqueado" id="log_d_cantidad" readonly></div>
-                <div class="col-md-2"><label class="form-label">Urgente</label>
-                  <input class="form-control campo-bloqueado" id="log_d_urgente" readonly></div>
-                <div class="col-md-3"><label class="form-label">Responsable Entrega CENDIS</label>
-                  <input class="form-control campo-bloqueado" id="log_d_resp_cendis" readonly></div>
-                <div class="col-md-3"><label class="form-label">Quien Alista</label>
-                  <input class="form-control campo-bloqueado" id="log_d_quien_alista" readonly></div>
-                <div class="col-md-4"><label class="form-label">Marca Temporal / Fecha Inicial</label>
-                  <input class="form-control campo-bloqueado" id="log_d_marca_temporal" readonly></div>
+              <!-- Botones Seccion 1 -->
+              <div class="d-flex gap-2 mt-3 no-print">
+                <button class="btn btn-mf-verde" id="log_btnGuardar">&#128190; Guardar Recepcion en Drive</button>
+                <button class="btn btn-outline-secondary" id="log_btnLimpiar">&#129532; Limpiar</button>
               </div>
             </div>
           </div>
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="log_btnGuardar">&#128190; Guardar Recepcion en Drive</button>
-            <button class="btn btn-outline-primary" id="log_btnImprimir">&#128424; Imprimir planilla</button>
-            <button class="btn btn-outline-secondary" id="log_btnLimpiar">Limpiar</button>
+          <!-- ════════ SECCION 2: DESPACHO Y ASIGNACION DE PLANILLA (Paso 2) ════════ -->
+          <div class="log-subpanel mt-3">
+            <div class="log-subpanel-header log-subpanel-despacho">
+              <span>&#128203; SECCION 2 &middot; DESPACHO Y ASIGNACION DE PLANILLA (Paso 2)</span>
+              <span class="log-subpanel-badge" id="log_despacho_estado"></span>
+            </div>
+            <div class="log-subpanel-body">
+              <!-- Filtros de busqueda -->
+              <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-2"><label class="form-label">Revisado</label>
+                  <select class="form-select" id="log_filtro_revisado">
+                    <option value="">Todos</option>
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </select></div>
+                <div class="col-md-3"><label class="form-label">Ruta / Zona</label>
+                  <select class="form-select" id="log_filtro_ruta">
+                    <option value="">Todas las rutas</option>
+                    <option value="ZONA CAUCA NORTE">ZONA CAUCA NORTE</option>
+                    <option value="ZONA CAUCA SUR">ZONA CAUCA SUR</option>
+                    <option value="ZONA CAUCA CENTRO">ZONA CAUCA CENTRO</option>
+                    <option value="ZONA VALLE">ZONA VALLE</option>
+                    <option value="ZONA TOLIMA">ZONA TOLIMA</option>
+                    <option value="ZONA EJE CAFETERO">ZONA EJE CAFETERO</option>
+                    <option value="ZONA NARIÑO">ZONA NARIÑO</option>
+                    <option value="ZONA CUNDINAMARCA">ZONA CUNDINAMARCA</option>
+                    <option value="ZONA CAQUETA">ZONA CAQUETA</option>
+                    <option value="ZONA COSTA NORTE">ZONA COSTA NORTE</option>
+                    <option value="ZONA BOYACA">ZONA BOYACA</option>
+                    <option value="BODEGA VIRTUAL">BODEGA VIRTUAL</option>
+                    <option value="BODEGA VALLE">BODEGA VALLE</option>
+                  </select></div>
+                <div class="col-md-2"><label class="form-label">Planilla *</label>
+                  <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
+                <div class="col-md-2">
+                  <button class="btn btn-mf-azul w-100" id="log_btnConsultar">&#128269; Consultar</button>
+                </div>
+                <div class="col-md-3">
+                  <div id="log_consulta_estado" class="mf-estado"></div>
+                </div>
+              </div>
+
+              <!-- Tabla resultante -->
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered table-hover" id="log_tabla_despacho">
+                  <thead class="table-primary">
+                    <tr>
+                      <th>Traslado</th>
+                      <th>Bodega Origen</th>
+                      <th>Bodega Destino</th>
+                      <th>Ruta</th>
+                      <th>Cantidad</th>
+                      <th>Urgente</th>
+                      <th>Grupo Asignado</th>
+                      <th>Resp. Entrega CENDIS</th>
+                      <th>Resp. Recibir Logistica</th>
+                      <th>Revisado</th>
+                      <th>Marca Temporal</th>
+                    </tr>
+                  </thead>
+                  <tbody id="log_tabla_body">
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Botones Seccion 2 -->
+              <div class="d-flex gap-2 mt-3 no-print">
+                <button class="btn btn-outline-danger" id="log_btnPDF" disabled>&#128196; Descargar en PDF</button>
+                <button class="btn btn-mf-verde" id="log_btnGuardarDespacho" disabled>&#128190; Guardar en Drive</button>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -1273,6 +1346,10 @@
               <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
               <option value="recibido_logistica">&#9989; Recibido Logistica</option>
               <option value="planillar_logistica">&#128203; Planillar Logistica</option>
+              <option value="log_diego">&#128666; Diego (Logistica)</option>
+              <option value="log_angelica">&#128666; Angelica (Logistica)</option>
+              <option value="log_lorena">&#128666; Lorena (Logistica)</option>
+              <option value="log_jenny">&#128666; Jenny (Logistica)</option>
             </select>
             <button class="btn btn-sm btn-primary mt-1" onclick="seleccionarPerfil(document.getElementById('modalSelPerfil').value); bootstrap.Modal.getInstance(document.getElementById('modalConfig')).hide();">
               Aplicar perfil
