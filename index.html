@@ -1036,6 +1036,11 @@
                   <option>CAJA Y PAÑAL</option>
                   <option>CAJA Y NUTRICIONES</option>
                 </select></div>
+              <!-- Temperatura: solo visible si Tipo Carga = NEVERA -->
+              <div class="col-md-3" id="t3b_temp_row" style="display:none">
+                <label class="form-label">Temperatura (°C) <span class="text-info">— Solo NEVERA</span></label>
+                <input type="text" class="form-control" id="t3b_temperatura" placeholder="Ej: 2-8 °C">
+              </div>
             </div>
 
             <div class="d-flex gap-2 no-print">
@@ -1120,6 +1125,8 @@
                   <input type="text" class="form-control campo-bloqueado" id="log_tipo" readonly></div>
                 <div class="col-md-2"><label class="form-label">Cantidad</label>
                   <input type="text" class="form-control campo-bloqueado" id="log_cantidad" readonly></div>
+                <div class="col-md-2" id="log_temp_row" style="display:none"><label class="form-label">Temperatura (°C) <span class="text-info">— NEVERA</span></label>
+                  <input type="text" class="form-control campo-bloqueado" id="log_temperatura" readonly placeholder="N/A"></div>
               </div>
 
               <!-- Formulario de Recepcion -->
@@ -1213,6 +1220,7 @@
                       <th>Cantidad</th>
                       <th>Tipo</th>
                       <th>Urgente</th>
+                      <th>Temperatura</th>
                       <th>Resp. Recibir Logistica</th>
                       <th>Revisado</th>
                       <th>Observaciones Planilla</th>
@@ -1224,10 +1232,9 @@
                 </table>
               </div>
 
-              <!-- Botones Seccion 2 -->
-              <div class="d-flex gap-2 mt-3 no-print">
-                <button class="btn btn-outline-danger" id="log_btnPDF" disabled>&#128196; Descargar en PDF</button>
-                <button class="btn btn-mf-verde" id="log_btnGuardarDespacho" disabled>&#128190; Guardar en Drive</button>
+              <!-- Boton combinado Seccion 2 -->
+              <div class="log-despacho-btns mt-3 no-print">
+                <button class="btn btn-despacho-combinado" id="log_btnCombinado" disabled><span class="btn-comb-left">&#128196; Descargar en PDF</span><span class="btn-comb-right">&#128190; Guardar en Drive</span></button>
               </div>
             </div>
           </div>
