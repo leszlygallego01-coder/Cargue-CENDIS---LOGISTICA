@@ -1505,27 +1505,42 @@ function logGuardarRecepcion() {
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
-  var registro = {
-    'Documento Traslado': trasladoCompletoLog,
-    'Bodega Origen': $('log_bodega_origen') ? $('log_bodega_origen').value : '',
-    'Bodega Destino': $('log_destino') ? $('log_destino').value : '',
-    'Ruta': $('log_ruta') ? $('log_ruta').value : '',
-    'Zona': $('log_ruta') ? $('log_ruta').value : '',
-    'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
-    'Grupo Asignado': $('log_grupo_asignado') ? $('log_grupo_asignado').value : '',
-    'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
-    'Tipo': $('log_tipo') ? $('log_tipo').value : '',
-    'Cantidad': $('log_cantidad') ? $('log_cantidad').value : '',
-    'Quien Recibio': quienRecibio,
-    'Revisado': revisadoVal,
-    'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
-    'Marca temporal': ahora(),
-    'Perfil': perfilActivo(),
-    'Usuario': nombreUsuario()
-  };
+  /* --- Verificar duplicado antes de guardar --- */
+  var btnGuardar = $('log_btnGuardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verificando...'; }
 
-  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'logistica', registro: registro })
+  apiGet({ action: 'verificarRecepcionDuplicada', folderId: folderId, documentoTraslado: trasladoCompletoLog })
+    .then(function (v) {
+      if (v && v.duplicado) {
+        /* Bloquear guardado si ya existe */
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Recepcion en Drive'; }
+        showToast('&#9888;&#65039; <strong>DUPLICADO</strong> — ' + v.mensaje, 'danger');
+        return null; /* señal para no continuar */
+      }
+      /* No es duplicado — proceder a guardar */
+      var registro = {
+        'Documento Traslado': trasladoCompletoLog,
+        'Bodega Origen': $('log_bodega_origen') ? $('log_bodega_origen').value : '',
+        'Bodega Destino': $('log_destino') ? $('log_destino').value : '',
+        'Ruta': $('log_ruta') ? $('log_ruta').value : '',
+        'Zona': $('log_ruta') ? $('log_ruta').value : '',
+        'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
+        'Grupo Asignado': $('log_grupo_asignado') ? $('log_grupo_asignado').value : '',
+        'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
+        'Tipo': $('log_tipo') ? $('log_tipo').value : '',
+        'Cantidad': $('log_cantidad') ? $('log_cantidad').value : '',
+        'Quien Recibio': quienRecibio,
+        'Revisado': revisadoVal,
+        'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
+        'Marca temporal': ahora(),
+        'Perfil': perfilActivo(),
+        'Usuario': nombreUsuario()
+      };
+      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'recepcion_log', registro: registro });
+    })
     .then(function (r) {
+      if (r === null) return; /* duplicado bloqueado */
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Recepcion en Drive'; }
       if (r && r.ok) {
         showToast('&#128190; <strong>Recepcion</strong> guardada en Drive.', 'success');
         logLimpiar();
@@ -1534,6 +1549,7 @@ function logGuardarRecepcion() {
       }
     })
     .catch(function (err) {
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Recepcion en Drive'; }
       showToast('Error de conexion: ' + err.message, 'danger');
     });
 }
@@ -1695,6 +1711,9 @@ function logGuardarDespacho() {
     });
   }
 
+  var btnGuardarDesp = $('log_btnGuardarDespacho');
+  if (btnGuardarDesp) { btnGuardarDesp.disabled = true; btnGuardarDesp.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
+
   apiPost({
     action: 'guardarDespacho',
     folderId: folderId,
@@ -1703,13 +1722,18 @@ function logGuardarDespacho() {
     registros: registrosPlanilla
   })
     .then(function (r) {
+      if (btnGuardarDesp) { btnGuardarDesp.disabled = false; btnGuardarDesp.innerHTML = '&#128190; Guardar en Drive'; }
       if (r && r.ok) {
-        showToast('&#128190; <strong>Despacho</strong> con Planilla ' + planilla + ' guardado en Drive (' + registrosPlanilla.length + ' traslados).', 'success');
+        var msg = '&#128190; <strong>Despacho</strong> con Planilla ' + planilla + ' guardado (' + registrosPlanilla.length + ' traslados).';
+        if (r.archivoUrl) {
+          msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">&#128279; Abrir archivo en Drive</a>';
+        }
+        showToast(msg, 'success');
         logDatosDespacho = [];
         logFilasSeleccionadas = [];
         var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
         var btnPDF = $('log_btnPDF'); if (btnPDF) btnPDF.disabled = true;
-        var btnGuardarDesp = $('log_btnGuardarDespacho'); if (btnGuardarDesp) btnGuardarDesp.disabled = true;
+        if (btnGuardarDesp) btnGuardarDesp.disabled = true;
         if ($('log_planilla')) $('log_planilla').value = '';
         if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
         if ($('log_placa')) $('log_placa').value = '';
@@ -1723,6 +1747,7 @@ function logGuardarDespacho() {
       }
     })
     .catch(function (err) {
+      if (btnGuardarDesp) { btnGuardarDesp.disabled = false; btnGuardarDesp.innerHTML = '&#128190; Guardar en Drive'; }
       showToast('Error de conexion: ' + err.message, 'danger');
     });
 }
