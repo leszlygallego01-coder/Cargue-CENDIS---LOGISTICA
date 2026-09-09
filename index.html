@@ -896,11 +896,24 @@
                   <option value="SI">SI</option>
                 </select></div>
               <div class="col-md-3"><label class="form-label">Concepto</label>
-                <input class="form-control" id="t3a_concepto" placeholder="Concepto del traslado"></div>
+                <input class="form-control" id="t3a_concepto" list="dl_conceptos" placeholder="Concepto del traslado"></div>
               <div class="col-md-2 d-flex align-items-end">
                 <span id="t3a_badgeUrgente"></span>
               </div>
             </div>
+
+            <!-- Datalist de Conceptos -->
+            <datalist id="dl_conceptos">
+              <option value="TUTELAS">
+              <option value="DESACATO">
+              <option value="PQRS">
+              <option value="JORNADAS">
+              <option value="ORDEN DE ARRESTO">
+              <option value="SANCION">
+              <option value="TRASLADO NORMAL">
+              <option value="REUBICACION">
+              <option value="DEVOLUCION">
+            </datalist>
 
             <!-- Grupo de operacion -->
             <h6 class="text-info fw-bold">Grupo de Operaci&oacute;n</h6>
@@ -1085,7 +1098,7 @@
                     <option value="SI">SI</option>
                   </select></div>
                 <div class="col-md-4"><label class="form-label">Concepto</label>
-                  <input type="text" class="form-control" id="log_concepto" placeholder="Concepto del traslado"></div>
+                  <input type="text" class="form-control" id="log_concepto" list="dl_conceptos" placeholder="Concepto del traslado"></div>
                 <div class="col-md-3"><label class="form-label">Quien Recibio *</label>
                   <select class="form-select" id="log_quien_recibio">
                     <option value="">Seleccione...</option>
