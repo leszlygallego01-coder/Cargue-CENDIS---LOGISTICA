@@ -935,7 +935,7 @@
               <div class="col-12"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado *</label>
                 <select class="form-select" id="t3a_grupo_asignado" style="font-weight:bold;font-size:0.95rem;padding:10px 12px">
                   <option value="">Seleccione grupo...</option>
-                  <option value="Grupo Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio" data-color="#dc3545">Rojo (1) — Nicoll Triviño, Estefania Parra, Angie María Tascon Jiménez</option>
+                  <option value="Grupo Rojo (1) — Nicoll Triviño, Estefania Parra, Angie María Tascon" data-color="#dc3545">Rojo (1) — Nicoll Triviño, Estefania Parra, Angie María Tascon</option>
                   <option value="Grupo Naranja (2) — Daniela Noreña, Juan David Moreno, Kelly Beltran" data-color="#FF8C00">Naranja (2) — Daniela Noreña, Juan David Moreno, Kelly Beltran</option>
                   <option value="Grupo Azul (3) — Karina Riascos, Ana Lorena Ortiz, Vaneza Escobar" data-color="#0d6efd">Azul (3) — Karina Riascos, Ana Lorena Ortiz, Vaneza Escobar</option>
                   <option value="Grupo Verde (4) — Leidy Valencia, Bivian Lorena Rivera, Brayan Camilo Izquierdo" data-color="#2fb457">Verde (4) — Leidy Valencia, Bivian Lorena Rivera, Brayan Camilo Izquierdo</option>
@@ -1014,7 +1014,7 @@
                   <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
                   <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
                   <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
+                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Angie María Tascon</option>
                   <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
                   <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
                   <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
@@ -1180,6 +1180,12 @@
                   </select></div>
                 <div class="col-md-2"><label class="form-label">Planilla *</label>
                   <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
+                <div class="col-md-3"><label class="form-label">Conductor *</label>
+                  <select class="form-select" id="log_conductor">
+                    <option value="">Seleccione...</option>
+                  </select></div>
+                <div class="col-md-2"><label class="form-label">Placa del Vehiculo</label>
+                  <input type="text" class="form-control" id="log_placa" placeholder="ABC-123" style="text-transform:uppercase"></div>
                 <div class="col-md-2">
                   <button class="btn btn-mf-azul w-100" id="log_btnConsultar">&#128269; Consultar</button>
                 </div>
@@ -1193,6 +1199,7 @@
                 <table class="table table-sm table-bordered table-hover" id="log_tabla_despacho">
                   <thead class="table-primary">
                     <tr>
+                      <th class="log-chk-col"><input type="checkbox" id="log_chk_all" title="Seleccionar todos"></th>
                       <th>Traslado</th>
                       <th>Bodega Origen</th>
                       <th>Bodega Destino</th>
