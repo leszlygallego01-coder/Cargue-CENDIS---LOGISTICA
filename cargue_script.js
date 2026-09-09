@@ -1,1303 +1,1662 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MEDISFARMA | Modulo de Cargue Operativo</title>
+/************************************************************************************
+ * MEDISFARMA - Modulo CARGUE
+ * cargue_script.js  — Frontend JavaScript completo
+ *
+ * ORDEN TARJETAS (v3):
+ *   T1 = Seguridad (Guia, Factura, Proveedor, Unidades, Quien Recibe)
+ *   T2 = Recepcion Tecnica
+ *   T3 = Planilla Entrega Despachos (enriquecida con rotacion + nuevos campos)
+ *   T4 = Logistica y Despachos
+ *   T5 = Cargue de Factura (Transporte)
+ *   T6 = Verificacion de Inventario
+ *
+ * MODULOS: ['seguridad','recepcion','despachos','logistica','facturacion','inventario']
+ ************************************************************************************/
 
-  <!-- Diagnostico de errores JS -->
-  <script>
-    window.onerror = function(msg, src, line, col, err){
-      var d=document.getElementById('diagErr');
-      if(!d){d=document.createElement('div');d.id='diagErr';d.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#c00;color:#fff;padding:8px;font-size:12px;z-index:999999;word-break:break-all;';document.body.appendChild(d);}
-      d.textContent+='JS ERROR: '+msg+' (line '+line+') | ';
-      return false;
-    };
-  </script>
+/* ═════════════════════════════════════════════════════════════════════════════════
+   0. UTILIDADES GLOBALES
+   ═════════════════════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
 
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- SheetJS: exportacion del archivo de respaldo (XLSX) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Estilos propios -->
-  <link rel="stylesheet" href="cargue_styles.css">
-</head>
-<body>
+function showToast(msg, type) {
+  var tw = $('toastWrap');
+  if (!tw) { tw = document.createElement('div'); tw.id = 'toastWrap'; tw.className = 'mf-toast-wrap'; document.body.appendChild(tw); }
+  var d = document.createElement('div');
+  var bg = type === 'success' ? 'alert-success' : type === 'danger' ? 'alert-danger' : 'alert-info';
+  d.className = 'alert ' + bg + ' shadow-sm py-2 px-3 small';
+  d.innerHTML = msg;
+  tw.appendChild(d);
+  setTimeout(function () { if (d.parentNode) d.remove(); }, 6000);
+}
 
-<!-- ============================ PANTALLA DE LOGIN ============================ -->
-<div class="mf-login-overlay" id="pantallaLogin">
-  <div class="mf-login-box">
-    <div class="mf-login-header">
-      <img src="assets/logo.jpeg" alt="MEDISFARMA">
-      <h4>SISTEMA INTEGRAL DE GESTION LOGISTICA</h4>
-      <p>Modulo CARGUE &middot; Inicio de Sesion</p>
-    </div>
-    <div class="mf-login-body">
-      <div class="mf-login-error" id="loginError">Usuario o contrasena incorrectos</div>
-      <div class="mb-3">
-        <label for="loginUsuario">Usuario / Perfil</label>
-        <select class="form-select" id="loginUsuario">
-          <option value="">Seleccione su perfil...</option>
-          <option value="administrador">&#128081; Administrador</option>
-          <option value="lider">&#128104;&#8205;&#128188; Lider</option>
-          <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
-          <option value="recibido_logistica">&#9989; Recibido Logistica</option>
-          <option value="planillar_logistica">&#128203; Planillar Logistica</option>
-          <option disabled>────────── AUXILIARES ──────────</option>
-          <option value="yuri">&#128119; Yuri</option>
-          <option value="julio">&#128119; Julio</option>
-          <option value="hernan">&#128119; Hernan</option>
-          <option value="diego">&#128119; Diego</option>
-          <option value="brian">&#128119; Brian</option>
-          <option value="karina">&#128119; Karina</option>
-          <option value="jhony">&#128119; Jhony</option>
-          <option value="natalia">&#128119; Natalia</option>
-          <option value="manuel">&#128119; Manuel</option>
-          <option value="claudia">&#128119; Claudia</option>
-          <option value="daniela">&#128119; Daniela</option>
-          <option value="juan">&#128119; Juan</option>
-          <option value="luzl">&#128119; LuzL</option>
-          <option value="liz">&#128119; Liz</option>
-          <option value="ana">&#128119; Ana</option>
-          <option value="leidy">&#128119; Leidy</option>
-          <option value="bivian">&#128119; Bivian</option>
-          <option value="vaneza">&#128119; Vaneza</option>
-          <option value="brayan">&#128119; Brayan</option>
-          <option value="nicoll">&#128119; Nicoll</option>
-          <option value="luis">&#128119; Luis</option>
-          <option value="estefania">&#128119; Estefania</option>
-          <option value="angela">&#128119; Angela</option>
-          <option value="camila">&#128119; Camila</option>
-          <option value="angie">&#128119; Angie</option>
-          <option value="mayra">&#128119; Mayra</option>
-          <option value="derly">&#128119; Derly</option>
-          <option value="luisa">&#128119; Luisa</option>
-          <option value="luzn">&#128119; LuzN</option>
-          <option value="andrea">&#128119; Andrea</option>
-          <option value="andres">&#128119; Andres</option>
-          <option value="diegoe">&#128119; DiegoE</option>
-        </select>
-      </div>
-      <div class="mb-3">
-        <label for="loginContrasena">Contrasena</label>
-        <input type="password" class="form-control" id="loginContrasena" placeholder="Ingrese su contrasena">
-      </div>
-      <button type="button" class="mf-login-btn" id="btnLogin">INGRESAR AL SISTEMA</button>
-    </div>
-    <div class="mf-login-footer">
-      MEDISFARMA &middot; Unidos por su Salud<br>
-      Acceso exclusivo personal autorizado
-    </div>
-  </div>
-</div>
+function limpiarCampos(prefijo) {
+  document.querySelectorAll('[id^="' + prefijo + '"]').forEach(function (el) {
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
+    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+  });
+}
 
-<!-- ====== SISTEMA DE SESION UNIFICADO (se ejecuta antes del JS externo) ====== -->
-<script>
-(function(){
-  /* CREDENCIALES COMPARTIDAS CARGUE + VISOR */
-  var CRED = {
-    administrador:'Medis2024Admin', lider:'Medis2024Lider',
-    auxiliar_entrega:'Medis2024Aux', recibido_logistica:'Medis2024Recib',
-    planillar_logistica:'Medis2024Plan',
-    yuri:'Medis2024Yuri', julio:'Medis2024Julio', hernan:'Medis2024Hernan',
-    diego:'Medis2024Diego', brian:'Medis2024Brian', karina:'Medis2024Karina',
-    jhony:'Medis2024Jhony', natalia:'Medis2024Natalia', manuel:'Medis2024Manuel',
-    claudia:'Medis2024Claudia', daniela:'Medis2024Daniela', juan:'Medis2024Juan',
-    luzl:'Medis2024LuzL', liz:'Medis2024Liz', ana:'Medis2024Ana',
-    leidy:'Medis2024Leidy', bivian:'Medis2024Bivian', vaneza:'Medis2024Vaneza',
-    brayan:'Medis2024Brayan', nicoll:'Medis2024Nicoll', luis:'Medis2024Luis',
-    estefania:'Medis2024Estefania', angela:'Medis2024Angela', camila:'Medis2024Camila',
-    angie:'Medis2024Angie', mayra:'Medis2024Mayra', derly:'Medis2024Derly',
-    luisa:'Medis2024Luisa', luzn:'Medis2024LuzN', andrea:'Medis2024Andrea',
-    andres:'Medis2024Andres', diegoe:'Medis2024DiegoE'
-  };
-  var LABELS = {
-    administrador:'ADMINISTRADOR', lider:'LIDER',
-    auxiliar_entrega:'AUXILIAR ENTREGA',
-    recibido_logistica:'RECIBIDO LOGISTICA',
-    planillar_logistica:'PLANILLAR LOGISTICA',
-    yuri:'Yuri', julio:'Julio', hernan:'Hernan', diego:'Diego', brian:'Brian',
-    karina:'Karina', jhony:'Jhony', natalia:'Natalia', manuel:'Manuel',
-    claudia:'Claudia', daniela:'Daniela', juan:'Juan', luzl:'LuzL', liz:'Liz',
-    ana:'Ana', leidy:'Leidy', bivian:'Bivian', vaneza:'Vaneza', brayan:'Brayan',
-    nicoll:'Nicoll', luis:'Luis', estefania:'Estefania', angela:'Angela',
-    camila:'Camila', angie:'Angie', mayra:'Mayra', derly:'Derly', luisa:'Luisa',
-    luzn:'LuzN', andrea:'Andrea', andres:'Andres', diegoe:'DiegoE'
-  };
-  /* CLAVES UNIFICADAS — CARGUE y VISOR comparten la misma sesion */
-  var LS_LOGIN  = 'MF_LOGIN_OK';
-  var LS_PERFIL = 'MF_PERFIL_ACTIVO';
+function limpiarTarjeta(num) {
+  var prefijos = { 1: 's_', 2: 'b_', 3: 't3a_', 4: 'log_', 5: 'f_', 6: 'i_' };
+  limpiarCampos(prefijos[num] || '');
+  if (num === 3) limpiarCampos('t3b_');
+  // Restaurar etiqueta Factura/Traslado segun tipo seleccionado
+  if (num === 2) toggleLabelRecepcion();
+  showToast('Tarjeta ' + num + ' limpiada.', 'info');
+}
 
-  function doLogin(){
-    var u = document.getElementById('loginUsuario');
-    var p = document.getElementById('loginContrasena');
-    var e = document.getElementById('loginError');
-    var o = document.getElementById('pantallaLogin');
-    var uv = u ? u.value.trim() : '';
-    var pv = p ? p.value.trim() : '';
-    if(!uv){ if(e){e.style.display='block';e.textContent='Seleccione un perfil.';} return; }
-    if(CRED[uv] && CRED[uv].toLowerCase()===pv.toLowerCase()){
-      localStorage.setItem(LS_LOGIN, uv);
-      localStorage.setItem(LS_PERFIL, uv);
-      if(o) o.style.display='none';
-      if(e) e.style.display='none';
-      document.body.classList.remove('mf-login-activo');
-      var sel = document.getElementById('selPerfil'); if(sel) sel.value = uv;
-      showToast('Sesion iniciada como <strong>' + (LABELS[uv]||uv) + '</strong>', 'success');
-      if(typeof aplicarPerfil === 'function') aplicarPerfil();
+function hoy() {
+  var d = new Date();
+  var dd = String(d.getDate()).padStart(2, '0');
+  var mm = String(d.getMonth() + 1).padStart(2, '0');
+  return d.getFullYear() + '-' + mm + '-' + dd;
+}
+
+function ahora() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') +
+    ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+}
+
+function fechaLocal() {
+  return new Date().toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   0B. MAPEO BODEGA → RUTA  (autocompletado dinamico)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var MAPPING_BODEGA_RUTA = {
+  'M07 UBATE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M102 IPIALES NARIÑO': 'ZONA NARIÑO',
+  'M103 SANDONA NARIÑO': 'ZONA NARIÑO',
+  'M104 LEIVA NARIÑO': 'ZONA NARIÑO',
+  'M111 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
+  'M112 BOLIVAR CAUCA': 'ZONA CAUCA SUR',
+  'M116 TIMBIQUI CAUCA': 'ZONA CAUCA SUR',
+  'M117 EL BORDO CAUCA': 'ZONA CAUCA SUR',
+  'M118 MERCADERES CAUCA': 'ZONA CAUCA SUR',
+  'M119 CORINTO CAUCA': 'ZONA CAUCA NORTE',
+  'M120 ROSAS CAUCA': 'ZONA CAUCA SUR',
+  'M123 MONIQUIRA BOYACA': 'ZONA BOYACA',
+  'M124 CARTAGENA DEL CHAIRA CAQUETA': 'ZONA CAQUETA',
+  'M125 SAN VICENTE DEL CAGUAN CAQUETA': 'ZONA CAQUETA',
+  'M126 PUERTO RICO CAQUETA': 'ZONA CAQUETA',
+  'M130 EL DONCELLO CAQUETA': 'ZONA CAQUETA',
+  'M133 SAN JOSE DE FRAGUA CAQUETA': 'ZONA CAQUETA',
+  'M137 BALBOA CAUCA': 'ZONA CAUCA SUR',
+  'M138 BUENOS AIRES CAUCA CAUCA': 'ZONA CAUCA NORTE',
+  'M139 BUENOS AIRES - TIMBA CAUCA': 'ZONA CAUCA NORTE',
+  'M140 CAJIBIO CAUCA': 'ZONA CAUCA CENTRO',
+  'M141 CAJIBIO ROSARIO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M143 INZA CAUCA': 'ZONA CAUCA CENTRO',
+  'M144 VEGA CAUCA': 'ZONA CAUCA SUR',
+  'M145 LA VEGA - SAN MIGUEL CAUCA': 'ZONA CAUCA SUR',
+  'M146 LOPEZ DE MICAY CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M147 MIRANDA CAUCA': 'ZONA CAUCA NORTE',
+  'M148 MORALES CAUCA': 'ZONA CAUCA CENTRO',
+  'M149 PADILLA CAUCA': 'ZONA CAUCA NORTE',
+  'M15 IBAGUE TOLIMA': 'ZONA TOLIMA',
+  'M151 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
+  'M152 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M153 PURACE COCONUCO CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M154 PURACE SANTA LETICIA CAUCA CAUCA': 'ZONA CAUCA CENTRO',
+  'M156 SANTANDER QUILICHAO CAUCA CAUCA': 'ZONA CAUCA NORTE',
+  'M157 SUAREZ CAUCA': 'ZONA CAUCA NORTE',
+  'M158 SUCRE CAUCA': 'ZONA CAUCA SUR',
+  'M159 TIMBIO CAUCA': 'ZONA CAUCA CENTRO',
+  'M16 MEDELLIN ANTIOQUIA': 'ZONA EJE CAFETERO',
+  'M160 ALVARADO TOLIMA': 'ZONA TOLIMA',
+  'M161 AMBALEMA TOLIMA': 'ZONA TOLIMA',
+  'M162 ANZOATEGUI TOLIMA': 'ZONA TOLIMA',
+  'M163 ARMERO TOLIMA': 'ZONA TOLIMA',
+  'M164 ATACO TOLIMA': 'ZONA TOLIMA',
+  'M165 CAJAMARCA TOLIMA': 'ZONA TOLIMA',
+  'M166 CARMEN DE APICALA TOLIMA': 'ZONA TOLIMA',
+  'M167 CASABIANCA TOLIMA': 'ZONA TOLIMA',
+  'M168 CHAPARRAL TOLIMA': 'ZONA TOLIMA',
+  'M169 COYAIMA TOLIMA': 'ZONA TOLIMA',
+  'M17 ALVERNIA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M170 CUNDAY TOLIMA': 'ZONA TOLIMA',
+  'M171 GUAMO TOLIMA': 'ZONA TOLIMA',
+  'M172 HONDA TOLIMA': 'ZONA TOLIMA',
+  'M173 ICONONZO TOLIMA': 'ZONA TOLIMA',
+  'M174 LERIDA TOLIMA': 'ZONA TOLIMA',
+  'M175 LIBANO TOLIMA': 'ZONA TOLIMA',
+  'M176 MARIQUITA TOLIMA': 'ZONA TOLIMA',
+  'M177 PALOCABILDO TOLIMA': 'ZONA TOLIMA',
+  'M178 PRADO TOLIMA': 'ZONA TOLIMA',
+  'M179 PURIFICACION TOLIMA': 'ZONA TOLIMA',
+  'M18 BUENAVENTURA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M180 RIOBLANCO TOLIMA': 'ZONA TOLIMA',
+  'M181 ROVIRA TOLIMA': 'ZONA TOLIMA',
+  'M182 SAN ANTONIO TOLIMA TOLIMA': 'ZONA TOLIMA',
+  'M183 VILLAHERMOSA TOLIMA': 'ZONA TOLIMA',
+  'M184 EL TAMBO CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M185 SAN AGUSTIN HUILA HUILA': 'ZONA CAQUETA',
+  'M188 PAEZ CAUCA': 'ZONA CAUCA CENTRO',
+  'M189 CALDONO CAUCA': 'ZONA CAUCA NORTE',
+  'M190 ALMAGUER CAUCA': 'ZONA CAUCA SUR',
+  'M193 FLORENCIA CAUCA': 'ZONA CAUCA SUR',
+  'M194 GUACHENE CAUCA': 'ZONA CAUCA NORTE',
+  'M195 LA SIERRA CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M197 PUERTO TEJADA CAUCA': 'ZONA CAUCA NORTE',
+  'M20 JAMUNDI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M209 LA VIRGINIA RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M21 CARTAGO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M210 GUATICA RISARALDA': 'ZONA EJE CAFETERO',
+  'M211 QUINCHIA RISARALDA': 'ZONA EJE CAFETERO',
+  'M212 PUEBLO RICO RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M213 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M214 PEREIRA CUBA RISARALDA': 'ZONA EJE CAFETERO',
+  'M108 DOSQUEBRADAS RISARALDA': 'ZONA EJE CAFETERO',
+  'M217 TULUA E.D VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'M218 SAN SEBASTIAN CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M219 POPAYAN PARQUE INDUSTRIAL CAUCA': 'ZONA CAUCA CENTRO',
+  'M223 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M225 BUGA VALLE DEL CAUCA': 'ZONA VALLE',
+  'SM226 ORTEGA TOLIMA': 'ZONA TOLIMA',
+  'M235 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M239 PARATEBUENO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M240 SAN JUAN DEL CESAR GUAJIRA': 'ZONA COSTA NORTE',
+  'M241 FONSECA GUAJIRA': 'ZONA COSTA NORTE',
+  'M244 TOCANCIPA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M249 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M250 MITU VAUPES': 'ZONA CUNDINAMARCA',
+  'M251 ANAPOIMA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M253 PURACE CAUCA': 'ZONA CAUCA CENTRO',
+  'SM256 MANAURE GUAJIRA': 'ZONA COSTA NORTE',
+  'M259 FUSAGASUGA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M266 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
+  'M267 PEREIRA GARZAS RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M268 URIBIA LA GUAJIRA GUAJIRA': 'ZONA COSTA NORTE',
+  'M27 PALMIRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M270 SANTA ROSA CAUCA CAUCA': 'ZONA CAUCA SUR',
+  'M283 DUITAMA BOYACA': 'ZONA BOYACA',
+  'M286 CHIQUINQUIRA BOYACA': 'ZONA BOYACA',
+  'M29 FLORIDA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M291 LA HERRADURA CAUCA': 'ZONA CAUCA SUR',
+  'M292 GARAGOA BOYACA': 'ZONA BOYACA',
+  'SM299 MAICAO GUAJIRA': 'ZONA COSTA NORTE',
+  'SM300 BARRANCAS GUAJIRA': 'ZONA COSTA NORTE',
+  'SM301 HATONUEVO GUAJIRA': 'ZONA COSTA NORTE',
+  'SM302 VILLANUEVA GUAJIRA': 'ZONA COSTA NORTE',
+  'SM303 URUMITA GUAJIRA': 'ZONA COSTA NORTE',
+  'SM304 DIBULLA GUAJIRA': 'ZONA COSTA NORTE',
+  'M305 VILLETA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M306 GUADUAS CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M307 RICAURTE CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M308 BOJACA CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M309 TENJO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M31 SAN VICENTE TULUA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M310 VILLA DE LEYVA BOYACA': 'ZONA BOYACA',
+  'M311 GUICAN BOYACA': 'ZONA BOYACA',
+  'M313 MIRAFLORES MIRAFLORES BOYACA': 'ZONA BOYACA',
+  'M314 GUATEQUE GUATEQUE BOYACA': 'ZONA BOYACA',
+  'M32 PASTO NARIÑO': 'ZONA NARIÑO',
+  'M33 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M34 TUNJA BOYACA': 'ZONA BOYACA',
+  'M42 PEREIRA RISARALDA': 'ZONA EJE CAFETERO',
+  'M43 MANIZALES CALDAS': 'ZONA EJE CAFETERO',
+  'M46 ARMENIA QUINDIO': 'ZONA EJE CAFETERO',
+  'M65 SOATA BOYACA': 'ZONA BOYACA',
+  'M73 SOGAMOSO BOYACA': 'ZONA BOYACA',
+  'M75 RIOHACHA GUAJIRA': 'ZONA COSTA NORTE',
+  'M76 PUERTO BOYACA': 'ZONA BOYACA',
+  'M77 SILVIA CAUCA': 'ZONA CAUCA CENTRO',
+  'M78 PIENDAMO CAUCA': 'ZONA CAUCA CENTRO',
+  'M79 CALOTO CAUCA': 'ZONA CAUCA NORTE',
+  'M82 SANTANDER QUILICHAO CAUCA': 'ZONA CAUCA NORTE',
+  'M84 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M85 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M87 YUMBO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M88 GUACARI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M89 GINEBRA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M90 CERRITO VALLE DEL CAUCA': 'ZONA VALLE',
+  'M91 CALIMA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M92 CANDELARIA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M93 PRADERA VALLE DEL CAUCA': 'ZONA VALLE',
+  'M94 CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M95 POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'M96 SANTANDER CAUCA': 'ZONA CAUCA NORTE',
+  'N31 MDF. SURTIDROGAS POPAYAN CAUCA': 'ZONA CAUCA CENTRO',
+  'BOD. N40 BOGOTA MEDISFARMA SURTIDROGAS CUNDINAMARCA': 'BODEGA VIRTUAL',
+  'M107 BELEN DE UMBRIA RISARALDA': 'ZONA EJE CAFETERO',
+  'M209 LA VIRGINIA RISARALDA RISARALDA': 'ZONA EJE CAFETERO',
+  'M210 GUATICA RISARALDA': 'ZONA EJE CAFETERO',
+  'M231 BOGOTA UNICENTRO CUNDINAMARCA': 'ZONA CUNDINAMARCA',
+  'M243 BOD. NUEVA EPS': 'BODEGA VIRTUAL',
+  'BOD. N11 MEDISFARMA SURTIDROGAS CALI VALLE DEL CAUCA': 'ZONA VALLE',
+  'B10 BODEGA BOGOTA': 'BODEGA VIRTUAL',
+  'M20 JAMUNDI VALLE DEL CAUCA': 'ZONA VALLE',
+  'M314 GUATEQUE GUATEQUE BOYACA': 'ZONA BOYACA',
+  'M03 NEIVA HUILA': 'ZONA CAQUETA',
+  '02M FLORENCIA CAQUETA': 'ZONA CAQUETA',
+  'M217 TULUA E.D VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'CASOS JURIDICOS': 'BODEGA VIRTUAL',
+  'BOD. 80 FACTURACION': 'BODEGA VIRTUAL',
+  'CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL': 'BODEGA VALLE',
+  'B05 ALTO COSTO': 'BODEGA VALLE',
+  'ST28 BODEGA LOGISTICA': 'BODEGA VIRTUAL',
+  'URG01 MDF. URGENCIAS TULUA VALLE DEL CAUCA': 'BODEGA VIRTUAL',
+  'B9 POPAYAN PARQUE INDUSTRIAL CAUCA': 'BODEGA',
+  'M100 TUMACO NARIÑO': 'ZONA NARIÑO',
+  'M245 BUCARAMANGA SANTANDER SANTANDER': 'ZONA CUNDINAMARCA',
+  'M257 PEREIRA PINARES RISARALDA RISARALDA': 'LOCAL Y ACTIVOS'
+};
+
+/** Autocompletar Ruta segun Bodega Destino */
+function autocompletarRuta(inputDestinoId, inputRutaId) {
+  var destEl = $(inputDestinoId);
+  var rutEl = $(inputRutaId);
+  if (!destEl || !rutEl) return;
+  var val = destEl.value.trim();
+  // Busqueda exacta primero, luego parcial
+  var ruta = MAPPING_BODEGA_RUTA[val] || '';
+  if (!ruta) {
+    // Busqueda parcial: coincide inicio del nombre (ej. 'M108' → 'M108 DOSQUEBRADAS...')
+    var claves = Object.keys(MAPPING_BODEGA_RUTA);
+    for (var i = 0; i < claves.length; i++) {
+      if (claves[i].indexOf(val) === 0 || val.indexOf(claves[i]) === 0) {
+        ruta = MAPPING_BODEGA_RUTA[claves[i]];
+        break;
+      }
+    }
+  }
+  rutEl.value = ruta;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   1. CONFIGURACION POR DEFECTO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var CONFIG_DEFAULT = {
+  api_url: 'https://script.google.com/macros/s/AKfycbyvZDjnPRUnLJkRjHENBvXj_3n6ogDj-du_Kul47OgpoxVH8PAhqGIkjtb2s1uTbO5P/exec',
+  folders: {
+    trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
+    seguridad:        '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
+    despachos:         '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
+    asignacion:        '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
+    logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
+    recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
+    facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
+    inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
+    rotacion:          '106BTSHLA8giLcW8qkvbJWiqA_7KiDpBi',
+    entrega:           '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
+    backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
+  },
+  perfiles: {
+    seguridad:   { file: 'BD_SEGURIDAD_DESPACHOS',         sheet: 'DATOS' },
+    despachos:   { file: 'BD_PLANILLA_ENTREGA_DESPACHOS',  sheet: 'DATOS' },
+    asignacion:  { file: 'BD_ASIGNACION_DE_TRASLADO',    sheet: 'DATOS' },
+    logistica:   { file: 'BD_LOGISTICA_DESPACHOS',        sheet: 'DATOS' },
+    recepcion:   { file: 'BD_RECEPCION_TECNICA',          sheet: 'DATOS' },
+    facturacion: { file: 'BD_CARGUE_FACTURA_TRANSPORTE',  sheet: 'DATOS' },
+    inventario:  { file: 'BD_VERIFICACION_INVENTARIO',    sheet: 'DATOS' },
+    novedades:   { file: 'BD_NOVEDADES_MODIFICACIONES',   sheet: 'DATOS' },
+    rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' },
+    entrega:     { file: 'BD_ENTREGA_A_LOGISTICA',        sheet: 'DATOS' }
+  },
+  conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS']
+};
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   2. CREDENCIALES Y PERFILES DE ACCESO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var CREDENCIALES = {
+  administrador: 'Medis2024Admin',
+  lider: 'Medis2024Lider',
+  auxiliar_entrega: 'Medis2024Aux',
+  recibido_logistica: 'Medis2024Recib',
+  planillar_logistica: 'Medis2024Plan'
+};
+
+/* Nombres de los 32 auxiliares individuales */
+var AUXILIARES_INDIVIDUALES = [
+  'yuri','julio','hernan','diego','brian','karina','jhony','natalia',
+  'manuel','claudia','daniela','juan','luzl','liz','ana','leidy',
+  'bivian','vaneza','brayan','nicoll','luis','estefania','angela','camila',
+  'angie','mayra','derly','luisa','luzn','andrea','andres','diegoe'
+];
+
+var LABELS_PERFIL = {
+  administrador: '&#128081; ADMINISTRADOR',
+  lider: '&#128104;&#8205;&#128188; LIDER',
+  auxiliar_entrega: '&#128230; AUXILIAR ENTREGA',
+  recibido_logistica: '&#9989; RECIBIDO LOGISTICA',
+  planillar_logistica: '&#128203; PLANILLAR LOGISTICA',
+  auxiliar: '&#128119; AUXILIAR'
+};
+
+/* Perfiles y sus tarjetas visibles (reordenadas) */
+var PERFILES = {
+  administrador:           { label: 'Administrador',   tarjetas: ['t1','t2','t3','t4','t5','t6'] },
+  lider:                  { label: 'Lider',           tarjetas: ['t1','t3'] },
+  auxiliar_entrega:       { label: 'Auxiliar Entrega', tarjetas: ['t3'] },
+  recibido_logistica:     { label: 'Recibido Log',     tarjetas: ['t4'] },
+  planillar_logistica:    { label: 'Planillar Log',    tarjetas: ['t3','t4'] },
+  auxiliar:               { label: 'Auxiliar',         tarjetas: ['t1','t2','t3'] }
+};
+
+/* Modulos (orden de carpetas/backend) */
+var MODULOS = ['seguridad','recepcion','asignacion','entrega','despachos','logistica','facturacion','inventario'];
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   3. CONFIGURACION EN MEMORIA + GUARDADO EN LOCALSTORAGE
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var CONFIG = {};
+function cargarConfig() {
+  var saved = localStorage.getItem('MF_CARGUE_CONFIG');
+  CONFIG = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(CONFIG_DEFAULT));
+  if (!CONFIG.folders.seguridad) CONFIG.folders.seguridad = CONFIG_DEFAULT.folders.seguridad;
+  if (!CONFIG.folders.rotacion)  CONFIG.folders.rotacion  = CONFIG_DEFAULT.folders.rotacion;
+  if (!CONFIG.folders.entrega)   CONFIG.folders.entrega   = CONFIG_DEFAULT.folders.entrega;
+  if (!CONFIG.folders.asignacion) CONFIG.folders.asignacion = CONFIG_DEFAULT.folders.asignacion;
+  if (!CONFIG.perfiles.entrega)  CONFIG.perfiles.entrega  = CONFIG_DEFAULT.perfiles.entrega;
+  if (!CONFIG.perfiles.asignacion) CONFIG.perfiles.asignacion = CONFIG_DEFAULT.perfiles.asignacion;
+  if (!CONFIG.conductores || !CONFIG.conductores.length) CONFIG.conductores = CONFIG_DEFAULT.conductores.slice();
+  var el = $('cfg_api_url'); if (el) el.value = CONFIG.api_url;
+  var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
+  var cc = $('cfg_conductores'); if (cc) cc.value = (CONFIG.conductores || []).join('\n');
+}
+function guardarConfig() {
+  var el = $('cfg_api_url'); if (el) CONFIG.api_url = el.value.trim();
+  var fb = $('cfg_folder_backup'); if (fb) CONFIG.folders.backup = fb.value.trim();
+  var cc = $('cfg_conductores'); if (cc) CONFIG.conductores = cc.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+  localStorage.setItem('MF_CARGUE_CONFIG', JSON.stringify(CONFIG));
+  showToast('Configuracion guardada en el navegador.', 'success');
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   4. SESION Y PERFILES
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function perfilActivo() {
+  return localStorage.getItem('MF_PERFIL_ACTIVO') || 'administrador';
+}
+
+function esAdministrador() {
+  var p = perfilActivo();
+  return p === 'administrador';
+}
+
+function nombreUsuario() {
+  var p = perfilActivo();
+  if (AUXILIARES_INDIVIDUALES.indexOf(p) >= 0) {
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  }
+  return LABELS_PERFIL[p] || p;
+}
+
+function aplicarPerfil() {
+  var perfil = perfilActivo();
+  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0) perfil = 'auxiliar';
+  var def = PERFILES[perfil] || PERFILES.administrador;
+  var visibles = def.tarjetas;
+  var todas = ['t1','t2','t3','t4','t5','t6'];
+  todas.forEach(function (tid) {
+    var pane = $(tid);
+    var tab = document.querySelector('[data-bs-target="#' + tid + '"]');
+    if (visibles.indexOf(tid) >= 0) {
+      if (pane) pane.classList.remove('d-none');
+      if (tab) { tab.classList.remove('d-none'); tab.style.display = ''; }
     } else {
-      if(e){e.style.display='block';e.textContent='Usuario o contrasena incorrectos';}
-      if(p){p.value='';p.focus();}
-    }
-  }
-
-  function doLogout(){
-    localStorage.removeItem(LS_LOGIN);
-    localStorage.removeItem(LS_PERFIL);
-    var o = document.getElementById('pantallaLogin');
-    if(o) o.style.display = 'flex';
-    document.body.classList.add('mf-login-activo');
-    var u = document.getElementById('loginUsuario');
-    var p = document.getElementById('loginContrasena');
-    var e = document.getElementById('loginError');
-    if(u) u.value = '';
-    if(p) p.value = '';
-    if(e) e.style.display = 'none';
-    showToast('Sesion cerrada correctamente.', 'info');
-  }
-
-  function showToast(msg, type){
-    var tw = document.getElementById('toastWrap');
-    if(!tw) return;
-    var d = document.createElement('div');
-    var bg = type==='success'?'alert-success':type==='danger'?'alert-danger':'alert-info';
-    d.className = 'alert ' + bg + ' shadow-sm py-2 px-3 small';
-    d.innerHTML = msg;
-    tw.appendChild(d);
-    setTimeout(function(){ if(d.parentNode) d.remove(); }, 5000);
-  }
-
-  var btn = document.getElementById('btnLogin');
-  if(btn){
-    btn.addEventListener('click', doLogin);
-    btn.addEventListener('touchend', function(ev){ ev.preventDefault(); doLogin(); },{passive:false});
-  }
-  var pw = document.getElementById('loginContrasena');
-  if(pw) pw.addEventListener('keydown', function(ev){ if(ev.key==='Enter') doLogin(); });
-  function bindLogout(){
-    var btnOut = document.getElementById('btnCerrarSesion');
-    if(btnOut && !btnOut._mfLogoutBound){
-      btnOut._mfLogoutBound = true;
-      btnOut.addEventListener('click', doLogout);
-      btnOut.addEventListener('touchend', function(ev){ ev.preventDefault(); doLogout(); },{passive:false});
-    }
-  }
-  bindLogout();
-  setTimeout(bindLogout, 100);
-  setTimeout(bindLogout, 500);
-  document.addEventListener('DOMContentLoaded', bindLogout);
-
-  var prev = localStorage.getItem(LS_LOGIN);
-  var o = document.getElementById('pantallaLogin');
-  var urlParams = new URLSearchParams(window.location.search);
-  var sesionURL = urlParams.get('sesion');
-  if(sesionURL && CRED[sesionURL]){
-    localStorage.setItem(LS_LOGIN, sesionURL);
-    localStorage.setItem(LS_PERFIL, sesionURL);
-    prev = sesionURL;
-    window.history.replaceState({}, '', window.location.pathname);
-  }
-  if(prev && CRED[prev]){
-    if(o) o.style.display = 'none';
-    document.body.classList.remove('mf-login-activo');
-    var sel = document.getElementById('selPerfil'); if(sel) sel.value = prev;
-  } else {
-    document.body.classList.add('mf-login-activo');
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    var linkVisor = document.querySelector('a[href*="Informe-de-Operacional-de-CEDIS"]');
-    if(linkVisor){
-      linkVisor.addEventListener('click', function(e){
-        e.preventDefault();
-        var perfil = localStorage.getItem(LS_LOGIN) || '';
-        var base = 'https://leszlygallego01-coder.github.io/Informe-de-Operacional-de-CEDIS---LOGISTICO/';
-        var url = perfil ? base + '?sesion=' + encodeURIComponent(perfil) : base;
-        window.location.href = url;
-      });
+      if (pane) pane.classList.add('d-none');
+      if (tab) { tab.classList.add('d-none'); tab.style.display = 'none'; }
     }
   });
+  var badge = $('perfilBadge');
+  if (badge) badge.innerHTML = LABELS_PERFIL[perfil] || perfil;
+  var sel = $('selPerfil'); if (sel) sel.value = perfilActivo();
+  if (esAdministrador()) {
+    todas.forEach(function (tid) {
+      var pane = $(tid); var tab = document.querySelector('[data-bs-target="#' + tid + '"]');
+      if (pane) pane.classList.remove('d-none');
+      if (tab) { tab.classList.remove('d-none'); tab.style.display = ''; }
+    });
+  }
+  pintarPerfiles();
+}
 
-  window._doLoginEarly  = doLogin;
-  window._doLogoutEarly = doLogout;
+function seleccionarPerfil(perfil) {
+  localStorage.setItem('MF_LOGIN_OK', perfil);
+  localStorage.setItem('MF_PERFIL_ACTIVO', perfil);
+  aplicarPerfil();
+  showToast('Perfil cambiado a <strong>' + (LABELS_PERFIL[perfil] || perfil) + '</strong>', 'success');
+}
+
+function pintarPerfiles() {
+  var info = $('perfilesUsuarioInfo');
+  if (info) {
+    var perfil = perfilActivo();
+    var real = AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 ? 'auxiliar' : perfil;
+    var def = PERFILES[real] || PERFILES.administrador;
+    var h = '<strong>Perfil activo:</strong> ' + (LABELS_PERFIL[real] || perfil) + '<br>';
+    h += '<strong>Tarjetas visibles:</strong> ' + def.tarjetas.join(', ') + '<br>';
+    var nombres = { t1:'Seguridad', t2:'Recepcion Tecnica', t3:'Planilla Entrega', t4:'Logistica y Despachos', t5:'Factura Transporte', t6:'Verificacion Inventario' };
+    h += '<strong>Detalle:</strong><ul>';
+    def.tarjetas.forEach(function (t) { h += '<li>' + t.toUpperCase() + ' = ' + nombres[t] + '</li>'; });
+    h += '</ul>';
+    info.innerHTML = h;
+  }
+  var pf = $('perfilesInfo');
+  if (pf) {
+    var h2 = '<table class="table table-sm mb-0"><thead><tr><th>Modulo</th><th>Archivo</th><th>Hoja</th></tr></thead><tbody>';
+    Object.keys(CONFIG.perfiles || CONFIG_DEFAULT.perfiles).forEach(function (m) {
+      var c = (CONFIG.perfiles || CONFIG_DEFAULT.perfiles)[m];
+      h2 += '<tr><td>' + m + '</td><td>' + c.file + '</td><td>' + c.sheet + '</td></tr>';
+    });
+    h2 += '</tbody></table>';
+    pf.innerHTML = h2;
+  }
+  var ids = $('idsCarpetasInfo');
+  if (ids) {
+    var h3 = '<table class="table table-sm mb-0"><thead><tr><th>Carpeta</th><th>ID</th></tr></thead><tbody>';
+    Object.keys(CONFIG.folders).forEach(function (k) {
+      h3 += '<tr><td>' + k + '</td><td class="text-break">' + CONFIG.folders[k] + '</td></tr>';
+    });
+    h3 += '</tbody></table>';
+    ids.innerHTML = h3;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   5. API — COMUNICACION CON GOOGLE APPS SCRIPT
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function apiGet(params) {
+  var url = CONFIG.api_url + '?' + new URLSearchParams(params).toString();
+  return fetch(url, { redirect: 'follow' }).then(function (r) { return r.json(); });
+}
+
+function apiPost(payload) {
+  return fetch(CONFIG.api_url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    redirect: 'follow',
+    body: JSON.stringify(payload)
+  }).then(function (r) { return r.json(); });
+}
+
+function probarApi() {
+  apiGet({ action: 'ping' })
+    .then(function (r) {
+      var e = $('estadoApi');
+      if (r && r.ok) {
+        if (e) { e.textContent = 'API OK'; e.className = 'badge bg-success'; }
+        showToast('Conexion exitosa con Google Drive. <strong>API activa.</strong>', 'success');
+      } else {
+        if (e) { e.textContent = 'API ERROR'; e.className = 'badge bg-danger'; }
+        showToast('Error en la respuesta del servidor.', 'danger');
+      }
+    })
+    .catch(function (err) {
+      var e = $('estadoApi');
+      if (e) { e.textContent = 'SIN CONEXION'; e.className = 'badge bg-danger'; }
+      showToast('No se pudo conectar al servidor: ' + err.message, 'danger');
+    });
+}
+
+function validarFolder(modulo) {
+  var folderId = '';
+  var el = $('folder_' + modulo);
+  if (el) folderId = el.value.trim();
+  if (!folderId && CONFIG.folders[modulo]) folderId = CONFIG.folders[modulo];
+  if (!folderId) { showToast('ID de carpeta vacio para ' + modulo, 'danger'); return; }
+  apiGet({ action: 'validarCarpeta', folderId: folderId })
+    .then(function (r) {
+      var e = $('estado_folder_' + modulo);
+      if (r && r.ok) {
+        if (e) e.innerHTML = '<span class="badge bg-success">&#9989; ' + r.nombre + '</span>';
+        showToast('Carpeta <strong>' + r.nombre + '</strong> validada correctamente.', 'success');
+      } else {
+        if (e) e.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+        showToast('Error al validar carpeta: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('No se pudo validar: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   6. TARJETA 1 — SEGURIDAD (NUEVA)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function t1Guardar() {
+  var guia = $('s_guia') ? $('s_guia').value.trim() : '';
+  var factura = $('s_factura') ? $('s_factura').value.trim() : '';
+  var proveedor = $('s_proveedor') ? $('s_proveedor').value.trim() : '';
+  var unidades = $('s_unidades') ? $('s_unidades').value.trim() : '';
+  var quienRecibe = $('s_quien_recibe') ? $('s_quien_recibe').value : '';
+  var observacion = $('s_observacion') ? $('s_observacion').value.trim() : '';
+
+  if (!guia || !factura || !proveedor || !unidades || !quienRecibe) {
+    showToast('Complete todos los campos obligatorios (*).', 'danger');
+    return;
+  }
+
+  var folderId = $('folder_seguridad') ? $('folder_seguridad').value.trim() : CONFIG.folders.seguridad;
+  if (!folderId) { showToast('Configure la carpeta Drive de Seguridad.', 'danger'); return; }
+
+  var registro = {
+    'Guia': guia,
+    'Factura': factura,
+    'Proveedor': proveedor,
+    'Unidades': unidades,
+    'Quien Recibe': quienRecibe,
+    'Fecha Registro': hoy(),
+    'Hora Registro': ahora(),
+    'Observacion': observacion,
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'seguridad', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; Registro de <strong>Seguridad</strong> guardado correctamente en Drive.', 'success');
+        limpiarCampos('s_');
+      } else {
+        showToast('Error al guardar Seguridad: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion al guardar Seguridad: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   7. TARJETA 2 — RECEPCION TECNICA
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var t2Items = [];
+
+/** Alterna etiqueta del campo b_traslado: EXTERNA → "Factura", INTERNA → "Traslado" */
+function toggleLabelRecepcion() {
+  var tipo = document.querySelector('input[name="tipoRecepcion"]:checked');
+  var esExterna = tipo && tipo.value === 'EXTERNA';
+  var lbl = $('lbl_doc_recepcion');
+  var inp = $('b_traslado');
+  if (lbl) {
+    lbl.textContent = esExterna ? 'Factura *' : 'Traslado *';
+    lbl.className = 'form-label rec-doc-label ' + (esExterna ? 'externa' : 'interna');
+  }
+  if (inp) inp.placeholder = esExterna ? 'Numero de factura' : 'Numero de traslado';
+}
+
+function t2AgregarItem() {
+  var tipo = document.querySelector('input[name="tipoRecepcion"]:checked');
+  tipo = tipo ? tipo.value : 'EXTERNA';
+  var esExterna = tipo === 'EXTERNA';
+  var docNum = $('b_traslado') ? $('b_traslado').value.trim() : '';
+  var bodegaOrigen = $('b_bodega_origen') ? $('b_bodega_origen').value : '';
+  var destino = $('b_destino') ? $('b_destino').value : '';
+  var fechaRecep = $('b_fecha_recepcion') ? $('b_fecha_recepcion').value : '';
+  var codigo = $('b_codigo') ? $('b_codigo').value.trim() : '';
+  var descripcion = $('b_descripcion') ? $('b_descripcion').value.trim() : '';
+  var laboratorio = $('b_laboratorio') ? $('b_laboratorio').value.trim() : '';
+  var lote = $('b_lote') ? $('b_lote').value.trim() : '';
+  var vencimiento = $('b_vencimiento') ? $('b_vencimiento').value : '';
+  var enviada = $('b_enviada') ? $('b_enviada').value : '';
+  var recibida = $('b_recibida') ? $('b_recibida').value : '';
+  var diferencia = $('b_diferencia') ? $('b_diferencia').value : '';
+  var responsable = $('b_responsable') ? $('b_responsable').value.trim() : '';
+  var estado = $('b_estado') ? $('b_estado').value : '';
+  var observaciones = $('b_observaciones') ? $('b_observaciones').value.trim() : '';
+
+  if (!docNum || !codigo || !descripcion || !lote || !vencimiento || !enviada || !recibida || !responsable) {
+    var campoFaltante = esExterna ? 'Factura' : 'Traslado';
+    showToast('Complete los campos obligatorios de recepcion (incluyendo ' + campoFaltante + ').', 'danger');
+    return;
+  }
+
+  var item = {
+    'Tipo Recepcion': tipo,
+    'Documento Recepcion': esExterna ? 'Factura' : 'Traslado',
+    'Numero Documento': docNum,
+    'Bodega Origen': bodegaOrigen,
+    'Bodega Destino': destino, 'Fecha Recepcion': fechaRecep, 'Codigo Producto': codigo,
+    'Descripcion': descripcion, 'Laboratorio': laboratorio, 'Lote': lote,
+    'Fecha Vencimiento': vencimiento, 'Cantidad Enviada': enviada, 'Cantidad Recibida': recibida,
+    'Diferencia': diferencia, 'Responsable Recepcion': responsable,
+    'Estado Recepcion Tecnica': estado, 'Observaciones': observaciones
+  };
+  t2Items.push(item);
+  t2PintarTabla();
+  showToast('Item agregado a la lista de recepcion.', 'success');
+}
+
+function t2PintarTabla() {
+  var head = $('t2_tablaHead');
+  var body = $('t2_tablaBody');
+  if (!head || !body) return;
+  var cols = ['Tipo', 'Doc.', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
+  head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
+  body.innerHTML = '';
+  t2Items.forEach(function (item, idx) {
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + (item['Tipo Recepcion'] || '') + '</td>' +
+      '<td><small class="text-muted">' + (item['Documento Recepcion'] || '') + '</small> ' + (item['Numero Documento'] || '') + '</td>' +
+      '<td>' + (item['Codigo Producto'] || '') + '</td>' +
+      '<td>' + (item['Descripcion'] || '') + '</td>' +
+      '<td>' + (item['Lote'] || '') + '</td>' +
+      '<td>' + (item['Fecha Vencimiento'] || '') + '</td>' +
+      '<td>' + (item['Cantidad Enviada'] || '') + '</td>' +
+      '<td>' + (item['Cantidad Recibida'] || '') + '</td>' +
+      '<td>' + (item['Diferencia'] || '') + '</td>' +
+      '<td>' + (item['Estado Recepcion Tecnica'] || '') + '</td>' +
+      '<td><button class="btn btn-sm btn-outline-danger" onclick="t2EliminarItem(' + idx + ')">X</button></td>';
+    body.appendChild(tr);
+  });
+}
+
+function t2EliminarItem(idx) {
+  t2Items.splice(idx, 1);
+  t2PintarTabla();
+}
+
+function t2Guardar() {
+  if (!t2Items.length) { showToast('Agregue al menos un item antes de guardar.', 'danger'); return; }
+  var folderId = $('folder_recepcion') ? $('folder_recepcion').value.trim() : CONFIG.folders.recepcion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Recepcion.', 'danger'); return; }
+  var okCount = 0;
+  var errCount = 0;
+  var total = t2Items.length;
+  t2Items.forEach(function (item) {
+    item['Marca temporal'] = ahora();
+    item['Perfil'] = perfilActivo();
+    item['Usuario'] = nombreUsuario();
+    apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'recepcion', registro: item })
+      .then(function (r) {
+        if (r && r.ok) okCount++; else errCount++;
+        if (okCount + errCount === total) {
+          if (errCount === 0) {
+            showToast('&#128190; <strong>' + total + '</strong> registros de Recepcion guardados en Drive.', 'success');
+            t2Items = []; t2PintarTabla();
+          } else {
+            showToast('Guardados ' + okCount + '/' + total + '. Errores: ' + errCount, 'danger');
+          }
+        }
+      })
+      .catch(function () { errCount++; });
+  });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   8. TARJETA 3 — PLANILLA ENTREGA DESPACHOS (DOS SECCIONES: A + B)
+   ═════════════════════════════════════════════════════════════════════════════════
+   Seccion A = Asignacion de Traslado (Paso 1 — Obligatorio)
+   Seccion B = Entrega a Logistica   (Paso 2 — Depende de A)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var t3aTrasladoValidado = null;  // Seccion A: traslado validado en trasladosConsulta
+var t3bTrasladoValidado = null;  // Seccion B: asignacion validada + datos consolidados
+var logTrasladoValidado = null;  // Logistica: traslado validado en trasladosConsulta
+var t3RotacionHoy = null;
+
+/** Utilidad: seleccionar opcion en un <select> por texto visible */
+function seleccionarOpcion(selectId, nombre) {
+  var sel = $(selectId);
+  if (!sel || !nombre) return;
+  var opts = sel.options;
+  for (var i = 0; i < opts.length; i++) {
+    if (opts[i].textContent.trim() === nombre) { sel.selectedIndex = i; break; }
+  }
+}
+
+/** Carga la rotacion del dia desde el backend para pre-llenar campos */
+function t3CargarRotacion() {
+  var folderId = CONFIG.folders.rotacion;
+  var fecha = hoy();
+  apiGet({ action: 'leerRotacion', folderId: folderId, fecha: fecha })
+    .then(function (r) {
+      if (r && r.ok && r.asignaciones && r.asignaciones.length) {
+        t3RotacionHoy = r.asignaciones;
+        t3AplicarRotacionA();
+      } else {
+        t3RotacionHoy = null;
+      }
+    })
+    .catch(function () { t3RotacionHoy = null; });
+}
+
+/** Asigna automaticamente el GRUPO ASIGNADO segun Bodega Origen.
+ *  Si Bodega Origen contiene "B05 ALTO COSTO" → Grupo Especial Gris con TODOS sus integrantes.
+ *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → Grupo de la Apertura del Dia con sus integrantes.
+ *  El campo muestra: "Grupo Color (N) — Nombre1, Nombre2, Nombre3"
+ *  Ese mismo texto se persiste en BD_ASIGNACION_DE_TRASLADO.
+ */
+function t3AplicarRotacionA() {
+  var bodega = $('t3a_bodega_origen') ? $('t3a_bodega_origen').value.trim() : '';
+  var grupoSelect = $('t3a_grupo_asignado');
+  var esB05AltoCosto = bodega.toUpperCase().indexOf('B05 ALTO COSTO') >= 0;
+  var esCendis = bodega.toUpperCase().indexOf('CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL') >= 0;
+
+  if (esB05AltoCosto) {
+    // ── Grupo Especial Gris (8) — UNA persona aleatoria del grupo ──
+    var grupoGris = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === 'Gris'; })[0];
+    if (grupoGris) {
+      var idx = Math.floor(Math.random() * grupoGris.miembros.length);
+      var personaAleatoria = grupoGris.miembros[idx];
+      var textoGris = 'Grupo Especial Gris (8) — ' + personaAleatoria;
+      // Seleccionar la opcion de Gris en el select y personalizar texto
+      if (grupoSelect) {
+        // Buscar la opcion de Gris
+        for (var i = 0; i < grupoSelect.options.length; i++) {
+          if (grupoSelect.options[i].value.indexOf('Gris') >= 0) {
+            grupoSelect.options[i].value = textoGris;
+            grupoSelect.options[i].textContent = 'Especial Gris (8) — ' + personaAleatoria;
+            grupoSelect.selectedIndex = i;
+            grupoSelect.style.borderColor = grupoGris.hex;
+            grupoSelect.style.color = grupoGris.hex;
+            break;
+          }
+        }
+      }
+    }
+  } else if (esCendis) {
+    // ── Grupo de la Apertura del Dia — preseleccionar grupo automaticamente ──
+    if (t3RotacionHoy && t3RotacionHoy.length) {
+      var gruposNoGris = {};
+      t3RotacionHoy.forEach(function (a) {
+        if (a.grupo !== 'Gris' && a.grupo) {
+          if (!gruposNoGris[a.grupo]) gruposNoGris[a.grupo] = [];
+          gruposNoGris[a.grupo].push(a.nombre);
+        }
+      });
+      var grupoNombre = '';
+      var claves = Object.keys(gruposNoGris);
+      for (var i = 0; i < claves.length; i++) {
+        if (gruposNoGris[claves[i]].length >= 3) {
+          grupoNombre = claves[i];
+          break;
+        }
+      }
+      if (grupoNombre) {
+        var grupoInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === grupoNombre; })[0];
+        if (grupoSelect && grupoInfo) {
+          for (var j = 0; j < grupoSelect.options.length; j++) {
+            if (grupoSelect.options[j].value.indexOf(grupoNombre) >= 0) {
+              grupoSelect.selectedIndex = j;
+              grupoSelect.style.borderColor = grupoInfo.hex;
+              grupoSelect.style.color = grupoInfo.hex;
+              break;
+            }
+          }
+        }
+      } else {
+        // Fallback: primer grupo no-Gris
+        var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
+        if (noGris.length && grupoSelect) {
+          var fbGrupo = noGris[0].grupo;
+          var fbInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === fbGrupo; })[0];
+          if (fbInfo) {
+            for (var k = 0; k < grupoSelect.options.length; k++) {
+              if (grupoSelect.options[k].value.indexOf(fbGrupo) >= 0) {
+                grupoSelect.selectedIndex = k;
+                grupoSelect.style.borderColor = fbInfo.hex;
+                grupoSelect.style.color = fbInfo.hex;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  } else {
+    // Bodega no reconocida — grupo aleatorio como sugerencia
+    if (grupoSelect && bodega) {
+      var idxRand = 1 + Math.floor(Math.random() * 7); // 1-7 (excluye Gris)
+      var opciones = grupoSelect.options;
+      for (var m = 1; m < opciones.length - 1; m++) { // saltar placeholder y Gris
+        var optGrupo = opciones[m].value;
+        var optInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return optGrupo.indexOf(g.nombre) >= 0; })[0];
+        if (optInfo && optInfo.numero === idxRand) {
+          grupoSelect.selectedIndex = m;
+          grupoSelect.style.borderColor = optInfo.hex;
+          grupoSelect.style.color = optInfo.hex;
+          break;
+        }
+      }
+    } else if (grupoSelect) {
+      grupoSelect.selectedIndex = 0;
+      grupoSelect.style.borderColor = '';
+      grupoSelect.style.color = '';
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────────
+   7C. GRUPOS FIJOS CARGUE — Definicion de los 8 grupos con miembros
+   ───────────────────────────────────────────────────────────────────────────────── */
+var GRUPOS_FIJOS_CARGUE = [
+  { nombre: 'Rojo',    numero: 1, hex: '#dc3545', miembros: ['Nicoll Trivi\u00f1o', 'Estefania Parra', 'Luisa Mar\u00eda Osorio'], lider: 'Luisa Mar\u00eda Osorio' },
+  { nombre: 'Naranja', numero: 2, hex: '#FF8C00', miembros: ['Daniela Nore\u00f1a', 'Juan David Moreno', 'Kelly Beltran'] },
+  { nombre: 'Azul',    numero: 3, hex: '#0d6efd', miembros: ['Karina Riascos', 'Ana Lorena Ortiz', 'Vaneza Escobar'] },
+  { nombre: 'Verde',   numero: 4, hex: '#2fb457', miembros: ['Leidy Valencia', 'Bivian Lorena Rivera', 'Brayan Camilo Izquierdo'] },
+  { nombre: 'Morado',  numero: 5, hex: '#6f42c1', miembros: ['Jhony Saenz', 'Natalia Galvez', 'Valentina Cano'] },
+  { nombre: 'Amarillo',numero: 6, hex: '#ffc107', miembros: ['Liz Karime Valencia', 'Angela Vanessa Aguirre', 'Derly Yulieth Mosquera'] },
+  { nombre: 'Fucsia',  numero: 7, hex: '#FF00FF', miembros: ['Manuel David Salazar', 'Luz Nelly Chaves', 'Luis Felipe Marin'], lider: 'Luz Nelly Chaves' },
+  { nombre: 'Gris',    numero: 8, hex: '#6c757d', miembros: ['Claudia Echeverry', 'Camila Posada', 'Angela Vera', 'Mayra Alejandra Franco', 'Andrea Vanegas'], lider: 'Andrea Vanegas' }
+];
+
+/* ── Listener de cambio en Grupo Asignado — colorea el select al cambiar manualmente ── */
+(function initGrupoSelectListener() {
+  var gs = $('t3a_grupo_asignado');
+  if (!gs) return;
+  gs.addEventListener('change', function () {
+    var val = this.value || '';
+    var hex = '';
+    for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
+      if (val.indexOf(GRUPOS_FIJOS_CARGUE[i].nombre) >= 0) {
+        hex = GRUPOS_FIJOS_CARGUE[i].hex; break;
+      }
+    }
+    this.style.borderColor = hex || '';
+    this.style.color = hex || '';
+    this.style.fontWeight = hex ? 'bold' : '';
+  });
 })();
-</script>
 
-<!-- ============================ BARRA SUPERIOR ============================ -->
-<nav class="mf-navbar py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2 no-print">
-  <div class="d-flex align-items-center gap-3">
-    <img src="assets/logo.jpeg" alt="Logo Medisfarma" class="mf-logo">
-    <div>
-      <div class="mf-titulo">Sistema Integral de Gestion Logistica</div>
-      <div class="mf-sub">Modulo CARGUE &middot; Seguridad &middot; Recepcion &middot; Facturacion &middot; Inventario</div>
-    </div>
-  </div>
-  <div class="d-flex align-items-center gap-2 flex-wrap">
-    <div class="d-flex align-items-center gap-1">
-      <label class="text-white small fw-bold mb-0" for="selPerfil">Perfil:</label>
-      <select class="form-select form-select-sm mf-sel-perfil" id="selPerfil">
-        <option value="administrador">&#128081; Administrador</option>
-        <option value="lider">&#128104;&#8205;&#128188; Lider</option>
-        <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
-        <option value="recibido_logistica">&#9989; Recibido Logistica</option>
-        <option value="planillar_logistica">&#128203; Planillar Logistica</option>
-        <option value="auxiliar">&#128119; Auxiliar</option>
-      </select>
-    </div>
-    <span id="perfilBadge" class="badge bg-danger mf-perfil-badge">&#128081; ADMINISTRADOR</span>
-    <span id="estadoApi" class="badge bg-light text-dark">API sin verificar</span>
-    <button class="btn btn-outline-info btn-sm" id="btnProbarApi" title="Probar conexion con Google Drive">&#127760; Probar Conexion</button>
-    <button class="btn btn-light btn-sm" id="btnConfigApi" data-bs-toggle="modal" data-bs-target="#modalConfig">
-      &#9881; Configuracion
-    </button>
-    <button class="btn btn-mf-verde btn-sm btn-backup" id="btnBackupTop">
-      &#128190; DESCARGAR ARCHIVO DE SEGURIDAD (BACKUP)
-    </button>
-    <button class="btn btn-outline-light btn-sm" id="btnCerrarSesion">&#128274; Cerrar Sesion</button>
-    <a class="btn btn-outline-light btn-sm" href="https://leszlygallego01-coder.github.io/Informe-de-Operacional-de-CEDIS---LOGISTICO/">Ir al VISOR &rarr;</a>
-  </div>
-</nav>
+/* ── Auto-asignar grupo aleatorio al cargar la pagina ── */
+function autoAsignarGrupoAleatorio() {
+  var gs = $('t3a_grupo_asignado');
+  if (!gs) return;
+  // Elegir grupo aleatorio entre 1 y 8 (incluyendo Gris)
+  var numGrupo = 1 + Math.floor(Math.random() * 8);
+  var grupoInfo = null;
+  for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
+    if (GRUPOS_FIJOS_CARGUE[i].numero === numGrupo) { grupoInfo = GRUPOS_FIJOS_CARGUE[i]; break; }
+  }
+  if (!grupoInfo) return;
+  // Para Gris: personalizar con una persona aleatoria
+  if (grupoInfo.nombre === 'Gris') {
+    var idx = Math.floor(Math.random() * grupoInfo.miembros.length);
+    var persona = grupoInfo.miembros[idx];
+    var textoGris = 'Grupo Especial Gris (8) \u2014 ' + persona;
+    for (var j = 0; j < gs.options.length; j++) {
+      if (gs.options[j].value.indexOf('Gris') >= 0) {
+        gs.options[j].value = textoGris;
+        gs.options[j].textContent = 'Especial Gris (8) \u2014 ' + persona;
+        gs.selectedIndex = j;
+        gs.style.borderColor = grupoInfo.hex;
+        gs.style.color = grupoInfo.hex;
+        gs.style.fontWeight = 'bold';
+        break;
+      }
+    }
+  } else {
+    // Para los demas grupos: seleccionar la opcion correspondiente
+    for (var k = 0; k < gs.options.length; k++) {
+      if (gs.options[k].value.indexOf(grupoInfo.nombre) >= 0) {
+        gs.selectedIndex = k;
+        gs.style.borderColor = grupoInfo.hex;
+        gs.style.color = grupoInfo.hex;
+        gs.style.fontWeight = 'bold';
+        break;
+      }
+    }
+  }
+  // Mostrar toast informativo
+  showToast('Grupo asignado autom\u00e1ticamente: <strong>' + grupoInfo.nombre + '</strong> — Puedes cambiarlo si deseas.', 'info');
+}
 
-<div class="mf-toast-wrap" id="toastWrap"></div>
+/* ── Normalizar Grupo Asignado — convierte numero o texto corto al formato completo del select ── */
+function normalizarGrupoAsignado(valorRaw) {
+  if (!valorRaw) return '';
+  var v = String(valorRaw).trim();
+  // Si ya tiene el formato completo (contiene "Grupo"), devolverlo tal cual
+  if (v.indexOf('Grupo') >= 0) return v;
+  // Si es solo un numero (1-8), convertir al formato completo
+  var num = parseInt(v, 10);
+  if (isNaN(num) || num < 1 || num > 8) return v;
+  var grupo = null;
+  for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
+    if (GRUPOS_FIJOS_CARGUE[i].numero === num) { grupo = GRUPOS_FIJOS_CARGUE[i]; break; }
+  }
+  if (!grupo) return v;
+  // Para Gris (8): agregar una persona aleatoria
+  if (grupo.nombre === 'Gris') {
+    var idx = Math.floor(Math.random() * grupo.miembros.length);
+    var persona = grupo.miembros[idx];
+    return 'Grupo Especial Gris (8) \u2014 ' + persona;
+  }
+  // Para los demas: formato completo con miembros
+  return 'Grupo ' + grupo.nombre + ' (' + grupo.numero + ') \u2014 ' + grupo.miembros.join(', ');
+}
 
-<div class="container-fluid py-3">
+/* ─────────────────────────────────────────────────────────────────────────────────
+   8A. SECCION A — ASIGNACION DE TRASLADO (Paso 1)
+   Busca en la carpeta trasladosConsulta, autocompleta campos bloqueados,
+   carga la rotacion del dia, y guarda en BD_ASIGNACION_DE_TRASLADO.
+   ───────────────────────────────────────────────────────────────────────────────── */
+function t3aValidarTraslado() {
+  var traslado = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
+  var folderId = CONFIG.folders.trasladosConsulta;
+  var estado = $('t3a_estadoTraslado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
-  <!-- ============================ PESTANAS (REORDENADAS) ============================ -->
-  <ul class="nav nav-tabs mb-3 no-print" id="tabsCargue" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t1" type="button">
-      <span class="dot" style="background:#ffc107"></span>1. Seguridad</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t2" type="button">
-      <span class="dot" style="background:#dc3545"></span>2. Recepcion Tecnica</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t3" type="button">
-      <span class="dot" style="background:#2fb457"></span>3. Planilla Entrega Despachos</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t4" type="button">
-      <span class="dot" style="background:#0d6efd"></span>4. Logistica y Despachos</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t5" type="button">
-      <span class="dot" style="background:#ffc107"></span>5. Cargue de Factura (Transporte)</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t6" type="button">
-      <span class="dot" style="background:#8e44ad"></span>6. Verificacion de Inventario</button></li>
-  </ul>
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
+    .then(function (r) {
+      if (r && r.encontrado && r.registro) {
+        t3aTrasladoValidado = r.registro;
+        var reg = r.registro;
+        var tipoMatch = reg.__tipoCoincidencia || 'exacta';
+        var numCoincidencias = reg.__coincidencias || 1;
+        var numExactas = reg.__coincidenciasExactas || 0;
+        var digitosBuscados = reg.__buscadoDigitos || '';
 
-  <div class="tab-content">
+        // Mapeo de cabeceras → campos Seccion A
+        var campos = {
+          't3a_traslado_mostrar': ['Traslado', 'Documento Traslado', 'Numero Traslado'],
+          't3a_fecha': ['Fecha', 'Marca temporal'],
+          't3a_bodega_origen': ['Bodega Origen', 'Bodega'],
+          't3a_destino': ['Bodega Destino', 'Destino'],
+          't3a_ruta': ['Zona', 'Ruta'],
+          't3a_codigo': ['Codigo', 'Codigo Producto'],
+          't3a_descripcion': ['Descripcion'],
+          't3a_unidades': ['Unidades'],
+          't3a_recibido': ['Recibido', 'Quien Recibe'],
+          't3a_usuario': ['Usuario', 'Correo'],
+          't3a_lote': ['Lote'],
+          't3a_fechaVenc': ['Fecha Vencimiento', 'Vencimiento'],
+          't3a_observaciones_drive': ['Observacion', 'Observaciones'],
+          't3a_concepto': ['Concepto', 'CONCEPTO']
+        };
 
-    <!-- ==================================================================== -->
-    <!-- TARJETA 1: SEGURIDAD (NUEVA)                                        -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade show active" id="t1">
-      <div class="mf-card">
-        <div class="mf-card-header text-warning-emphasis">&#128274; TARJETA 1 &middot; SEGURIDAD</div>
-        <div class="mf-card-body">
+        Object.keys(campos).forEach(function (elId) {
+          var el = $(elId);
+          if (el) {
+            for (var i = 0; i < campos[elId].length; i++) {
+              if (reg[campos[elId][i]] !== undefined && reg[campos[elId][i]] !== '') {
+                el.value = reg[campos[elId][i]]; break;
+              }
+            }
+          }
+        });
 
-          <div class="mf-drive-panel no-print">
-            <div class="row g-2 align-items-end">
-              <div class="col-md-7">
-                <label>&#128193; Carpeta Drive Seguridad (guardado de registros)</label>
-                <input type="text" class="form-control form-control-sm" id="folder_seguridad"
-                       value="1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N">
-              </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('seguridad')">Validar carpeta</button>
-                <span class="mf-estado align-self-center" id="estado_folder_seguridad"></span>
-              </div>
-            </div>
-          </div>
+        // Urgente: autocompletar select si viene del registro
+        if (reg['Urgente'] === 'SI' || reg['Urgente'] === 'Si' || reg['Urgente'] === 'si' || reg['urgente'] === 'SI') {
+          seleccionarOpcion('t3a_urgente', 'SI');
+          if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '<span class="badge bg-danger">&#9888; URGENTE</span>';
+        } else {
+          seleccionarOpcion('t3a_urgente', 'NO');
+          if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
+        }
 
-          <div class="row g-3">
-            <div class="col-md-3"><label class="form-label">Guia *</label><input class="form-control" id="s_guia" placeholder="Numero de guia"></div>
-            <div class="col-md-3"><label class="form-label">Factura *</label><input class="form-control" id="s_factura" placeholder="Numero de factura">
-              <small class="text-muted">Nota: Si el registro de la factura es muy extenso, puede ingresar una abreviatura. Ejemplo: en lugar de FDO000045943, puede registrarlo como FDO45943.</small></div>
-            <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="s_proveedor" placeholder="Nombre del proveedor"></div>
-            <div class="col-md-2"><label class="form-label">Unidades *</label><input type="number" class="form-control" id="s_unidades" placeholder="0"></div>
-            <div class="col-md-3"><label class="form-label">Quien Recibe *</label>
-              <select class="form-select" id="s_quien_recibe">
-                <option value="">Seleccione...</option>
-                <option>Yuri</option><option>Julio</option><option>Hernan</option><option>Diego</option>
-                <option>Brian</option><option>Karina</option><option>Jhony</option><option>Natalia</option>
-                <option>Manuel</option><option>Claudia</option><option>Daniela</option><option>Juan</option>
-                <option>LuzL</option><option>Liz</option><option>Ana</option><option>Leidy</option>
-                <option>Bivian</option><option>Vaneza</option><option>Brayan</option><option>Nicoll</option>
-                <option>Luis</option><option>Estefania</option><option>Angela</option><option>Camila</option>
-                <option>Angie</option><option>Mayra</option><option>Derly</option><option>Luisa</option>
-                <option>LuzN</option><option>Andrea</option><option>Andres</option><option>DiegoE</option>
-              </select>
-            </div>
-            <div class="col-12"><label class="form-label">Observacion</label><textarea class="form-control" id="s_observacion" rows="2"></textarea></div>
-          </div>
+        // Punto de captura — muestra traslado general (completo)
+        var trasladoCompleto = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+        // Actualizar el campo de entrada con el traslado completo
+        if ($('t3a_traslado')) $('t3a_traslado').value = trasladoCompleto;
+        if ($('t3a_punto_captura')) $('t3a_punto_captura').value = trasladoCompleto;
+        if ($('t3a_punto_row')) $('t3a_punto_row').style.display = '';
+        if ($('t3a_punto_info')) $('t3a_punto_info').innerHTML = '<span class="badge bg-success">&#9989; Traslado capturado</span>';
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="t1_btnGuardar">&#128190; Guardar en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(1)">Limpiar</button>
-          </div>
-        </div>
-      </div>
-    </div>
+        // Autocompletar Ruta segun Bodega Destino
+        autocompletarRuta('t3a_destino', 't3a_ruta');
 
-    <!-- ==================================================================== -->
-    <!-- TARJETA 2: RECEPCION TECNICA (era T3)                               -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t2">
-      <div class="mf-card">
-        <div class="mf-card-header text-danger">&#129534; TARJETA 2 &middot; RECEPCION TECNICA</div>
-        <div class="mf-card-body">
+        // Mensaje detallado del tipo de coincidencia
+        var msgMatch = '';
+        if (tipoMatch === 'exacta') {
+          msgMatch = 'Traslado <strong>' + traslado + '</strong> encontrado (coincidencia exacta).';
+        } else {
+          var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
+          msgMatch = 'Coincidencia numerica parcial (<strong>' + traslado + '</strong>).' + digitosInfo + ' Se selecciono el primer resultado.';
+        }
+        if (numCoincidencias > 1) {
+          msgMatch += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias totales';
+          if (numExactas > 0) msgMatch += ', ' + numExactas + ' exacta(s)';
+          msgMatch += ')</span>';
+        }
 
-          <div class="mf-drive-panel no-print">
-            <div class="row g-2 align-items-end">
-              <div class="col-md-7">
-                <label>ID Carpeta Drive Recepcion Tecnica</label>
-                <input type="text" class="form-control form-control-sm" id="folder_recepcion" value="1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0">
-              </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('recepcion')">Validar carpeta</button>
-                <span class="mf-estado align-self-center" id="estado_folder_recepcion"></span>
-              </div>
-            </div>
-          </div>
+        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
+        showToast(msgMatch, 'success');
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">
-              <label class="form-label">Tipo de Recepcion *</label>
-              <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_externa" value="EXTERNA" checked><label class="form-check-label" for="r_externa">Externa</label></div>
-              <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_interna" value="INTERNA"><label class="form-check-label" for="r_interna">Interna</label></div>
-            </div>
-            <div class="col-md-3"><label class="form-label" id="lbl_doc_recepcion">Factura *</label><input class="form-control" id="b_traslado" placeholder="Numero de factura"></div>
-            <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
-              <select class="form-select" id="b_bodega_origen">
-                <option value="">Seleccione...</option>
-                <option>CENDIS PRINCIPAL TULUA</option>
-                <option>B10 BODEGA BOGOTA</option>
-                <option>B05 ALTO COSTO</option>
-                <option>BOD. N11 MEDISFARMA</option>
-                <option>BOD. N40 BOGOTA MEDIFARMA</option>
-                <option>BOD. 80 FACTURACION</option>
-                <option>ST28 BODEGA LOGISTICA</option>
-                <option>ST07 MDF. POPAYAN SUR</option>
-                <option>URG01 MDF. URGENCIA</option>
-                <option>N31 MDF. SURTIDROGAS</option>
-                <option>CASOS JURIDICOS</option>
-                <option>B9 POPAYAN PARQUE CALDAS</option>
-                <option>EXTERNA</option>
-                <option>M03 NEIVA HUILA</option>
-                <option>M07 UBATE CUNDINAMARCA</option>
-                <option>M15 IBAGUE TOLIMA</option>
-                <option>M16 MEDELLIN ANTIOQUIA</option>
-                <option>M17 ALVERNIA VALLE DEL CAUCA</option>
-                <option>M18 BUENAVENTURA VALLE</option>
-                <option>M20 JAMUNDI VALLE DEL CAUCA</option>
-                <option>M21 CARTAGO VALLE DEL CAUCA</option>
-                <option>M27 PALMIRA VALLE DEL CAUCA</option>
-                <option>M29 FLORIDA VALLE DEL CAUCA</option>
-                <option>M31 SAN VICENTE TULUA</option>
-                <option>M32 PASTO NARIÑO</option>
-                <option>M33 CALI VALLE DEL CAUCA</option>
-                <option>M34 TUNJA BOYACA</option>
-                <option>M42 PEREIRA RISARALDA</option>
-                <option>M43 MANIZALES CALDAS</option>
-                <option>M46 ARMENIA QUINDIO</option>
-                <option>M61 PASTO NARIÑO</option>
-                <option>M65 SOATA BOYACA</option>
-                <option>M73 SOGAMOSO BOYACA</option>
-                <option>M75 RIOHACHA GUAJIRA</option>
-                <option>M76 PUERTO BOYACA</option>
-                <option>M77 SILVIA CAUCA</option>
-                <option>M78 PIENDAMO CAUCA</option>
-                <option>M79 CALOTO CAUCA</option>
-                <option>M82 SANTANDER QUILICHAO</option>
-                <option>M84 POPAYAN CAUCA</option>
-                <option>M85 POPAYAN CAUCA</option>
-                <option>M87 YUMBO VALLE DEL CAUCA</option>
-                <option>M88 GUACARI VALLE DEL CAUCA</option>
-                <option>M89 GINEBRA VALLE DEL CAUCA</option>
-                <option>M90 CERRITO VALLE DEL CAUCA</option>
-                <option>M91 CALIMA VALLE DEL CAUCA</option>
-                <option>M92 CANDELARIA VALLE DEL CAUCA</option>
-                <option>M93 PRADERA VALLE DEL CAUCA</option>
-                <option>M94 CALI VALLE DEL CAUCA</option>
-                <option>M95 POPAYAN CAUCA</option>
-                <option>M96 SANTANDER CAUCA</option>
-                <option>M100 TUMACO NARIÑO</option>
-                <option>M102 IPIALES NARIÑO</option>
-                <option>M103 SANDONA NARIÑO</option>
-                <option>M104 LEIVA NARIÑO</option>
-                <option>M107 BELEN DE UMBRIA</option>
-                <option>M108 DOSQUEBRADAS RISARALDA</option>
-                <option>M111 PUERTO TEJADA CAUCA</option>
-                <option>M112 BOLIVAR CAUCA</option>
-                <option>M116 TIMBIQUI CAUCA</option>
-                <option>M117 EL BORDO CAUCA</option>
-                <option>M118 MERCADERES CAUCA</option>
-                <option>M119 CORINTO CAUCA</option>
-                <option>M120 ROSAS CAUCA</option>
-                <option>M123 MONIQUIRA BOYACA</option>
-                <option>M124 CARTAGENA DEL CHAIRA</option>
-                <option>M125 SAN VICENTE DEL CAGUAN</option>
-                <option>M126 PUERTO RICO CAQUETA</option>
-                <option>M130 EL DONCELLO CAQUETA</option>
-                <option>M133 SAN JOSE DE FRAGUA</option>
-                <option>M137 BALBOA CAUCA</option>
-                <option>M138 BUENOS AIRES CAUCA</option>
-                <option>M139 BUENOS AIRES - SANO</option>
-                <option>M140 CAJIBIO CAUCA</option>
-                <option>M141 CAJIBIO ROSARIO CAUCA</option>
-                <option>M143 INZA CAUCA</option>
-                <option>M144 VEGA CAUCA</option>
-                <option>M145 LA VEGA - SAN MIGUEL</option>
-                <option>M146 LOPEZ DE MICAY</option>
-                <option>M147 MIRANDA CAUCA</option>
-                <option>M148 MORALES CAUCA</option>
-                <option>M149 PADILLA CAUCA</option>
-                <option>M151 PIENDAMO CAUCA</option>
-                <option>M152 POPAYAN CAUCA</option>
-                <option>M153 PURACE COCONUCO</option>
-                <option>M154 PURACE SANTA ISABEL</option>
-                <option>M155 ROSAS CAUCA (OTROS)</option>
-                <option>M156 SANTANDER QUILICHAO</option>
-                <option>M157 SUAREZ CAUCA</option>
-                <option>M158 SUCRE CAUCA</option>
-                <option>M159 TIMBIO CAUCA</option>
-                <option>M160 ALVARADO TOLIMA</option>
-                <option>M161 AMBALEMA TOLIMA</option>
-                <option>M162 ANZOATEGUI TOLIMA</option>
-                <option>M163 ARMERO TOLIMA</option>
-                <option>M164 ATACO TOLIMA</option>
-                <option>M165 CAJAMARCA TOLIMA</option>
-                <option>M166 CARMEN DE APICALA</option>
-                <option>M167 CASABIANCA TOLIMA</option>
-                <option>M168 CHAPARRAL TOLIMA</option>
-                <option>M169 COYAIMA TOLIMA</option>
-                <option>M170 CUNDAY TOLIMA</option>
-                <option>M171 GUAMO TOLIMA</option>
-                <option>M172 HONDA TOLIMA</option>
-                <option>M173 ICONONZO TOLIMA</option>
-                <option>M174 LERIDA TOLIMA</option>
-                <option>M175 LIBANO TOLIMA</option>
-                <option>M176 MARIQUITA TOLIMA</option>
-                <option>M177 PALOCABILDO TOLIMA</option>
-                <option>M178 PRADO TOLIMA</option>
-                <option>M179 PURIFICACION TOLIMA</option>
-                <option>M180 RIOBLANCO TOLIMA</option>
-                <option>M181 ROVIRA TOLIMA</option>
-                <option>M182 SAN ANTONIO TOLIMA</option>
-                <option>M183 VILLAHERMOSA TOLIMA</option>
-                <option>M184 EL TAMBO CAUCA</option>
-                <option>M185 SAN AGUSTIN HUILA</option>
-                <option>M188 PAEZ CAUCA</option>
-                <option>M189 CALDONO CAUCA</option>
-                <option>M190 ALMAGUER CAUCA</option>
-                <option>M193 FLORENCIA CAUCA</option>
-                <option>M194 GUACHENE CAUCA</option>
-                <option>M195 LA SIERRA CAUCA</option>
-                <option>M197 PUERTO TEJADA CAUCA</option>
-                <option>M209 LA VIRGINIA RISARALDA</option>
-                <option>M210 GUATICA RISARALDA</option>
-                <option>M211 QUINCHIA RISARALDA</option>
-                <option>M212 PUEBLO RICO RISARALDA</option>
-                <option>M213 CALI VALLE DEL CAUCA</option>
-                <option>M214 PEREIRA CUBA RISARALDA</option>
-                <option>M217 TULUA E.D VALLE</option>
-                <option>M218 SAN SEBASTIAN CAUCA</option>
-                <option>M219 POPAYAN PARQUE CALDAS</option>
-                <option>M220 POPAYAN CAUCA</option>
-                <option>M223 CALI VALLE DEL CAUCA</option>
-                <option>M225 BUGA VALLE DEL CAUCA</option>
-                <option>SM226 ORTEGA TOLIMA</option>
-                <option>M235 POPAYAN CAUCA</option>
-                <option>M239 PARATEBUENO CUNDINAMARCA</option>
-                <option>M240 SAN JUAN DEL CESAR</option>
-                <option>M241 FONSECA GUAJIRA</option>
-                <option>M243 BOD. NUEVA EPS</option>
-                <option>M244 TOCANCIPA CUNDINAMARCA</option>
-                <option>M245 BUCARAMANGA</option>
-                <option>M249 PALMIRA VALLE DEL CAUCA</option>
-                <option>M251 ANAPOIMA CUNDINAMARCA</option>
-                <option>M253 PURACE CAUCA</option>
-                <option>M257 PEREIRA PINARES</option>
-                <option>M259 FUSAGASUGA CUNDINAMARCA</option>
-                <option>M260 LA MESA CUNDINAMARCA</option>
-                <option>M266 PEREIRA RISARALDA</option>
-                <option>M267 PEREIRA GARZAS RISARALDA</option>
-                <option>M268 URIBIA LA GUAJIRA</option>
-                <option>M270 SANTA ROSA CAUCA</option>
-                <option>M283 DUITAMA BOYACA</option>
-                <option>M286 CHIQUINQUIRA BOYACA</option>
-                <option>M291 LA HERRADURA BOYACA</option>
-                <option>M292 GARAGOA BOYACA</option>
-                <option>M305 VILLETA CUNDINAMARCA</option>
-                <option>M306 GUADUAS CUNDINAMARCA</option>
-                <option>M307 RICAURTE CUNDINAMARCA</option>
-                <option>M308 BOJACA CUNDINAMARCA</option>
-                <option>M309 TENJO CUNDINAMARCA</option>
-                <option>M310 VILLA DE LEYVA BOYACA</option>
-                <option>M311 GUICAN BOYACA</option>
-                <option>M313 MIRAFLORES MIRANDA</option>
-                <option>M314 GUATEQUE GUAJIRA</option>
-                <option>M337 CARTAGENA DE INDIAS</option>
-                <option>SM256 MANAURE GUAJIRA</option>
-                <option>SM299 MAICAO GUAJIRA</option>
-                <option>SM300 BARRANCAS GUAJIRA</option>
-                <option>SM301 HATONUEVO GUAJIRA</option>
-                <option>SM302 VILLANUEVA GUAJIRA</option>
-                <option>SM303 URUMITA GUAJIRA</option>
-                <option>SM304 DIBULLA GUAJIRA</option>
-                <option>02M FLORENCIA CAQUETA</option>
-                <option>35 YOPAL CASANARE</option>
-              </select></div>
-            <div class="col-md-3"><label class="form-label">Bodega Destino *</label>
-              <select class="form-select" id="b_destino">
-                <option value="">Seleccione...</option>
-                <option>CENDIS PRINCIPAL TULUA</option>
-                <option>B10 BODEGA BOGOTA</option>
-                <option>B05 ALTO COSTO</option>
-                <option>BOD. N11 MEDISFARMA</option>
-                <option>BOD. N40 BOGOTA MEDIFARMA</option>
-                <option>BOD. 80 FACTURACION</option>
-                <option>ST28 BODEGA LOGISTICA</option>
-                <option>ST07 MDF. POPAYAN SUR</option>
-                <option>URG01 MDF. URGENCIA</option>
-                <option>N31 MDF. SURTIDROGAS</option>
-                <option>CASOS JURIDICOS</option>
-                <option>B9 POPAYAN PARQUE CALDAS</option>
-                <option>EXTERNA</option>
-                <option>M03 NEIVA HUILA</option>
-                <option>M07 UBATE CUNDINAMARCA</option>
-                <option>M15 IBAGUE TOLIMA</option>
-                <option>M16 MEDELLIN ANTIOQUIA</option>
-                <option>M17 ALVERNIA VALLE DEL CAUCA</option>
-                <option>M18 BUENAVENTURA VALLE</option>
-                <option>M20 JAMUNDI VALLE DEL CAUCA</option>
-                <option>M21 CARTAGO VALLE DEL CAUCA</option>
-                <option>M27 PALMIRA VALLE DEL CAUCA</option>
-                <option>M29 FLORIDA VALLE DEL CAUCA</option>
-                <option>M31 SAN VICENTE TULUA</option>
-                <option>M32 PASTO NARIÑO</option>
-                <option>M33 CALI VALLE DEL CAUCA</option>
-                <option>M34 TUNJA BOYACA</option>
-                <option>M42 PEREIRA RISARALDA</option>
-                <option>M43 MANIZALES CALDAS</option>
-                <option>M46 ARMENIA QUINDIO</option>
-                <option>M61 PASTO NARIÑO</option>
-                <option>M65 SOATA BOYACA</option>
-                <option>M73 SOGAMOSO BOYACA</option>
-                <option>M75 RIOHACHA GUAJIRA</option>
-                <option>M76 PUERTO BOYACA</option>
-                <option>M77 SILVIA CAUCA</option>
-                <option>M78 PIENDAMO CAUCA</option>
-                <option>M79 CALOTO CAUCA</option>
-                <option>M82 SANTANDER QUILICHAO</option>
-                <option>M84 POPAYAN CAUCA</option>
-                <option>M85 POPAYAN CAUCA</option>
-                <option>M87 YUMBO VALLE DEL CAUCA</option>
-                <option>M88 GUACARI VALLE DEL CAUCA</option>
-                <option>M89 GINEBRA VALLE DEL CAUCA</option>
-                <option>M90 CERRITO VALLE DEL CAUCA</option>
-                <option>M91 CALIMA VALLE DEL CAUCA</option>
-                <option>M92 CANDELARIA VALLE DEL CAUCA</option>
-                <option>M93 PRADERA VALLE DEL CAUCA</option>
-                <option>M94 CALI VALLE DEL CAUCA</option>
-                <option>M95 POPAYAN CAUCA</option>
-                <option>M96 SANTANDER CAUCA</option>
-                <option>M100 TUMACO NARIÑO</option>
-                <option>M102 IPIALES NARIÑO</option>
-                <option>M103 SANDONA NARIÑO</option>
-                <option>M104 LEIVA NARIÑO</option>
-                <option>M107 BELEN DE UMBRIA</option>
-                <option>M108 DOSQUEBRADAS RISARALDA</option>
-                <option>M111 PUERTO TEJADA CAUCA</option>
-                <option>M112 BOLIVAR CAUCA</option>
-                <option>M116 TIMBIQUI CAUCA</option>
-                <option>M117 EL BORDO CAUCA</option>
-                <option>M118 MERCADERES CAUCA</option>
-                <option>M119 CORINTO CAUCA</option>
-                <option>M120 ROSAS CAUCA</option>
-                <option>M123 MONIQUIRA BOYACA</option>
-                <option>M124 CARTAGENA DEL CHAIRA</option>
-                <option>M125 SAN VICENTE DEL CAGUAN</option>
-                <option>M126 PUERTO RICO CAQUETA</option>
-                <option>M130 EL DONCELLO CAQUETA</option>
-                <option>M133 SAN JOSE DE FRAGUA</option>
-                <option>M137 BALBOA CAUCA</option>
-                <option>M138 BUENOS AIRES CAUCA</option>
-                <option>M139 BUENOS AIRES - SANO</option>
-                <option>M140 CAJIBIO CAUCA</option>
-                <option>M141 CAJIBIO ROSARIO CAUCA</option>
-                <option>M143 INZA CAUCA</option>
-                <option>M144 VEGA CAUCA</option>
-                <option>M145 LA VEGA - SAN MIGUEL</option>
-                <option>M146 LOPEZ DE MICAY</option>
-                <option>M147 MIRANDA CAUCA</option>
-                <option>M148 MORALES CAUCA</option>
-                <option>M149 PADILLA CAUCA</option>
-                <option>M151 PIENDAMO CAUCA</option>
-                <option>M152 POPAYAN CAUCA</option>
-                <option>M153 PURACE COCONUCO</option>
-                <option>M154 PURACE SANTA ISABEL</option>
-                <option>M155 ROSAS CAUCA (OTROS)</option>
-                <option>M156 SANTANDER QUILICHAO</option>
-                <option>M157 SUAREZ CAUCA</option>
-                <option>M158 SUCRE CAUCA</option>
-                <option>M159 TIMBIO CAUCA</option>
-                <option>M160 ALVARADO TOLIMA</option>
-                <option>M161 AMBALEMA TOLIMA</option>
-                <option>M162 ANZOATEGUI TOLIMA</option>
-                <option>M163 ARMERO TOLIMA</option>
-                <option>M164 ATACO TOLIMA</option>
-                <option>M165 CAJAMARCA TOLIMA</option>
-                <option>M166 CARMEN DE APICALA</option>
-                <option>M167 CASABIANCA TOLIMA</option>
-                <option>M168 CHAPARRAL TOLIMA</option>
-                <option>M169 COYAIMA TOLIMA</option>
-                <option>M170 CUNDAY TOLIMA</option>
-                <option>M171 GUAMO TOLIMA</option>
-                <option>M172 HONDA TOLIMA</option>
-                <option>M173 ICONONZO TOLIMA</option>
-                <option>M174 LERIDA TOLIMA</option>
-                <option>M175 LIBANO TOLIMA</option>
-                <option>M176 MARIQUITA TOLIMA</option>
-                <option>M177 PALOCABILDO TOLIMA</option>
-                <option>M178 PRADO TOLIMA</option>
-                <option>M179 PURIFICACION TOLIMA</option>
-                <option>M180 RIOBLANCO TOLIMA</option>
-                <option>M181 ROVIRA TOLIMA</option>
-                <option>M182 SAN ANTONIO TOLIMA</option>
-                <option>M183 VILLAHERMOSA TOLIMA</option>
-                <option>M184 EL TAMBO CAUCA</option>
-                <option>M185 SAN AGUSTIN HUILA</option>
-                <option>M188 PAEZ CAUCA</option>
-                <option>M189 CALDONO CAUCA</option>
-                <option>M190 ALMAGUER CAUCA</option>
-                <option>M193 FLORENCIA CAUCA</option>
-                <option>M194 GUACHENE CAUCA</option>
-                <option>M195 LA SIERRA CAUCA</option>
-                <option>M197 PUERTO TEJADA CAUCA</option>
-                <option>M209 LA VIRGINIA RISARALDA</option>
-                <option>M210 GUATICA RISARALDA</option>
-                <option>M211 QUINCHIA RISARALDA</option>
-                <option>M212 PUEBLO RICO RISARALDA</option>
-                <option>M213 CALI VALLE DEL CAUCA</option>
-                <option>M214 PEREIRA CUBA RISARALDA</option>
-                <option>M217 TULUA E.D VALLE</option>
-                <option>M218 SAN SEBASTIAN CAUCA</option>
-                <option>M219 POPAYAN PARQUE CALDAS</option>
-                <option>M220 POPAYAN CAUCA</option>
-                <option>M223 CALI VALLE DEL CAUCA</option>
-                <option>M225 BUGA VALLE DEL CAUCA</option>
-                <option>SM226 ORTEGA TOLIMA</option>
-                <option>M235 POPAYAN CAUCA</option>
-                <option>M239 PARATEBUENO CUNDINAMARCA</option>
-                <option>M240 SAN JUAN DEL CESAR</option>
-                <option>M241 FONSECA GUAJIRA</option>
-                <option>M243 BOD. NUEVA EPS</option>
-                <option>M244 TOCANCIPA CUNDINAMARCA</option>
-                <option>M245 BUCARAMANGA</option>
-                <option>M249 PALMIRA VALLE DEL CAUCA</option>
-                <option>M251 ANAPOIMA CUNDINAMARCA</option>
-                <option>M253 PURACE CAUCA</option>
-                <option>M257 PEREIRA PINARES</option>
-                <option>M259 FUSAGASUGA CUNDINAMARCA</option>
-                <option>M260 LA MESA CUNDINAMARCA</option>
-                <option>M266 PEREIRA RISARALDA</option>
-                <option>M267 PEREIRA GARZAS RISARALDA</option>
-                <option>M268 URIBIA LA GUAJIRA</option>
-                <option>M270 SANTA ROSA CAUCA</option>
-                <option>M283 DUITAMA BOYACA</option>
-                <option>M286 CHIQUINQUIRA BOYACA</option>
-                <option>M291 LA HERRADURA BOYACA</option>
-                <option>M292 GARAGOA BOYACA</option>
-                <option>M305 VILLETA CUNDINAMARCA</option>
-                <option>M306 GUADUAS CUNDINAMARCA</option>
-                <option>M307 RICAURTE CUNDINAMARCA</option>
-                <option>M308 BOJACA CUNDINAMARCA</option>
-                <option>M309 TENJO CUNDINAMARCA</option>
-                <option>M310 VILLA DE LEYVA BOYACA</option>
-                <option>M311 GUICAN BOYACA</option>
-                <option>M313 MIRAFLORES MIRANDA</option>
-                <option>M314 GUATEQUE GUAJIRA</option>
-                <option>M337 CARTAGENA DE INDIAS</option>
-                <option>SM256 MANAURE GUAJIRA</option>
-                <option>SM299 MAICAO GUAJIRA</option>
-                <option>SM300 BARRANCAS GUAJIRA</option>
-                <option>SM301 HATONUEVO GUAJIRA</option>
-                <option>SM302 VILLANUEVA GUAJIRA</option>
-                <option>SM303 URUMITA GUAJIRA</option>
-                <option>SM304 DIBULLA GUAJIRA</option>
-                <option>02M FLORENCIA CAQUETA</option>
-                <option>35 YOPAL CASANARE</option>
-              </select></div>
-          </div>
+        // Cargar rotacion del dia para pre-llenar Grupo
+        t3CargarRotacion();
+      } else {
+        t3aTrasladoValidado = null;
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+        var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        showToast(msgNo, 'danger');
+      }
+    })
+    .catch(function (err) {
+      t3aTrasladoValidado = null;
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al buscar traslado: ' + err.message, 'danger');
+    });
+}
 
-          <div class="row g-3">
-            <div class="col-md-2"><label class="form-label">Fecha Recepcion *</label><input type="date" class="form-control" id="b_fecha_recepcion"></div>
-            <div class="col-md-3"><label class="form-label">Codigo Producto / Molecula *</label><input class="form-control" id="b_codigo"></div>
-            <div class="col-md-4"><label class="form-label">Descripcion *</label><input class="form-control" id="b_descripcion"></div>
-            <div class="col-md-3"><label class="form-label">Laboratorio</label><input class="form-control" id="b_laboratorio"></div>
-            <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="b_lote"></div>
-            <div class="col-md-3"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="b_vencimiento"></div>
-            <div class="col-md-2"><label class="form-label">Cantidad Enviada *</label><input type="number" class="form-control" id="b_enviada"></div>
-            <div class="col-md-2"><label class="form-label">Cantidad Recibida *</label><input type="number" class="form-control" id="b_recibida"></div>
-            <div class="col-md-2"><label class="form-label">Diferencia</label><input class="form-control campo-bloqueado" id="b_diferencia" readonly></div>
-            <div class="col-md-3"><label class="form-label">Responsable Recepcion *</label><input class="form-control" id="b_responsable"></div>
-            <div class="col-md-3"><label class="form-label">Estado Recepcion Tecnica *</label>
-              <select class="form-select" id="b_estado">
-                <option value="">Seleccione...</option>
-                <option>CONFORME</option>
-                <option>NOVEDAD</option>
-                <option>PRODUCTO DAÑADO</option>
-                <option>PRODUCTO VENCIDO</option>
-                <option>CANTIDAD DIFERENTE</option>
-                <option>EMPAQUE DAÑADO</option>
-                <option>FALTANTE</option>
-                <option>DEVOLUCION</option>
-                <option>EN CUARENTENA</option>
-                <option>RECHAZADO</option>
-                <option>PRODUCTO SIN REGISTRO</option>
-                <option>LOTE ERRADO</option>
-                <option>TEMPERATURA ALTERADA</option>
-                <option>DOCUMENTACION INCOMPLETA</option>
-              </select></div>
-            <div class="col-12"><label class="form-label">Observaciones</label><textarea class="form-control" id="b_observaciones" rows="2" placeholder="Observaciones sobre la recepcion..."></textarea></div>
-          </div>
+function t3aGuardarAsignacion() {
+  var trasladoInput = $('t3a_traslado') ? $('t3a_traslado').value.trim() : '';
+  if (!trasladoInput) { showToast('Primero valide un traslado en la Seccion A.', 'danger'); return; }
+  if (!t3aTrasladoValidado) { showToast('Valide el traslado antes de guardar la Asignacion.', 'danger'); return; }
+  // Usar el traslado COMPLETO de la API (no solo los digitos que escribio el usuario)
+  var trasladoCompletoGuardar = t3aTrasladoValidado['Traslado'] || t3aTrasladoValidado['Documento Traslado'] || t3aTrasladoValidado['Numero Traslado'] || trasladoInput;
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-outline-primary" id="t2_btnAgregar">&#10133; Agregar item a la lista</button>
-            <button class="btn btn-mf-verde" id="t2_btnGuardar">&#128190; Guardar recepcion en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(2)">Limpiar</button>
-          </div>
+  var folderId = $('folder_asignacion') ? $('folder_asignacion').value.trim() : CONFIG.folders.asignacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Asignaci&oacute;n.', 'danger'); return; }
 
-          <div class="table-responsive mt-3">
-            <table class="table table-sm table-bordered mf-tabla-items">
-              <thead><tr id="t2_tablaHead"></tr></thead>
-              <tbody id="t2_tablaBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+  var urgenteVal = $('t3a_urgente') ? $('t3a_urgente').value : '';
+  var concepto = $('t3a_concepto') ? $('t3a_concepto').value.trim() : '';
+  var grupoAsignado = $('t3a_grupo_asignado') ? $('t3a_grupo_asignado').value : '';
 
-    <!-- ==================================================================== -->
-    <!-- TARJETA 3: PLANILLA ENTREGA DESPACHOS (enriquecida, era T1)         -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t3">
-      <div class="mf-card">
-        <div class="mf-card-header text-success">&#128230; TARJETA 3 &middot; PLANILLA ENTREGA DESPACHOS</div>
-        <div class="mf-card-body">
+  if (!grupoAsignado) {
+    showToast('No se ha asignado un grupo. Verifique la Bodega Origen.', 'danger'); return;
+  }
+  if (!urgenteVal) { showToast('Seleccione si es Urgente (SI/NO).', 'danger'); return; }
 
-          <div class="mf-drive-panel no-print">
-            <div class="row g-2 align-items-end mb-2">
-              <div class="col-md-7">
-                <label class="text-info">&#128218; Carpeta Traslados (solo lectura &mdash; fija)</label>
-                <input type="text" class="form-control form-control-sm campo-bloqueado" id="folder_traslados_consulta"
-                       value="1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_" readonly>
-              </div>
-              <div class="col-md-5">
-                <span class="mf-estado align-self-center" id="estado_folder_traslados_consulta"></span>
-              </div>
-            </div>
-            <div class="row g-2 align-items-end">
-              <div class="col-md-5">
-                <label>&#128190; Carpeta Destino (guardado de registros)</label>
-                <input type="text" class="form-control form-control-sm" id="folder_despachos"
-                       value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
-              </div>
-              <div class="col-md-3 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar</button>
-                <span class="mf-estado align-self-center" id="estado_folder_despachos"></span>
-              </div>
-            </div>
-            <div class="row g-2 align-items-end mt-1">
-              <div class="col-md-5">
-                <label>&#128190; Carpeta Asignaci&oacute;n de Traslado</label>
-                <input type="text" class="form-control form-control-sm" id="folder_asignacion"
-                       value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
-              </div>
-              <div class="col-md-3 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('asignacion')">Validar</button>
-                <span class="mf-estado align-self-center" id="estado_folder_asignacion"></span>
-              </div>
-            </div>
-            <div class="row g-2 align-items-end mt-1">
-              <div class="col-md-5">
-                <label>&#128190; Carpeta Entrega a Log&iacute;stica</label>
-                <input type="text" class="form-control form-control-sm" id="folder_entrega"
-                       value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
-              </div>
-              <div class="col-md-3 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('entrega')">Validar</button>
-                <span class="mf-estado align-self-center" id="estado_folder_entrega"></span>
-              </div>
-            </div>
-          </div>
+  // VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_ASIGNACION_DE_TRASLADO
+  var btnGuardar = $('t3a_btnGuardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Verificando...'; }
 
-          <!-- ============================================================ -->
-          <!-- SECCION A: ASIGNACION DE TRASLADO (Paso 1 - Obligatorio)   -->
-          <!-- ============================================================ -->
-          <div class="border border-success rounded-3 p-3 mb-3 mt-3" id="t3_seccionA">
-            <h6 class="text-success fw-bold mb-3">&#9312; ASIGNACION DE TRASLADO (Paso 1 &mdash; Obligatorio)</h6>
+  apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: trasladoCompletoGuardar })
+    .then(function (rExist) {
+      if (rExist && rExist.encontrado) {
+        showToast('&#9888; El traslado <strong>' + trasladoCompletoGuardar + '</strong> ya tiene una Asignaci&oacute;n guardada. No se puede repetir.', 'danger');
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
+        return null; // senal para no continuar
+      }
 
-            <!-- Buscador de traslado -->
-            <div class="row g-3 align-items-end mb-3">
-              <div class="col-md-4">
-                <label class="form-label">Documento TRASLADO *</label>
-                <input type="text" class="form-control" id="t3a_traslado" placeholder="Numero de traslado o ultimos 5 digitos">
-              </div>
-              <div class="col-md-3">
-                <button class="btn btn-mf-azul w-100" id="t3a_btnValidar">&#128269; Validar y traer datos</button>
-              </div>
-              <div class="col-md-5">
-                <div id="t3a_estadoTraslado" class="mf-estado"></div>
-              </div>
-            </div>
+      var registro = {
+        'Documento Traslado': trasladoCompletoGuardar,
+        'Fecha': $('t3a_fecha') ? $('t3a_fecha').value : '',
+        'Bodega Origen': $('t3a_bodega_origen') ? $('t3a_bodega_origen').value : '',
+        'Bodega Destino': $('t3a_destino') ? $('t3a_destino').value : '',
+        'Ruta': $('t3a_ruta') ? $('t3a_ruta').value : '',
+        'Zona': $('t3a_ruta') ? $('t3a_ruta').value : '',
+        'Urgente': urgenteVal,
+        'Grupo Asignado': grupoAsignado,
+        'Concepto': concepto,
+        'Recibido': $('t3a_recibido') ? $('t3a_recibido').value : '',
+        'Observacion Drive': $('t3a_observaciones_drive') ? $('t3a_observaciones_drive').value : '',
+        'Marca temporal': ahora(),
+        'Perfil': perfilActivo(),
+        'Usuario': nombreUsuario()
+      };
 
-            <!-- Punto de captura automatica -->
-            <div class="row g-3 mb-3" id="t3a_punto_row" style="display:none">
-              <div class="col-md-4">
-                <label class="form-label">&#128205; Punto de Captura Automatico</label>
-                <input class="form-control campo-bloqueado" id="t3a_punto_captura" readonly>
-              </div>
-              <div class="col-md-8">
-                <span id="t3a_punto_info" class="mf-estado"></span>
-              </div>
-            </div>
+      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'asignacion', registro: registro });
+    })
+    .then(function (r) {
+      if (r === null) return; // duplicado, ya se mostro error
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.', 'success');
+        t3aTrasladoValidado = null;
+        limpiarSeccionA();
+      } else {
+        showToast('Error al guardar Asignaci&oacute;n: ' + (r.error || ''), 'danger');
+      }
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
+    });
+}
 
-            <!-- Campos autocompletados Seccion A -->
-            <div class="row g-3 mb-3">
-              <div class="col-md-4"><label class="form-label">Bodega Origen</label>
-                <input class="form-control campo-bloqueado" id="t3a_bodega_origen" readonly></div>
-              <div class="col-md-4"><label class="form-label">Bodega Destino</label>
-                <input class="form-control campo-bloqueado" id="t3a_destino" readonly></div>
-              <div class="col-md-4"><label class="form-label">Ruta</label>
-                <input class="form-control campo-bloqueado" id="t3a_ruta" readonly></div>
-              <!-- Ocultos auxiliares -->
-              <div class="d-none"><input id="t3a_traslado_mostrar" readonly></div>
-              <div class="d-none"><input id="t3a_fecha" readonly></div>
-              <div class="d-none"><input id="t3a_recibido" readonly></div>
-              <div class="d-none"><input id="t3a_codigo" readonly></div>
-              <div class="d-none"><input id="t3a_descripcion" readonly></div>
-              <div class="d-none"><input id="t3a_unidades" readonly></div>
-              <div class="d-none"><input id="t3a_usuario" readonly></div>
-              <div class="d-none"><input id="t3a_lote" readonly></div>
-              <div class="d-none"><input id="t3a_fechaVenc" readonly></div>
-              <div class="d-none"><input id="t3a_observaciones_drive" readonly></div>
-            </div>
+function limpiarSeccionA() {
+  limpiarCampos('t3a_');
+  var ga = $('t3a_grupo_asignado');
+  if (ga) {
+    ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = '';
+    // Restaurar opcion Gris a su valor/texto por defecto (B05 la modifica dinamicamente)
+    for (var i = 0; i < ga.options.length; i++) {
+      if (ga.options[i].value.indexOf('Gris') >= 0) {
+        ga.options[i].value = 'Grupo Especial Gris (8)';
+        ga.options[i].textContent = 'Especial Gris (8) \u2014 Alto Costo';
+        break;
+      }
+    }
+    // Reset al placeholder (sin grupo seleccionado)
+    ga.selectedIndex = 0;
+    ga.style.borderColor = '';
+    ga.style.color = '';
+    ga.style.fontWeight = '';
+  }
+  if ($('t3a_punto_row')) $('t3a_punto_row').style.display = 'none';
+  if ($('t3a_estadoTraslado')) $('t3a_estadoTraslado').innerHTML = '';
+  if ($('t3a_badgeUrgente')) $('t3a_badgeUrgente').innerHTML = '';
+  t3aTrasladoValidado = null;
+}
 
-            <!-- Campos editables Seccion A -->
-            <div class="row g-3 mb-3">
-              <div class="col-md-3"><label class="form-label">Urgente *</label>
-                <select class="form-select" id="t3a_urgente">
-                  <option value="NO">NO</option>
-                  <option value="SI">SI</option>
-                </select></div>
-              <div class="col-md-3"><label class="form-label">Concepto</label>
-                <input class="form-control" id="t3a_concepto" placeholder="Concepto del traslado"></div>
-              <div class="col-md-2 d-flex align-items-end">
-                <span id="t3a_badgeUrgente"></span>
-              </div>
-            </div>
+/* ─────────────────────────────────────────────────────────────────────────────────
+   8B. SECCION B — ENTREGA A LOGISTICA (Paso 2 — Depende de A)
+   1. Verifica que el traslado exista en BD_ASIGNACION_DE_TRASLADO (buscarAsignacion).
+   2. Si existe, trae los datos de la asignacion (Urgente, Grupo, Concepto).
+   3. Luego busca el traslado en la hoja consolidada de despachos para
+      autocompletar campos bloqueados.
+   4. El usuario completa Responsable Entrega CENDIS, Cantidad, Tipo Carga.
+   5. Guarda en BD_ENTREGA_A_LOGISTICA (modulo 'entrega').
+   ───────────────────────────────────────────────────────────────────────────────── */
+function t3bValidarTraslado() {
+  var traslado = $('t3b_traslado') ? $('t3b_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado asignado.', 'danger'); return; }
 
-            <!-- Grupo de operacion -->
-            <h6 class="text-info fw-bold">Grupo de Operaci&oacute;n</h6>
-            <div class="row g-3 mb-3">
-              <div class="col-12"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado *</label>
-                <select class="form-select" id="t3a_grupo_asignado" style="font-weight:bold;font-size:0.95rem;padding:10px 12px">
-                  <option value="">Seleccione grupo...</option>
-                  <option value="Grupo Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio" data-color="#dc3545">Rojo (1) — Nicoll Triviño, Estefania Parra, Luisa María Osorio</option>
-                  <option value="Grupo Naranja (2) — Daniela Noreña, Juan David Moreno, Kelly Beltran" data-color="#FF8C00">Naranja (2) — Daniela Noreña, Juan David Moreno, Kelly Beltran</option>
-                  <option value="Grupo Azul (3) — Karina Riascos, Ana Lorena Ortiz, Vaneza Escobar" data-color="#0d6efd">Azul (3) — Karina Riascos, Ana Lorena Ortiz, Vaneza Escobar</option>
-                  <option value="Grupo Verde (4) — Leidy Valencia, Bivian Lorena Rivera, Brayan Camilo Izquierdo" data-color="#2fb457">Verde (4) — Leidy Valencia, Bivian Lorena Rivera, Brayan Camilo Izquierdo</option>
-                  <option value="Grupo Morado (5) — Jhony Saenz, Natalia Galvez, Valentina Cano" data-color="#6f42c1">Morado (5) — Jhony Saenz, Natalia Galvez, Valentina Cano</option>
-                  <option value="Grupo Amarillo (6) — Liz Karime Valencia, Angela Vanessa Aguirre, Derly Yulieth Mosquera" data-color="#ffc107">Amarillo (6) — Liz Karime Valencia, Angela Vanessa Aguirre, Derly Yulieth Mosquera</option>
-                  <option value="Grupo Fucsia (7) — Manuel David Salazar, Luz Nelly Chaves, Luis Felipe Marin" data-color="#FF00FF">Fucsia (7) — Manuel David Salazar, Luz Nelly Chaves, Luis Felipe Marin</option>
-                  <option value="Grupo Especial Gris (8)" data-color="#6c757d">Especial Gris (8) — Alto Costo</option>
-                </select>
-              </div>
-            </div>
+  var folderId = $('folder_asignacion') ? $('folder_asignacion').value.trim() : CONFIG.folders.asignacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Asignaci&oacute;n.', 'danger'); return; }
 
-            <!-- Info de asignacion -->
-            <div class="alert alert-info py-2 small mb-3">
-              &#128337; <strong>Asignaci&oacute;n autom&aacute;tica:</strong> Si la <em>Bodega Origen</em> es <strong>B05 ALTO COSTO</strong>, se preselecciona el <strong>Grupo Especial Gris (8)</strong> con una persona aleatoria del grupo.
-              Si la <em>Bodega Origen</em> es <strong>CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL</strong>, se preselecciona el <strong>grupo de la Apertura del D&iacute;a</strong>.
-              Puede cambiar el grupo manualmente si lo requiere.
-            </div>
+  var estado = $('t3b_estadoTraslado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Verificando asignaci&oacute;n...</span>';
 
-            <div class="d-flex gap-2 no-print">
-              <button class="btn btn-mf-azul" id="t3a_btnGuardar">&#128190; Guardar en el Drive Asignaci&oacute;n de Traslado</button>
-              <button class="btn btn-outline-secondary" onclick="limpiarSeccionA()">Limpiar</button>
-            </div>
-          </div>
+  // PASO 1: Verificar que el traslado fue asignado (existe en BD_ASIGNACION_DE_TRASLADO)
+  apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: traslado })
+    .then(function (rAsig) {
+      if (!rAsig || !rAsig.encontrado || !rAsig.registro) {
+        // No se encontro asignacion — bloquear
+        t3bTrasladoValidado = null;
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Sin asignaci&oacute;n</span>';
+        showToast('El traslado <strong>' + traslado + '</strong> no ha completado el paso de Asignaci&oacute;n de Traslado.', 'danger');
+        return;
+      }
 
-          <!-- ============================================================ -->
-          <!-- SECCION B: ENTREGA A LOGISTICA (Paso 2 - Depende de A)      -->
-          <!-- ============================================================ -->
-          <div class="border border-primary rounded-3 p-3 mb-3" id="t3_seccionB">
-            <h6 class="text-primary fw-bold mb-3">&#9313; ENTREGA A LOG&Iacute;STICA (Paso 2 &mdash; Depende del Paso 1)</h6>
+      // Asignacion encontrada — autocompletar campos bloqueados de Seccion B
+      var asig = rAsig.registro;
+      if ($('t3b_bodega_origen')) $('t3b_bodega_origen').value = asig['Bodega Origen'] || '';
+      if ($('t3b_destino')) $('t3b_destino').value = asig['Bodega Destino'] || '';
+      if ($('t3b_ruta')) $('t3b_ruta').value = asig['Ruta'] || asig['Zona'] || '';
+      if ($('t3b_urgente')) $('t3b_urgente').value = asig['Urgente'] || 'NO';
+      if ($('t3b_concepto')) $('t3b_concepto').value = asig['Concepto'] || '';
 
-            <!-- Buscador de traslado en Asignacion -->
-            <div class="row g-3 align-items-end mb-3">
-              <div class="col-md-4">
-                <label class="form-label">Documento TRASLADO *</label>
-                <input type="text" class="form-control" id="t3b_traslado" placeholder="Numero de traslado asignado">
-              </div>
-              <div class="col-md-3">
-                <button class="btn btn-mf-azul w-100" id="t3b_btnValidar">&#128269; Consultar asignaci&oacute;n</button>
-              </div>
-              <div class="col-md-5">
-                <div id="t3b_estadoTraslado" class="mf-estado"></div>
-              </div>
-            </div>
+      // Formatear Grupo Asignado — normalizar numero o texto corto al formato completo
+      var grupoNombreRaw = asig['Grupo Asignado'] || '';
+      var grupoNormalizado = normalizarGrupoAsignado(grupoNombreRaw);
+      var grupoAsignadoEl = $('t3b_grupo_asignado');
+      if (grupoAsignadoEl) {
+        grupoAsignadoEl.value = grupoNormalizado;
+        // Colorear segun el grupo
+        var grupoInfo = null;
+        for (var gi = 0; gi < GRUPOS_FIJOS_CARGUE.length; gi++) {
+          if (grupoNormalizado.indexOf(GRUPOS_FIJOS_CARGUE[gi].nombre) >= 0) { grupoInfo = GRUPOS_FIJOS_CARGUE[gi]; break; }
+        }
+        if (grupoInfo) {
+          grupoAsignadoEl.style.borderColor = grupoInfo.hex;
+          grupoAsignadoEl.style.color = grupoInfo.hex;
+          grupoAsignadoEl.style.fontWeight = 'bold';
+        } else {
+          grupoAsignadoEl.style.borderColor = '';
+          grupoAsignadoEl.style.color = '';
+          grupoAsignadoEl.style.fontWeight = '';
+        }
+      }
 
-            <!-- Punto de captura automatica -->
-            <div class="row g-3 mb-3" id="t3b_punto_row" style="display:none">
-              <div class="col-md-4">
-                <label class="form-label">&#128205; Punto de Captura Automatico</label>
-                <input class="form-control campo-bloqueado" id="t3b_punto_captura" readonly>
-              </div>
-            </div>
+      // Punto de captura — muestra traslado general (completo)
+      var trasladoCompletoB = asig['Traslado'] || asig['Documento Traslado'] || asig['Numero Traslado'] || traslado;
+      // Actualizar el campo de entrada con el traslado completo
+      if ($('t3b_traslado')) $('t3b_traslado').value = trasladoCompletoB;
+      if ($('t3b_punto_captura')) $('t3b_punto_captura').value = trasladoCompletoB;
+      if ($('t3b_punto_row')) $('t3b_punto_row').style.display = '';
 
-            <!-- Datos autocompletados (bloqueados) desde Seccion A -->
-            <h6 class="text-primary fw-bold">Datos de la Asignaci&oacute;n (bloqueados)</h6>
-            <div class="row g-3 mb-3">
-              <div class="col-md-4"><label class="form-label">Bodega Origen</label>
-                <input class="form-control campo-bloqueado" id="t3b_bodega_origen" readonly></div>
-              <div class="col-md-4"><label class="form-label">Bodega Destino</label>
-                <input class="form-control campo-bloqueado" id="t3b_destino" readonly></div>
-              <div class="col-md-4"><label class="form-label">Ruta</label>
-                <input class="form-control campo-bloqueado" id="t3b_ruta" readonly></div>
-              <div class="col-md-4"><label class="form-label">Urgente</label>
-                <input class="form-control campo-bloqueado" id="t3b_urgente" readonly></div>
-              <div class="col-md-8"><label class="form-label fw-bold" style="color:#6c757d">Grupo Asignado</label>
-                <input class="form-control campo-bloqueado" id="t3b_grupo_asignado" readonly style="font-weight:bold;font-size:0.95rem;padding:10px 12px"></div>
-              <div class="col-md-4"><label class="form-label">Concepto</label>
-                <input class="form-control campo-bloqueado" id="t3b_concepto" readonly></div>
-            </div>
+      if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Asignaci&oacute;n verificada</span>';
+      showToast('Asignaci&oacute;n de traslado <strong>' + traslado + '</strong> verificada. Complete los datos de entrega.', 'success');
 
-            <!-- Entradas a completar Seccion B -->
-            <h6 class="text-success fw-bold">Datos a completar para Entrega</h6>
-            <div class="row g-3 mb-3">
-              <div class="col-md-4"><label class="form-label">Responsable de Entrega CENDIS *</label>
-                <select class="form-select" id="t3b_responsable_entrega">
-                  <option value="">Seleccione...</option>
-                  <option>Manuel David Salazar</option><option>Luz Nelly Chaves</option><option>Luis Felipe Marin</option>
-                  <option>Daniela Noreña</option><option>Juan David Moreno</option><option>Kelly Beltran</option>
-                  <option>Leidy Valencia</option><option>Bivian Lorena Rivera</option><option>Brayan Camilo Izquierdo</option>
-                  <option>Nicoll Triviño</option><option>Estefania Parra</option><option>Luisa María Osorio</option>
-                  <option>Jhony Saenz</option><option>Natalia Galvez</option><option>Valentina Cano</option>
-                  <option>Liz Karime Valencia</option><option>Angela Vanessa Aguirre</option><option>Derly Yulieth Mosquera</option>
-                  <option>Karina Riascos</option><option>Ana Lorena Ortiz</option><option>Vaneza Escobar</option>
-                  <option>Claudia Echeverry</option><option>Camila Posada</option><option>Angela Vera</option>
-                  <option>Mayra Alejandra Franco</option><option>Andrea Vanegas</option>
-                </select></div>
-              <div class="col-md-2"><label class="form-label">Cantidad *</label>
-                <input type="number" class="form-control" id="t3b_cantidad" min="1" step="1" placeholder="0"></div>
-              <div class="col-md-3"><label class="form-label">Tipo Carga *</label>
-                <select class="form-select" id="t3b_tipo_carga">
-                  <option value="">Seleccione...</option>
-                  <option>PAQUETE</option>
-                  <option>CAJA</option>
-                  <option>ELECTRICO</option>
-                  <option>NEVERA</option>
-                  <option>NUTRICIONES</option>
-                  <option>PAÑALES</option>
-                  <option>SOBRE</option>
-                  <option>CAJA Y PAÑAL</option>
-                  <option>CAJA Y NUTRICIONES</option>
-                </select></div>
-            </div>
+      // Guardar la asignacion como referencia para guardar despues
+      t3bTrasladoValidado = asig;
 
-            <div class="d-flex gap-2 no-print">
-              <button class="btn btn-mf-azul" id="t3b_btnGuardar">&#128190; Guardar en el Drive Entrega a Log&iacute;stica</button>
-              <button class="btn btn-outline-secondary" onclick="limpiarSeccionB()">Limpiar</button>
-            </div>
-          </div>
+      // PASO 2: Buscar datos adicionales en la hoja consolidada de despachos
+      // (para traer Codigo, Descripcion, Unidades, Lote, Fecha Venc, etc.)
+      var folderConsulta = CONFIG.folders.trasladosConsulta;
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'despachos', traslado: traslado })
+        .then(function (rConsol) {
+          if (rConsol && rConsol.encontrado && rConsol.registro) {
+            var reg = rConsol.registro;
+            // Completar campos adicionales en Seccion B (no sobreescribir los ya llenos)
+            if ($('t3b_punto_captura') && !$('t3b_punto_captura').value) {
+              var trasladoCompletoConsol = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+              $('t3b_punto_captura').value = trasladoCompletoConsol;
+            }
+            // Guardar referencia completa para el guardado
+            t3bTrasladoValidado.__consolidado = reg;
+          }
+        })
+        .catch(function () { /* no critico, la asignacion ya es suficiente */ });
 
-        </div>
-      </div>
-    </div>
+    })
+    .catch(function (err) {
+      t3bTrasladoValidado = null;
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al verificar asignaci&oacute;n: ' + err.message, 'danger');
+    });
+}
 
-    <!-- ==================================================================== -->
-    <!-- TARJETA 4: LOGISTICA Y DESPACHOS (Reestructurada: Recepción + Despacho) -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t4">
-      <div class="mf-card">
-        <div class="mf-card-header text-primary">&#128666; TARJETA 4 &middot; LOGISTICA Y DESPACHOS</div>
-        <div class="mf-card-body">
+function t3bGuardarEntrega() {
+  var trasladoInput = $('t3b_traslado') ? $('t3b_traslado').value.trim() : '';
+  if (!trasladoInput) { showToast('Primero consulte un traslado en la Secci&oacute;n B.', 'danger'); return; }
+  if (!t3bTrasladoValidado) { showToast('Valide la asignaci&oacute;n del traslado antes de guardar.', 'danger'); return; }
+  // Usar el traslado COMPLETO de la asignacion validada (no solo los digitos que escribio el usuario)
+  var trasladoCompletoGuardarB = t3bTrasladoValidado['Traslado'] || t3bTrasladoValidado['Documento Traslado'] || t3bTrasladoValidado['Numero Traslado'] || trasladoInput;
+  var traslado = trasladoCompletoGuardarB;
 
-          <div class="mf-drive-panel no-print">
-            <div class="row g-2 align-items-end mb-2">
-              <div class="col-md-7">
-                <label>ID Carpeta Drive Logistica</label>
-                <input type="text" class="form-control form-control-sm" id="folder_logistica" value="1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe">
-              </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('logistica')">Validar carpeta</button>
-                <span class="mf-estado align-self-center" id="estado_folder_logistica"></span>
-              </div>
-            </div>
-            <div class="row g-2 align-items-end">
-              <div class="col-md-7">
-                <label>Carpeta Destino (escritura &mdash; misma de Planilla)</label>
-                <input type="text" class="form-control form-control-sm" id="folder_despachos_t4" value="1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8">
-              </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('despachos')">Validar carpeta</button>
-                <span class="mf-estado align-self-center" id="estado_folder_despachos_t4"></span>
-              </div>
-            </div>
-          </div>
+  var folderId = $('folder_entrega') ? $('folder_entrega').value.trim() : CONFIG.folders.entrega;
+  if (!folderId) { showToast('Configure la carpeta Drive de Entrega a Log&iacute;stica.', 'danger'); return; }
 
-          <!-- Busqueda de traslado -->
-          <div class="row g-3 align-items-end mb-3">
-            <div class="col-md-4">
-              <label class="form-label">Documento TRASLADO *</label>
-              <input type="text" class="form-control" id="log_traslado" placeholder="Numero de traslado o ultimos 5 digitos">
-            </div>
-            <div class="col-md-3">
-              <button class="btn btn-mf-azul w-100" id="log_btnBuscar">&#128269; Buscar traslado</button>
-            </div>
-            <div class="col-md-5">
-              <div id="log_estadoTraslado" class="mf-estado"></div>
-            </div>
-          </div>
+  var responsableEntrega = $('t3b_responsable_entrega') ? $('t3b_responsable_entrega').value : '';
+  var cantidadVal = $('t3b_cantidad') ? $('t3b_cantidad').value : '';
+  var tipoCarga = $('t3b_tipo_carga') ? $('t3b_tipo_carga').value : '';
 
-          <!-- ====== SUBPANEL A: RECEPCION Y ENTREGA ====== -->
-          <div class="log-subpanel">
-            <div class="log-subpanel-header log-subpanel-recepcion">
-              <span>&#9989; RECEPCION Y ENTREGA</span>
-            </div>
-            <div class="log-subpanel-body">
-              <div class="row g-3">
-                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
-                  <input class="form-control campo-bloqueado" id="log_bodega_origen" readonly></div>
-                <div class="col-md-3"><label class="form-label">Bodega Destino</label>
-                  <input class="form-control campo-bloqueado" id="log_destino" readonly></div>
-                <div class="col-md-2"><label class="form-label">Ruta</label>
-                  <input class="form-control campo-bloqueado" id="log_ruta" readonly></div>
-                <div class="col-md-2"><label class="form-label">Urgente *</label>
-                  <select class="form-select" id="log_urgente">
-                    <option value="NO">NO</option>
-                    <option value="SI">SI</option>
-                  </select></div>
-                <div class="col-md-4"><label class="form-label">Concepto</label>
-                  <input type="text" class="form-control" id="log_concepto" placeholder="Concepto del traslado"></div>
-                <div class="col-md-3"><label class="form-label">Quien Recibio *</label>
-                  <select class="form-select" id="log_quien_recibio">
-                    <option value="">Seleccione...</option>
-                    <option value="Diego">Diego</option>
-                    <option value="Angelica">Angelica</option>
-                    <option value="Lorena">Lorena</option>
-                    <option value="Yenny">Yenny</option>
-                  </select></div>
-                <div class="col-12"><label class="form-label">Observaciones</label>
-                  <textarea class="form-control" id="log_observaciones" rows="3" placeholder="Observaciones sobre la recepcion..."></textarea></div>
-              </div>
-            </div>
-          </div>
+  if (!responsableEntrega) { showToast('Seleccione el Responsable de Entrega CENDIS.', 'danger'); return; }
+  if (!tipoCarga) { showToast('Seleccione el Tipo de Carga.', 'danger'); return; }
 
-          <!-- ====== SUBPANEL B: DESPACHO — PLANILLA DE LECTURA Y REGISTRO ====== -->
-          <div class="log-subpanel mt-3">
-            <div class="log-subpanel-header log-subpanel-despacho">
-              <span>&#128203; DESPACHO &mdash; Planilla de Lectura y Registro</span>
-              <span class="log-subpanel-badge" id="log_despacho_estado"></span>
-            </div>
-            <div class="log-subpanel-body">
-              <div class="row g-3">
-                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
-                  <input class="form-control campo-bloqueado" id="log_d_bodega_origen" readonly></div>
-                <div class="col-md-3"><label class="form-label">Destino</label>
-                  <input class="form-control campo-bloqueado" id="log_d_destino" readonly></div>
-                <div class="col-md-2"><label class="form-label">Ruta</label>
-                  <input class="form-control campo-bloqueado" id="log_d_ruta" readonly></div>
-                <div class="col-md-2"><label class="form-label">Cantidad</label>
-                  <input class="form-control campo-bloqueado" id="log_d_cantidad" readonly></div>
-                <div class="col-md-2"><label class="form-label">Urgente</label>
-                  <input class="form-control campo-bloqueado" id="log_d_urgente" readonly></div>
-                <div class="col-md-3"><label class="form-label">Responsable Entrega CENDIS</label>
-                  <input class="form-control campo-bloqueado" id="log_d_resp_cendis" readonly></div>
-                <div class="col-md-3"><label class="form-label">Quien Alista</label>
-                  <input class="form-control campo-bloqueado" id="log_d_quien_alista" readonly></div>
-                <div class="col-md-4"><label class="form-label">Marca Temporal / Fecha Inicial</label>
-                  <input class="form-control campo-bloqueado" id="log_d_marca_temporal" readonly></div>
-              </div>
-            </div>
-          </div>
+  // Validacion Cantidad: entero mayor a 0
+  if (cantidadVal === '') { showToast('Ingrese la Cantidad.', 'danger'); return; }
+  var cantidadNum = Number(cantidadVal);
+  if (isNaN(cantidadNum) || cantidadNum !== Math.floor(cantidadNum) || cantidadNum < 1) {
+    showToast('Cantidad debe ser un numero entero mayor a 0.', 'danger'); return;
+  }
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="log_btnGuardar">&#128190; Guardar Recepcion en Drive</button>
-            <button class="btn btn-outline-primary" id="log_btnImprimir">&#128424; Imprimir planilla</button>
-            <button class="btn btn-outline-secondary" id="log_btnLimpiar">Limpiar</button>
-          </div>
-        </div>
-      </div>
-    </div>
+  // VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_ENTREGA_A_LOGISTICA
+  var btnGuardar = $('t3b_btnGuardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Verificando...'; }
 
-    <!-- ==================================================================== -->
-    <!-- TARJETA 5: CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)                  -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t5">
-      <div class="mf-card">
-        <div class="mf-card-header text-warning-emphasis">&#129534; TARJETA 5 &middot; CARGUE DE FACTURA (TRANSPORTE Y ENVIOS)</div>
-        <div class="mf-card-body">
+  apiGet({ action: 'buscarEntrega', folderId: folderId, traslado: traslado })
+    .then(function (rExist) {
+      if (rExist && rExist.encontrado) {
+        showToast('&#9888; El traslado <strong>' + traslado + '</strong> ya tiene una Entrega a Log&iacute;stica guardada. No se puede repetir.', 'danger');
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
+        return null; // senal para no continuar
+      }
 
-          <div class="mf-drive-panel row g-2 align-items-end no-print">
-            <div class="col-md-7">
-              <label>ID Carpeta Drive Facturacion Transporte</label>
-              <input type="text" class="form-control form-control-sm" id="folder_facturacion" value="1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-">
-            </div>
-            <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('facturacion')">Validar carpeta</button>
-              <span class="mf-estado align-self-center" id="estado_folder_facturacion"></span>
-            </div>
-          </div>
+      // Datos de la asignacion (paso 1)
+      var asig = t3bTrasladoValidado;
+      var consol = asig.__consolidado || {};
 
-          <div class="row g-3">
-            <div class="col-md-3"><label class="form-label">Transporte *</label><input class="form-control" id="f_transporte"></div>
-            <div class="col-md-2"><label class="form-label">Guia *</label><input class="form-control" id="f_guia"></div>
-            <div class="col-md-2"><label class="form-label">Fecha *</label><input type="date" class="form-control" id="f_fecha"></div>
-            <div class="col-md-2"><label class="form-label">Factura *</label><input class="form-control" id="f_factura"></div>
-            <div class="col-md-3"><label class="form-label">Proveedor *</label><input class="form-control" id="f_proveedor"></div>
-            <div class="col-md-3"><label class="form-label">Orden de Compra *</label><input class="form-control" id="f_orden"></div>
-            <div class="col-md-2"><label class="form-label">Ingreso *</label><input class="form-control" id="f_ingreso"></div>
-            <div class="col-md-2"><label class="form-label">Valor *</label><input type="number" step="0.01" class="form-control" id="f_valor"></div>
-            <div class="col-md-3"><label class="form-label">A Quien se Entrega *</label><input class="form-control" id="f_entregado_a"></div>
-            <div class="col-md-2"><label class="form-label">Fecha de Entrega *</label><input type="date" class="form-control" id="f_fecha_entrega"></div>
-            <div class="col-12"><label class="form-label">Observacion</label><textarea class="form-control" id="f_observacion" rows="2"></textarea></div>
-          </div>
+      var registro = {
+        'Documento Traslado': traslado,
+        'Fecha': asig['Fecha'] || '',
+        'Bodega Origen': $('t3b_bodega_origen') ? $('t3b_bodega_origen').value : '',
+        'Bodega Destino': $('t3b_destino') ? $('t3b_destino').value : '',
+        'Ruta': $('t3b_ruta') ? $('t3b_ruta').value : '',
+        'Zona': $('t3b_ruta') ? $('t3b_ruta').value : '',
+        'Urgente': $('t3b_urgente') ? $('t3b_urgente').value : '',
+        'Grupo Asignado': $('t3b_grupo_asignado') ? $('t3b_grupo_asignado').value : (asig['Grupo Asignado'] || ''),
+        'Concepto': $('t3b_concepto') ? $('t3b_concepto').value : '',
+        'Cantidad': $('t3b_cantidad') ? $('t3b_cantidad').value : '',
+        'Tipo Carga': tipoCarga,
+        'Responsable Entrega CENDIS': responsableEntrega,
+        'Recibido': asig['Recibido'] || consol['Quien Recibe'] || '',
+        'Observacion Drive': asig['Observacion Drive'] || consol['Observacion'] || consol['Observaciones'] || '',
+        'Marca temporal': ahora(),
+        'Perfil': perfilActivo(),
+        'Usuario': nombreUsuario()
+      };
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-mf-verde" id="t5_btnGuardar">&#128190; Guardar factura en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(5)">Limpiar</button>
-          </div>
-        </div>
-      </div>
-    </div>
+      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'entrega', registro: registro });
+    })
+    .then(function (r) {
+      if (r === null) return; // duplicado, ya se mostro error
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en BD_ENTREGA_A_LOGISTICA.', 'success');
+        t3bTrasladoValidado = null;
+        limpiarSeccionB();
+      } else {
+        showToast('Error al guardar Entrega: ' + (r.error || ''), 'danger');
+      }
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
+    });
+}
 
-    <!-- ==================================================================== -->
-    <!-- TARJETA 6: VERIFICACION DE INVENTARIO                               -->
-    <!-- ==================================================================== -->
-    <div class="tab-pane fade" id="t6">
-      <div class="mf-card">
-        <div class="mf-card-header" style="color:#8e44ad">&#128300; TARJETA 6 &middot; VERIFICACION DE INVENTARIO (CENDIS / B05)</div>
-        <div class="mf-card-body">
+function limpiarSeccionB() {
+  limpiarCampos('t3b_');
+  var ga = $('t3b_grupo_asignado');
+  if (ga) { ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = ''; }
+  if ($('t3b_punto_row')) $('t3b_punto_row').style.display = 'none';
+  if ($('t3b_estadoTraslado')) $('t3b_estadoTraslado').innerHTML = '';
+  t3bTrasladoValidado = null;
+  showToast('Secci&oacute;n B (Entrega a Log&iacute;stica) limpiada.', 'info');
+}
 
-          <div class="mf-drive-panel row g-2 align-items-end no-print">
-            <div class="col-md-7">
-              <label>ID Carpeta Drive Inventario</label>
-              <input type="text" class="form-control form-control-sm" id="folder_inventario" value="11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY">
-            </div>
-            <div class="col-md-5 d-flex gap-2">
-              <button class="btn btn-mf-azul btn-sm" onclick="validarFolder('inventario')">Validar carpeta</button>
-              <span class="mf-estado align-self-center" id="estado_folder_inventario"></span>
-            </div>
-          </div>
+/* ═════════════════════════════════════════════════════════════════════════════════
+   9. TARJETA 4 — LOGISTICA Y DESPACHOS
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function logBuscar() {
+  var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
+  var folderId = CONFIG.folders.trasladosConsulta;
+  var estado = $('log_estadoTraslado');
+  var despachoEstado = $('log_despacho_estado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
+  if (despachoEstado) despachoEstado.textContent = '';
 
-          <div class="row g-3">
-            <div class="col-md-2"><label class="form-label">Bodega a Verificar *</label>
-              <select class="form-select" id="i_bodega">
-                <option value="">Seleccione...</option><option>CENDIS</option><option>B05</option>
-              </select></div>
-            <div class="col-md-3"><label class="form-label">Responsable Asignado *</label><input class="form-control" id="i_responsable"></div>
-            <div class="col-md-2"><label class="form-label">Fecha Verificacion *</label><input type="date" class="form-control" id="i_fecha"></div>
-            <div class="col-md-3"><label class="form-label">Molecula / Medicamento *</label><input class="form-control" id="i_molecula"></div>
-            <div class="col-md-2"><label class="form-label">Codigo Producto *</label><input class="form-control" id="i_codigo"></div>
-            <div class="col-md-2"><label class="form-label">Lote *</label><input class="form-control" id="i_lote"></div>
-            <div class="col-md-2"><label class="form-label">Fecha Vencimiento *</label><input type="date" class="form-control" id="i_vencimiento"></div>
-            <div class="col-md-2"><label class="form-label">Cantidad Teorica *</label><input type="number" class="form-control" id="i_teorica"></div>
-            <div class="col-md-2"><label class="form-label">Cantidad Fisica *</label><input type="number" class="form-control" id="i_fisica"></div>
-            <div class="col-md-2"><label class="form-label">Diferencia / Novedad</label><input class="form-control campo-bloqueado" id="i_diferencia" readonly></div>
-            <div class="col-md-2"><label class="form-label">Estado Verificacion</label>
-              <input class="form-control campo-bloqueado" id="i_estado" readonly></div>
-            <div class="col-12"><label class="form-label">Observaciones</label><textarea class="form-control" id="i_observaciones" rows="2"></textarea></div>
-          </div>
+  // Accion: buscarDatosTraslado — busqueda hibrida texto+numerica
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
+    .then(function (r) {
+      if (r && r.encontrado && r.registro) {
+        var reg = r.registro;
+        var tipoMatch = r.registro.__tipoCoincidencia || 'exacta';
+        var numCoincidencias = r.registro.__coincidencias || 1;
+        var numExactas = r.registro.__coincidenciasExactas || 0;
+        var digitosBuscados = r.registro.__buscadoDigitos || '';
 
-          <div class="d-flex gap-2 mt-4 no-print">
-            <button class="btn btn-outline-primary" id="t6_btnAgregar">&#10133; Agregar item al conteo</button>
-            <button class="btn btn-mf-verde" id="t6_btnGuardar">&#128190; Guardar verificacion en Drive</button>
-            <button class="btn btn-outline-secondary" onclick="limpiarTarjeta(6)">Limpiar</button>
-          </div>
+        /* Auto-fill Recepcion y Entrega */
+        if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
+        if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        if ($('log_ruta')) $('log_ruta').value = reg['Zona'] || reg['Ruta'] || '';
+        autocompletarRuta('log_destino', 'log_ruta');
+        if ($('log_urgente') && reg['Urgente']) $('log_urgente').value = reg['Urgente'];
+        if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
 
-          <div class="table-responsive mt-3">
-            <table class="table table-sm table-bordered mf-tabla-items">
-              <thead><tr id="t6_tablaHead"></tr></thead>
-              <tbody id="t6_tablaBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+        /* Fill Despacho read-only panel */
+        if ($('log_d_bodega_origen')) $('log_d_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega'] || '';
+        if ($('log_d_destino')) $('log_d_destino').value = reg['Bodega Destino'] || reg['Destino'] || '';
+        if ($('log_d_ruta')) $('log_d_ruta').value = reg['Zona'] || reg['Ruta'] || '';
+        if ($('log_d_cantidad')) $('log_d_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || '';
+        if ($('log_d_urgente')) $('log_d_urgente').value = reg['Urgente'] || 'NO';
+        if ($('log_d_resp_cendis')) $('log_d_resp_cendis').value = reg['RESPONSABLE DE ENTREGA CENDIS'] || reg['Responsable de Entrega'] || '';
+        if ($('log_d_quien_alista')) $('log_d_quien_alista').value = reg['QUIEN ALISTA'] || reg['Quien Alista'] || reg['Quien Alisto'] || '';
+        if ($('log_d_marca_temporal')) $('log_d_marca_temporal').value = reg['Marca temporal'] || reg['Fecha Inicial'] || reg['Timestamp'] || '';
 
-  </div><!-- /tab-content -->
-</div><!-- /container -->
+        /* Mensaje detallado del tipo de coincidencia */
+        var msgLog = '';
+        if (tipoMatch === 'exacta') {
+          msgLog = 'Traslado <strong>' + traslado + '</strong> encontrado (coincidencia exacta).';
+        } else {
+          var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
+          msgLog = 'Coincidencia numerica parcial (<strong>' + traslado + '</strong>).' + digitosInfo;
+        }
+        if (numCoincidencias > 1) {
+          msgLog += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias';
+          if (numExactas > 0) msgLog += ', ' + numExactas + ' exacta(s)';
+          msgLog += ')</span>';
+        }
 
-<!-- Boton flotante de respaldo -->
-<button class="btn btn-mf-verde mf-float-backup no-print" id="btnBackupFloat">
-  &#128190; BACKUP DE SEGURIDAD
-</button>
+        if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
+        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">Datos cargados</span>';
+        logTrasladoValidado = reg;
+        // Actualizar el campo de entrada con el traslado completo de la API
+        var trasladoCompletoLog = reg['Traslado'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+        if ($('log_traslado')) $('log_traslado').value = trasladoCompletoLog;
+        showToast(msgLog, 'success');
+      } else {
+        logTrasladoValidado = null;
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
+        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-danger">Sin datos</span>';
+        // Mostrar mensaje detallado del backend si existe
+        var msgNoLog = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        showToast(msgNoLog, 'danger');
+      }
+    })
+    .catch(function (err) {
+      logTrasladoValidado = null;
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al buscar: ' + err.message, 'danger');
+    });
+}
 
-<!-- ============================ MODAL CONFIGURACION ============================ -->
-<div class="modal fade" id="modalConfig" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header text-white" style="background:#0d6efd">
-        <h5 class="modal-title">Configuracion de conexion</h5>
-        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <h6 class="text-danger fw-bold">&#128081; PERFILES DE USUARIO</h6>
-          <div id="perfilesUsuarioInfo" class="small bg-light p-2 rounded border"></div>
-          <div class="mt-2">
-            <label class="form-label small">Cambiar perfil activo:</label>
-            <select class="form-select form-select-sm" id="modalSelPerfil">
-              <option value="administrador">&#128081; Administrador</option>
-              <option value="lider">&#128104;&#8205;&#128188; Lider</option>
-              <option value="auxiliar_entrega">&#128230; Auxiliar Entrega</option>
-              <option value="recibido_logistica">&#9989; Recibido Logistica</option>
-              <option value="planillar_logistica">&#128203; Planillar Logistica</option>
-            </select>
-            <button class="btn btn-sm btn-primary mt-1" onclick="seleccionarPerfil(document.getElementById('modalSelPerfil').value); bootstrap.Modal.getInstance(document.getElementById('modalConfig')).hide();">
-              Aplicar perfil
-            </button>
-          </div>
-        </div>
-        <hr>
-        <div class="mb-3">
-          <h6 class="text-primary fw-bold">&#128462; Perfiles de Archivos por Tarjeta (fijos en Drive)</h6>
-          <div id="perfilesInfo" class="small bg-light p-2 rounded border"></div>
-        </div>
-        <hr>
-        <div class="mb-3">
-          <h6 class="text-success fw-bold">&#128193; IDs de Carpetas de Drive (preconfigurados)</h6>
-          <div id="idsCarpetasInfo" class="small bg-light p-2 rounded border"></div>
-        </div>
-        <hr>
-        <label class="form-label">URL de la Web App de Google Apps Script (/exec)</label>
-        <input class="form-control mb-3" id="cfg_api_url" placeholder="https://script.google.com/macros/s/xxxx/exec">
-        <label class="form-label">ID Carpeta Drive para respaldos remotos</label>
-        <input class="form-control mb-3" id="cfg_folder_backup" value="1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5">
-        <label class="form-label">Lista de Conductores / Mensajeros (uno por linea)</label>
-        <textarea class="form-control" id="cfg_conductores" rows="5"></textarea>
-        <div class="form-check mt-3">
-          <input class="form-check-input" type="checkbox" id="cfg_modo_local">
-          <label class="form-check-label" for="cfg_modo_local">
-            Modo local sin conexion (trabaja contra el almacen del navegador y sincroniza despues)
-          </label>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-mf-verde" id="cfg_guardar">Guardar configuracion</button>
-      </div>
-    </div>
-  </div>
-</div>
+function logGuardarRecepcion() {
+  var trasladoInput = $('log_traslado') ? $('log_traslado').value.trim() : '';
+  if (!trasladoInput) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
+  // Usar el traslado COMPLETO de la API si disponible
+  var trasladoCompletoLog = (logTrasladoValidado && (logTrasladoValidado['Traslado'] || logTrasladoValidado['Documento Traslado'] || logTrasladoValidado['Numero Traslado'])) || trasladoInput;
+  var quienRecibio = $('log_quien_recibio') ? $('log_quien_recibio').value : '';
+  if (!quienRecibio) { showToast('Seleccione quien recibio.', 'danger'); return; }
+  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
+  if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="cargue_script.js"></script>
-</body>
-</html>
+  var registro = {
+    'Documento Traslado': trasladoCompletoLog,
+    'Bodega Origen': $('log_bodega_origen') ? $('log_bodega_origen').value : '',
+    'Bodega Destino': $('log_destino') ? $('log_destino').value : '',
+    'Ruta': $('log_ruta') ? $('log_ruta').value : '',
+    'Zona': $('log_ruta') ? $('log_ruta').value : '',
+    'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
+    'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
+    'Quien Recibio': quienRecibio,
+    'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
+    'Cantidad': $('log_d_cantidad') ? $('log_d_cantidad').value : '',
+    'Responsable Entrega CENDIS': $('log_d_resp_cendis') ? $('log_d_resp_cendis').value : '',
+    'Quien Alista': $('log_d_quien_alista') ? $('log_d_quien_alista').value : '',
+    'Marca Temporal': $('log_d_marca_temporal') ? $('log_d_marca_temporal').value : '',
+    'Revisado': 'NO',
+    'Marca temporal': ahora(),
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'logistica', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Recepcion</strong> guardada en Drive.', 'success');
+        logLimpiar();
+      } else {
+        showToast('Error al guardar Recepcion: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+function logLimpiar() {
+  limpiarCampos('log_');
+  var despachoEstado = $('log_despacho_estado');
+  if (despachoEstado) despachoEstado.textContent = '';
+}
+
+function logImprimir() {
+  var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
+  if (!traslado) { showToast('Busque un traslado primero.', 'danger'); return; }
+  var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
+
+  apiPost({ action: 'marcarImpresion', folderId: folderId, modulo: 'logistica', traslado: traslado })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128424; Planilla impresa y marcada EN RUTA.', 'success');
+        window.print();
+      } else {
+        showToast('Error al marcar impresion: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   10. TARJETA 5 — CARGUE DE FACTURA
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function t5Guardar() {
+  var transporte = $('f_transporte') ? $('f_transporte').value.trim() : '';
+  var guia = $('f_guia') ? $('f_guia').value.trim() : '';
+  var fecha = $('f_fecha') ? $('f_fecha').value : '';
+  var factura = $('f_factura') ? $('f_factura').value.trim() : '';
+  var proveedor = $('f_proveedor') ? $('f_proveedor').value.trim() : '';
+  if (!transporte || !guia || !fecha || !factura || !proveedor) {
+    showToast('Complete los campos obligatorios de Factura.', 'danger'); return;
+  }
+  var folderId = $('folder_facturacion') ? $('folder_facturacion').value.trim() : CONFIG.folders.facturacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Facturacion.', 'danger'); return; }
+
+  var registro = {
+    'Transporte': transporte, 'Guia': guia, 'Fecha': fecha, 'Factura': factura,
+    'Proveedor': proveedor, 'Orden de Compra': $('f_orden') ? $('f_orden').value.trim() : '',
+    'Ingreso': $('f_ingreso') ? $('f_ingreso').value.trim() : '',
+    'Valor': $('f_valor') ? $('f_valor').value : '',
+    'A Quien se Entrega': $('f_entregado_a') ? $('f_entregado_a').value.trim() : '',
+    'Fecha de Entrega': $('f_fecha_entrega') ? $('f_fecha_entrega').value : '',
+    'Observacion': $('f_observacion') ? $('f_observacion').value.trim() : '',
+    'Marca temporal': ahora(), 'Perfil': perfilActivo(), 'Usuario': nombreUsuario()
+  };
+
+  apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'facturacion', registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Factura</strong> guardada en Drive.', 'success');
+        limpiarCampos('f_');
+      } else {
+        showToast('Error al guardar Factura: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   11. TARJETA 6 — VERIFICACION DE INVENTARIO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+var t6Items = [];
+
+function t6AgregarItem() {
+  var bodega = $('i_bodega') ? $('i_bodega').value : '';
+  var responsable = $('i_responsable') ? $('i_responsable').value.trim() : '';
+  var fecha = $('i_fecha') ? $('i_fecha').value : '';
+  var molecula = $('i_molecula') ? $('i_molecula').value.trim() : '';
+  var codigo = $('i_codigo') ? $('i_codigo').value.trim() : '';
+  var lote = $('i_lote') ? $('i_lote').value.trim() : '';
+  var vencimiento = $('i_vencimiento') ? $('i_vencimiento').value : '';
+  var teorica = $('i_teorica') ? $('i_teorica').value : '';
+  var fisica = $('i_fisica') ? $('i_fisica').value : '';
+
+  if (!bodega || !responsable || !fecha || !molecula || !lote || !teorica || !fisica) {
+    showToast('Complete los campos obligatorios de Inventario.', 'danger'); return;
+  }
+
+  var dif = Number(fisica) - Number(teorica);
+  var estado = dif === 0 ? 'CONFORME' : 'NOVEDAD';
+
+  var item = {
+    'Bodega': bodega, 'Responsable': responsable, 'Fecha Verificacion': fecha,
+    'Molecula': molecula, 'Codigo': codigo, 'Lote': lote,
+    'Fecha Vencimiento': vencimiento, 'Cantidad Teorica': teorica,
+    'Cantidad Fisica': fisica, 'Diferencia': dif, 'Estado Verificacion': estado
+  };
+  t6Items.push(item);
+  t6PintarTabla();
+  showToast('Item de inventario agregado.', 'success');
+}
+
+function t6PintarTabla() {
+  var head = $('t6_tablaHead');
+  var body = $('t6_tablaBody');
+  if (!head || !body) return;
+  var cols = ['Bodega', 'Molecula', 'Lote', 'Venc.', 'Teorica', 'Fisica', 'Dif.', 'Estado', 'Acc'];
+  head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
+  body.innerHTML = '';
+  t6Items.forEach(function (item, idx) {
+    var tr = document.createElement('tr');
+    var cls = item['Estado Verificacion'] === 'NOVEDAD' ? 'table-danger' : '';
+    tr.className = cls;
+    tr.innerHTML =
+      '<td>' + item['Bodega'] + '</td>' +
+      '<td>' + item['Molecula'] + '</td>' +
+      '<td>' + item['Lote'] + '</td>' +
+      '<td>' + item['Fecha Vencimiento'] + '</td>' +
+      '<td>' + item['Cantidad Teorica'] + '</td>' +
+      '<td>' + item['Cantidad Fisica'] + '</td>' +
+      '<td>' + item['Diferencia'] + '</td>' +
+      '<td>' + item['Estado Verificacion'] + '</td>' +
+      '<td><button class="btn btn-sm btn-outline-danger" onclick="t6EliminarItem(' + idx + ')">X</button></td>';
+    body.appendChild(tr);
+  });
+}
+
+function t6EliminarItem(idx) {
+  t6Items.splice(idx, 1);
+  t6PintarTabla();
+}
+
+function t6Guardar() {
+  if (!t6Items.length) { showToast('Agregue al menos un item de inventario.', 'danger'); return; }
+  var folderId = $('folder_inventario') ? $('folder_inventario').value.trim() : CONFIG.folders.inventario;
+  if (!folderId) { showToast('Configure la carpeta Drive de Inventario.', 'danger'); return; }
+  var okCount = 0, errCount = 0, total = t6Items.length;
+  t6Items.forEach(function (item) {
+    item['Marca temporal'] = ahora();
+    item['Perfil'] = perfilActivo();
+    item['Usuario'] = nombreUsuario();
+    apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'inventario', registro: item })
+      .then(function (r) {
+        if (r && r.ok) okCount++; else errCount++;
+        if (okCount + errCount === total) {
+          if (errCount === 0) {
+            showToast('&#128190; <strong>' + total + '</strong> registros de Inventario guardados.', 'success');
+            t6Items = []; t6PintarTabla();
+          } else {
+            showToast('Guardados ' + okCount + '/' + total + '. Errores: ' + errCount, 'danger');
+          }
+        }
+      })
+      .catch(function () { errCount++; });
+  });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   12. BACKUP / DESCARGA DE ARCHIVO DE SEGURIDAD
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function generarBackup() {
+  var backupLocal = { _meta: { generado: ahora(), perfil: perfilActivo(), version: '3.0' } };
+  MODULOS.forEach(function (m) {
+    backupLocal[m] = { folder: CONFIG.folders[m], registros: [] };
+  });
+  if (typeof XLSX !== 'undefined') {
+    var wb = XLSX.utils.book_new();
+    MODULOS.forEach(function (m) {
+      var data = [['Marca temporal', 'Perfil', 'Usuario', 'Modulo', 'Datos...']];
+      var ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, m);
+    });
+    XLSX.writeFile(wb, 'Backup_MEDISFARMA_' + hoy() + '.xlsx');
+    showToast('&#128190; Archivo de seguridad XLSX descargado.', 'success');
+  } else {
+    showToast('Libreria XLSX no cargada. Intente mas tarde.', 'danger');
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   13. INICIALIZACION
+   ═════════════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function () {
+  cargarConfig();
+  aplicarPerfil();
+
+  // Botones de tarjeta
+  var btn;
+  btn = $('t1_btnGuardar'); if (btn) btn.addEventListener('click', t1Guardar);
+  btn = $('t2_btnAgregar'); if (btn) btn.addEventListener('click', t2AgregarItem);
+  btn = $('t2_btnGuardar'); if (btn) btn.addEventListener('click', t2Guardar);
+  btn = $('t3a_btnValidar'); if (btn) btn.addEventListener('click', t3aValidarTraslado);
+  btn = $('t3a_btnGuardar'); if (btn) btn.addEventListener('click', t3aGuardarAsignacion);
+  btn = $('t3b_btnValidar'); if (btn) btn.addEventListener('click', t3bValidarTraslado);
+  btn = $('t3b_btnGuardar'); if (btn) btn.addEventListener('click', t3bGuardarEntrega);
+  btn = $('log_btnBuscar');  if (btn) btn.addEventListener('click', logBuscar);
+  btn = $('log_btnGuardar'); if (btn) btn.addEventListener('click', logGuardarRecepcion);
+  btn = $('log_btnImprimir'); if (btn) btn.addEventListener('click', logImprimir);
+  btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
+  btn = $('t5_btnGuardar'); if (btn) btn.addEventListener('click', t5Guardar);
+  btn = $('t6_btnAgregar'); if (btn) btn.addEventListener('click', t6AgregarItem);
+  btn = $('t6_btnGuardar'); if (btn) btn.addEventListener('click', t6Guardar);
+
+  // API / config
+  btn = $('btnProbarApi'); if (btn) btn.addEventListener('click', probarApi);
+  btn = $('cfg_guardar'); if (btn) btn.addEventListener('click', guardarConfig);
+  btn = $('btnBackupTop'); if (btn) btn.addEventListener('click', generarBackup);
+  btn = $('btnBackupFloat'); if (btn) btn.addEventListener('click', generarBackup);
+
+  // Perfil selector
+  var sel = $('selPerfil');
+  if (sel) sel.addEventListener('change', function () { seleccionarPerfil(sel.value); });
+
+  // Tipo de Recepcion: alternar etiqueta Factura / Traslado
+  var rExt = $('r_externa'), rInt = $('r_interna');
+  if (rExt) rExt.addEventListener('change', toggleLabelRecepcion);
+  if (rInt) rInt.addEventListener('change', toggleLabelRecepcion);
+  toggleLabelRecepcion(); // inicializar
+
+  // Diferencia automatica en Recepcion
+  var bEnv = $('b_enviada'), bRec = $('b_recibida'), bDif = $('b_diferencia');
+  function calcDif() { if (bDif) bDif.value = Number(bRec.value || 0) - Number(bEnv.value || 0); }
+  if (bEnv) bEnv.addEventListener('input', calcDif);
+  if (bRec) bRec.addEventListener('input', calcDif);
+
+  // Diferencia automatica en Inventario
+  var iT = $('i_teorica'), iF = $('i_fisica'), iD = $('i_diferencia'), iE = $('i_estado');
+  function calcInv() {
+    if (iD) iD.value = Number(iF.value || 0) - Number(iT.value || 0);
+    if (iE) iE.value = (Number(iF.value || 0) === Number(iT.value || 0)) ? 'CONFORME' : 'NOVEDAD';
+  }
+  if (iT) iT.addEventListener('input', calcInv);
+  if (iF) iF.addEventListener('input', calcInv);
+
+  // Probar API al inicio
+  probarApi();
+});
