@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzd86TNwWgfmjMUyum04LQrezNIEY60NcVxEdoIuUoavgsk_awbaski-gMUHg8Zz_ar/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzUGjMu6I7LyX_jRFW0ZDh025eVMCg4OXM3H3hCGIIbp9pFlZkVJMhLuZmnb5kZDz6b/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1322,6 +1322,7 @@ function t3bGuardarEntrega() {
         'Concepto': $('t3b_concepto') ? $('t3b_concepto').value : '',
         'Cantidad': $('t3b_cantidad') ? $('t3b_cantidad').value : '',
         'Tipo Carga': tipoCarga,
+        'Temperatura': (tipoCarga === 'NEVERA' && $('t3b_temperatura')) ? $('t3b_temperatura').value.trim() : '',
         'Responsable Entrega CENDIS': responsableEntrega,
         'Recibido': asig['Recibido'] || consol['Quien Recibe'] || '',
         'Observacion Drive': asig['Observacion Drive'] || consol['Observacion'] || consol['Observaciones'] || '',
@@ -1354,6 +1355,7 @@ function limpiarSeccionB() {
   var ga = $('t3b_grupo_asignado');
   if (ga) { ga.style.borderColor = ''; ga.style.color = ''; ga.style.fontWeight = ''; }
   if ($('t3b_punto_row')) $('t3b_punto_row').style.display = 'none';
+  if ($('t3b_temp_row')) $('t3b_temp_row').style.display = 'none';
   if ($('t3b_estadoTraslado')) $('t3b_estadoTraslado').innerHTML = '';
   t3bTrasladoValidado = null;
   showToast('Secci&oacute;n B (Entrega a Log&iacute;stica) limpiada.', 'info');
@@ -1365,6 +1367,14 @@ function limpiarSeccionB() {
    Seccion 1: Recepcion y Revision (Paso 1 obligatorio)
    Seccion 2: Despacho y Asignacion de Planilla (Paso 2 dependiente)
    ═════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Toggle Temperatura en Seccion 1 segun Tipo = NEVERA ── */
+function toggleLogTemp() {
+  var tipoVal = $('log_tipo') ? $('log_tipo').value.trim().toUpperCase() : '';
+  var tempRow = $('log_temp_row');
+  if (tempRow) tempRow.style.display = (tipoVal === 'NEVERA') ? '' : 'none';
+  if (tipoVal !== 'NEVERA' && $('log_temperatura')) $('log_temperatura').value = '';
+}
 
 /* ── Datos temporales de Seccion 2 (tabla de despacho) ── */
 var logDatosDespacho = [];
@@ -1405,9 +1415,8 @@ function logActualizarSeleccion() {
   if (despachoEstado && total > 0) {
     despachoEstado.innerHTML = '<span class="badge bg-info">' + checked + '/' + total + ' seleccionados</span>';
   }
-  /* Habilitar/deshabilitar botones segun seleccion */
-  var btnPDF = $('log_btnPDF'); if (btnPDF) btnPDF.disabled = (checked === 0);
-  var btnGuardarDesp = $('log_btnGuardarDespacho'); if (btnGuardarDesp) btnGuardarDesp.disabled = (checked === 0);
+  /* Habilitar/deshabilitar boton combinado segun seleccion */
+  var btnComb = $('log_btnCombinado'); if (btnComb) btnComb.disabled = (checked === 0);
 }
 
 /* ════════════ SECCION 1: RECEPCION Y REVISION ════════════ */
@@ -1466,6 +1475,10 @@ function logBuscar() {
 
         /* Cantidad: del consolidado de entrega */
         if ($('log_cantidad')) $('log_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || reg['Cantidad Enviada'] || reg['Cant.'] || '';
+
+        /* Temperatura: del consolidado de entrega (solo NEVERA) */
+        if ($('log_temperatura')) $('log_temperatura').value = reg['Temperatura'] || '';
+        toggleLogTemp();
 
         /* Revisado Seccion 1: SI=fijo readonly, NO=libre para que el usuario pueda cambiarlo */
         var revVal = (reg['Revisado'] || 'NO').toString().toUpperCase();
@@ -1547,6 +1560,7 @@ function logGuardarRecepcion() {
         'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
         'Tipo': $('log_tipo') ? $('log_tipo').value : '',
         'Cantidad': $('log_cantidad') ? $('log_cantidad').value : '',
+        'Temperatura': $('log_temperatura') ? $('log_temperatura').value : '',
         'Quien Recibio': quienRecibio,
         'Revisado': revisadoVal,
         'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
@@ -1574,11 +1588,13 @@ function logGuardarRecepcion() {
 
 function logLimpiar() {
   var campos = ['log_documento_traslado','log_bodega_origen','log_destino','log_ruta',
-    'log_urgente','log_grupo_asignado','log_concepto','log_tipo','log_cantidad','log_observaciones'];
+    'log_urgente','log_grupo_asignado','log_concepto','log_tipo','log_cantidad','log_temperatura','log_observaciones'];
   for (var i = 0; i < campos.length; i++) {
     var el = $(campos[i]);
     if (el) el.value = '';
   }
+  /* Ocultar fila de temperatura */
+  var tempRow = $('log_temp_row'); if (tempRow) tempRow.style.display = 'none';
   var sel1 = $('log_quien_recibio'); if (sel1) sel1.selectedIndex = 0;
   var sel2 = $('log_revisado'); if (sel2) { sel2.value = 'NO'; sel2.disabled = false; sel2.className = 'form-select'; }
   var est = $('log_estadoTraslado'); if (est) est.innerHTML = '';
@@ -1651,6 +1667,7 @@ function logConsultarDespacho() {
             '<td>' + (reg['Cantidad'] || '') + '</td>' +
             '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
             '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
+            '<td class="log-temp-col">' + (reg['Temperatura'] || '') + '</td>' +
             '<td>' + (reg['Quien Recibio'] || '') + '</td>' +
             '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo" data-idx="' + i + '">SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" data-idx="' + i + '" data-orig="NO"><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
             '<td><input type="text" class="form-control form-control-sm log-obs-fila" data-idx="' + i + '" placeholder="Obs..."></td>' +
@@ -1663,14 +1680,12 @@ function logConsultarDespacho() {
         if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">' + r.registros.length + ' registros</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">' + r.registros.length + ' traslados encontrados</span>';
         /* Habilitar botones de Seccion 2 */
-        var btnPDF = $('log_btnPDF'); if (btnPDF) btnPDF.disabled = false;
-        var btnGuardarDesp = $('log_btnGuardarDespacho'); if (btnGuardarDesp) btnGuardarDesp.disabled = false;
+        var btnComb2 = $('log_btnCombinado'); if (btnComb2) btnComb2.disabled = false;
         showToast(r.registros.length + ' traslados encontrados.', 'success');
       } else {
         if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-secondary">0 registros</span>';
         if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-warning text-dark">Sin resultados</span>';
-        var btnPDF2 = $('log_btnPDF'); if (btnPDF2) btnPDF2.disabled = true;
-        var btnGuardarDesp2 = $('log_btnGuardarDespacho'); if (btnGuardarDesp2) btnGuardarDesp2.disabled = true;
+        var btnComb3 = $('log_btnCombinado'); if (btnComb3) btnComb3.disabled = true;
         showToast('No se encontraron recepciones con los filtros seleccionados.', 'info');
       }
     })
@@ -1681,7 +1696,11 @@ function logConsultarDespacho() {
     });
 }
 
-function logGuardarDespacho() {
+/**
+ * logGuardarYDescargar — Funcion combinada que primero guarda en Drive
+ * (archivo consolidado) y luego genera el PDF de la planilla.
+ */
+function logGuardarYDescargar() {
   if (!logDatosDespacho.length) { showToast('No hay traslados para guardar. Consulte primero.', 'danger'); return; }
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   if (!planilla) { showToast('Ingrese el numero de Planilla.', 'danger'); return; }
@@ -1696,10 +1715,11 @@ function logGuardarDespacho() {
   if (!seleccionados.length) { showToast('Seleccione al menos un traslado en la tabla.', 'danger'); return; }
 
   var obsGlobal = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
+
+  /* --- Construir registros para guardado --- */
   var registrosPlanilla = [];
   for (var i = 0; i < seleccionados.length; i++) {
     var reg = seleccionados[i];
-    /* Leer observacion individual de la fila */
     var obsFila = obsGlobal;
     var idxReg = -1;
     for (var f = 0; f < logDatosDespacho.length; f++) {
@@ -1709,7 +1729,6 @@ function logGuardarDespacho() {
       var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
       if (inpObs && inpObs.value.trim()) obsFila = inpObs.value.trim();
     }
-    /* Leer Revisado actualizado desde la fila de la tabla */
     var revisadoFinal = reg['Revisado'] || 'NO';
     if (idxReg >= 0) {
       var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
@@ -1724,6 +1743,7 @@ function logGuardarDespacho() {
       'Ruta': reg['Ruta'] || reg['Zona'] || '',
       'Cantidad': reg['Cantidad'] || '',
       'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
+      'Temperatura': reg['Temperatura'] || '',
       'Urgente': reg['Urgente'] || 'NO',
       'Quien Recibio': reg['Quien Recibio'] || '',
       'Revisado': revisadoFinal,
@@ -1737,9 +1757,36 @@ function logGuardarDespacho() {
     });
   }
 
-  var btnGuardarDesp = $('log_btnGuardarDespacho');
-  if (btnGuardarDesp) { btnGuardarDesp.disabled = true; btnGuardarDesp.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
+  /* --- Construir registros para PDF (incluye datos de conductor/placa en cada fila) --- */
+  var regsPDF = [];
+  for (var p = 0; p < seleccionados.length; p++) {
+    var regP = seleccionados[p];
+    var copia = {};
+    for (var k in regP) { if (regP.hasOwnProperty(k)) copia[k] = regP[k]; }
+    copia['Conductor'] = conductor;
+    copia['Placa del Vehiculo'] = placa;
+    var idxP = -1;
+    for (var fp = 0; fp < logDatosDespacho.length; fp++) {
+      if (logDatosDespacho[fp]['Documento Traslado'] === regP['Documento Traslado']) { idxP = fp; break; }
+    }
+    if (idxP >= 0) {
+      var inpObsP = document.querySelector('.log-obs-fila[data-idx="' + idxP + '"]');
+      if (inpObsP && inpObsP.value.trim()) copia['Observaciones Planilla'] = inpObsP.value.trim();
+      var selRevP = document.querySelector('.log-revisado-select[data-idx="' + idxP + '"]');
+      if (selRevP && selRevP.value) copia['Revisado'] = selRevP.value;
+      var badgeRevP = document.querySelector('.log-revisado-fijo[data-idx="' + idxP + '"]');
+      if (badgeRevP) copia['Revisado'] = 'SI';
+    }
+    if (!copia['Observaciones Planilla'] && obsGlobal) copia['Observaciones Planilla'] = obsGlobal;
+    regsPDF.push(copia);
+  }
 
+  /* --- Deshabilitar boton con spinner --- */
+  var btnComb = $('log_btnCombinado');
+  var btnHtmlOrig = btnComb ? btnComb.innerHTML : '';
+  if (btnComb) { btnComb.disabled = true; btnComb.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...'; }
+
+  /* --- PASO 1: Guardar en Drive (archivo consolidado) --- */
   apiPost({
     action: 'guardarDespacho',
     folderId: folderId,
@@ -1748,23 +1795,47 @@ function logGuardarDespacho() {
     registros: registrosPlanilla
   })
     .then(function (r) {
-      if (btnGuardarDesp) { btnGuardarDesp.disabled = false; btnGuardarDesp.innerHTML = '&#128190; Guardar en Drive'; }
       if (r && r.ok) {
+        /* Mostrar mensaje de exito de guardado */
         var msg = '&#128190; <strong>Despacho</strong> con Planilla ' + planilla + ' guardado (' + registrosPlanilla.length + ' traslados).';
         if (r.archivoUrl) {
           msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">&#128279; Abrir archivo en Drive</a>';
         }
         showToast(msg, 'success');
-        logDatosDespacho = [];
-        logFilasSeleccionadas = [];
-        var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
-        var btnPDF = $('log_btnPDF'); if (btnPDF) btnPDF.disabled = true;
-        if (btnGuardarDesp) btnGuardarDesp.disabled = true;
-        if ($('log_planilla')) $('log_planilla').value = '';
-        if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
-        if ($('log_placa')) $('log_placa').value = '';
-        if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
+
+        /* --- PASO 2: Generar PDF --- */
+        apiGet({
+          action: 'generarPDFPlanilla',
+          folderId: folderId,
+          modulo: 'logistica',
+          planilla: planilla || 'SIN-PLANILLA',
+          registros: JSON.stringify(regsPDF)
+        })
+          .then(function (r2) {
+            if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
+            if (r2 && r2.ok && r2.url) {
+              window.open(r2.url, '_blank');
+              showToast('&#128196; PDF generado correctamente (' + regsPDF.length + ' traslados).', 'success');
+            } else {
+              showToast('Error al generar PDF: ' + (r2.error || 'Respuesta invalida'), 'danger');
+            }
+            /* Limpiar tabla y campos tras ambas operaciones */
+            logDatosDespacho = [];
+            logFilasSeleccionadas = [];
+            var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
+            if (btnComb) btnComb.disabled = true;
+            if ($('log_planilla')) $('log_planilla').value = '';
+            if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
+            if ($('log_placa')) $('log_placa').value = '';
+            if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
+          })
+          .catch(function (err2) {
+            if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
+            showToast('Error de conexion al generar PDF: ' + err2.message, 'danger');
+          });
       } else {
+        /* Error al guardar en Drive */
+        if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
         var errMsg = 'Error al guardar Despacho: ' + (r.error || '');
         if (r.duplicados && r.duplicados.length > 0) {
           errMsg = '&#9888;&#65039; <strong>Traslados duplicados</strong> — ya existen en la planilla de despacho:<br><strong>' + r.duplicados.join(', ') + '</strong>';
@@ -1773,64 +1844,7 @@ function logGuardarDespacho() {
       }
     })
     .catch(function (err) {
-      if (btnGuardarDesp) { btnGuardarDesp.disabled = false; btnGuardarDesp.innerHTML = '&#128190; Guardar en Drive'; }
-      showToast('Error de conexion: ' + err.message, 'danger');
-    });
-}
-
-function logDescargarPDF() {
-  if (!logDatosDespacho.length) { showToast('No hay traslados para generar PDF. Consulte primero.', 'danger'); return; }
-  var seleccionados = logObtenerSeleccion();
-  if (!seleccionados.length) { showToast('Seleccione al menos un traslado en la tabla.', 'danger'); return; }
-  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
-  var conductor = $('log_conductor') ? $('log_conductor').value : '';
-  var placa = $('log_placa') ? $('log_placa').value.trim().toUpperCase() : '';
-  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
-
-  var obsGlobal = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
-
-  /* Agregar Conductor, Placa y Observaciones a los registros seleccionados para el PDF */
-  var regsPDF = [];
-  for (var i = 0; i < seleccionados.length; i++) {
-    var reg = seleccionados[i];
-    var copia = {};
-    for (var k in reg) { if (reg.hasOwnProperty(k)) copia[k] = reg[k]; }
-    copia['Conductor'] = conductor;
-    copia['Placa del Vehiculo'] = placa;
-    /* Leer observacion individual de la fila */
-    var idxReg = -1;
-    for (var f = 0; f < logDatosDespacho.length; f++) {
-      if (logDatosDespacho[f]['Documento Traslado'] === reg['Documento Traslado']) { idxReg = f; break; }
-    }
-    if (idxReg >= 0) {
-      var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
-      if (inpObs && inpObs.value.trim()) copia['Observaciones Planilla'] = inpObs.value.trim();
-      /* Leer Revisado actualizado de la fila */
-      var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
-      if (selRev && selRev.value) copia['Revisado'] = selRev.value;
-      var badgeRev = document.querySelector('.log-revisado-fijo[data-idx="' + idxReg + '"]');
-      if (badgeRev) copia['Revisado'] = 'SI';
-    }
-    if (!copia['Observaciones Planilla'] && obsGlobal) copia['Observaciones Planilla'] = obsGlobal;
-    regsPDF.push(copia);
-  }
-
-  apiGet({
-    action: 'generarPDFPlanilla',
-    folderId: folderId,
-    modulo: 'logistica',
-    planilla: planilla || 'SIN-PLANILLA',
-    registros: JSON.stringify(regsPDF)
-  })
-    .then(function (r) {
-      if (r && r.ok && r.url) {
-        window.open(r.url, '_blank');
-        showToast('&#128196; PDF generado correctamente (' + regsPDF.length + ' traslados).', 'success');
-      } else {
-        showToast('Error al generar PDF: ' + (r.error || 'Respuesta invalida'), 'danger');
-      }
-    })
-    .catch(function (err) {
+      if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
       showToast('Error de conexion: ' + err.message, 'danger');
     });
 }
@@ -2002,11 +2016,32 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('t3a_btnGuardar'); if (btn) btn.addEventListener('click', t3aGuardarAsignacion);
   btn = $('t3b_btnValidar'); if (btn) btn.addEventListener('click', t3bValidarTraslado);
   btn = $('t3b_btnGuardar'); if (btn) btn.addEventListener('click', t3bGuardarEntrega);
+  /* Mostrar/ocultar campo Temperatura cuando Tipo Carga = NEVERA */
+  var selTipoCarga = $('t3b_tipo_carga');
+  if (selTipoCarga) selTipoCarga.addEventListener('change', function () {
+    var tempRow = $('t3b_temp_row');
+    if (tempRow) tempRow.style.display = (this.value === 'NEVERA') ? '' : 'none';
+    if (this.value !== 'NEVERA' && $('t3b_temperatura')) $('t3b_temperatura').value = '';
+  });
   btn = $('log_btnBuscar');  if (btn) btn.addEventListener('click', logBuscar);
   btn = $('log_btnGuardar'); if (btn) btn.addEventListener('click', logGuardarRecepcion);
+  /* Mostrar/ocultar campo Temperatura en Seccion 1 cuando Tipo = NEVERA */
+  var selLogTipo = $('log_tipo');
+  if (selLogTipo) {
+    /* Observer: cuando se rellena por autocompletado, disparar toggle */
+    var origDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    if (origDescriptor && origDescriptor.set) {
+      Object.defineProperty(selLogTipo, 'value', {
+        configurable: true,
+        get: function () { return origDescriptor.get.call(this); },
+        set: function (v) { origDescriptor.set.call(this, v); toggleLogTemp(); }
+      });
+    }
+    selLogTipo.addEventListener('input', toggleLogTemp);
+    selLogTipo.addEventListener('change', toggleLogTemp);
+  }
   btn = $('log_btnConsultar'); if (btn) btn.addEventListener('click', logConsultarDespacho);
-  btn = $('log_btnPDF'); if (btn) btn.addEventListener('click', logDescargarPDF);
-  btn = $('log_btnGuardarDespacho'); if (btn) btn.addEventListener('click', logGuardarDespacho);
+  btn = $('log_btnCombinado'); if (btn) btn.addEventListener('click', logGuardarYDescargar);
   btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
 
   // Checkbox "Seleccionar todos" en tabla de despacho
