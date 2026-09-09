@@ -1723,20 +1723,15 @@ function logConsultarDespacho() {
           chk.addEventListener('change', logActualizarSeleccion);
           tdChk.appendChild(chk);
           tr.appendChild(tdChk);
-          /* Datos */
+          /* Datos — solo columnas solicitadas: Revisado, Documento Traslado, Bodega Origen, Cantidad, Tipo, Urgente, Temperatura */
           var tds =
+            '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo" data-idx="' + i + '">&#9989; SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" data-idx="' + i + '" data-orig="NO"><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
             '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
             '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
-            '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
-            '<td>' + (reg['Ruta'] || reg['Zona'] || '') + '</td>' +
             '<td>' + (reg['Cantidad'] || '') + '</td>' +
             '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
             '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
-            '<td class="log-temp-col">' + (reg['Temperatura'] || '') + '</td>' +
-            '<td>' + (reg['Quien Recibio'] || '') + '</td>' +
-            '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo" data-idx="' + i + '">SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" data-idx="' + i + '" data-orig="NO"><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
-            '<td><input type="text" class="form-control form-control-sm log-obs-fila" data-idx="' + i + '" placeholder="Obs..."></td>' +
-            '<td>' + (reg['Marca temporal'] || '') + '</td>';
+            '<td class="log-temp-col">' + (reg['Temperatura'] || '') + '</td>';
           tr.innerHTML += tds;
           tbody.appendChild(tr);
         }
@@ -1786,15 +1781,12 @@ function logGuardarYDescargar() {
   for (var i = 0; i < seleccionados.length; i++) {
     var reg = seleccionados[i];
     var obsFila = obsGlobal;
+    var revisadoFinal = reg['Revisado'] || 'NO';
+    /* Buscar indice en datos originales para leer select de Revisado */
     var idxReg = -1;
     for (var f = 0; f < logDatosDespacho.length; f++) {
       if (logDatosDespacho[f]['Documento Traslado'] === reg['Documento Traslado']) { idxReg = f; break; }
     }
-    if (idxReg >= 0) {
-      var inpObs = document.querySelector('.log-obs-fila[data-idx="' + idxReg + '"]');
-      if (inpObs && inpObs.value.trim()) obsFila = inpObs.value.trim();
-    }
-    var revisadoFinal = reg['Revisado'] || 'NO';
     if (idxReg >= 0) {
       var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
       if (selRev && selRev.value) revisadoFinal = selRev.value;
@@ -1835,8 +1827,6 @@ function logGuardarYDescargar() {
       if (logDatosDespacho[fp]['Documento Traslado'] === regP['Documento Traslado']) { idxP = fp; break; }
     }
     if (idxP >= 0) {
-      var inpObsP = document.querySelector('.log-obs-fila[data-idx="' + idxP + '"]');
-      if (inpObsP && inpObsP.value.trim()) copia['Observaciones Planilla'] = inpObsP.value.trim();
       var selRevP = document.querySelector('.log-revisado-select[data-idx="' + idxP + '"]');
       if (selRevP && selRevP.value) copia['Revisado'] = selRevP.value;
       var badgeRevP = document.querySelector('.log-revisado-fijo[data-idx="' + idxP + '"]');
