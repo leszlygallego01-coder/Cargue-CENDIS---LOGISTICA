@@ -1464,6 +1464,21 @@ function logBuscar() {
         /* Cantidad: del consolidado de entrega */
         if ($('log_cantidad')) $('log_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || reg['Cantidad Enviada'] || reg['Cant.'] || '';
 
+        /* Revisado: SI=fijo readonly, NO=deshabilitado sin opcion a cambiar */
+        var revVal = (reg['Revisado'] || 'NO').toString().toUpperCase();
+        var revEl = $('log_revisado');
+        if (revEl) {
+          if (revVal === 'SI') {
+            revEl.value = 'SI';
+            revEl.disabled = true;
+            revEl.className = 'form-select log-revisado-readonly';
+          } else {
+            revEl.value = 'NO';
+            revEl.disabled = true;
+            revEl.className = 'form-select log-revisado-disabled';
+          }
+        }
+
         /* Mensaje detallado del tipo de coincidencia */
         var msgLog = '';
         if (tipoMatch === 'exacta') {
@@ -1562,7 +1577,7 @@ function logLimpiar() {
     if (el) el.value = '';
   }
   var sel1 = $('log_quien_recibio'); if (sel1) sel1.selectedIndex = 0;
-  var sel2 = $('log_revisado'); if (sel2) sel2.value = 'NO';
+  var sel2 = $('log_revisado'); if (sel2) { sel2.value = 'NO'; sel2.disabled = false; sel2.className = 'form-select'; }
   var est = $('log_estadoTraslado'); if (est) est.innerHTML = '';
   var despEst = $('log_despacho_estado'); if (despEst) despEst.textContent = '';
   logTrasladoValidado = null;
@@ -1634,7 +1649,7 @@ function logConsultarDespacho() {
             '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
             '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
             '<td>' + (reg['Quien Recibio'] || '') + '</td>' +
-            '<td>' + (reg['Revisado'] || 'NO') + '</td>' +
+            '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo">SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" disabled><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
             '<td><input type="text" class="form-control form-control-sm log-obs-fila" data-idx="' + i + '" placeholder="Obs..."></td>' +
             '<td>' + (reg['Marca temporal'] || '') + '</td>';
           tr.innerHTML += tds;
