@@ -306,7 +306,11 @@ var CREDENCIALES = {
   lider: 'Medis2024Lider',
   auxiliar_entrega: 'Medis2024Aux',
   recibido_logistica: 'Medis2024Recib',
-  planillar_logistica: 'Medis2024Plan'
+  planillar_logistica: 'Medis2024Plan',
+  log_diego: 'Medis2024DiegoL',
+  log_angelica: 'Medis2024AngelicaL',
+  log_lorena: 'Medis2024LorenaL',
+  log_jenny: 'Medis2024JennyL'
 };
 
 /* Nombres de los 32 auxiliares individuales */
@@ -323,6 +327,10 @@ var LABELS_PERFIL = {
   auxiliar_entrega: '&#128230; AUXILIAR ENTREGA',
   recibido_logistica: '&#9989; RECIBIDO LOGISTICA',
   planillar_logistica: '&#128203; PLANILLAR LOGISTICA',
+  log_diego: '&#128666; Diego (Logistica)',
+  log_angelica: '&#128666; Angelica (Logistica)',
+  log_lorena: '&#128666; Lorena (Logistica)',
+  log_jenny: '&#128666; Jenny (Logistica)',
   auxiliar: '&#128119; AUXILIAR'
 };
 
@@ -333,6 +341,10 @@ var PERFILES = {
   auxiliar_entrega:       { label: 'Auxiliar Entrega', tarjetas: ['t3'] },
   recibido_logistica:     { label: 'Recibido Log',     tarjetas: ['t4'] },
   planillar_logistica:    { label: 'Planillar Log',    tarjetas: ['t3','t4'] },
+  log_diego:              { label: 'Diego Logistica',  tarjetas: ['t4'] },
+  log_angelica:           { label: 'Angelica Logistica', tarjetas: ['t4'] },
+  log_lorena:             { label: 'Lorena Logistica', tarjetas: ['t4'] },
+  log_jenny:              { label: 'Jenny Logistica',  tarjetas: ['t4'] },
   auxiliar:               { label: 'Auxiliar',         tarjetas: ['t1','t2','t3'] }
 };
 
@@ -825,7 +837,7 @@ function t3AplicarRotacionA() {
    7C. GRUPOS FIJOS CARGUE — Definicion de los 8 grupos con miembros
    ───────────────────────────────────────────────────────────────────────────────── */
 var GRUPOS_FIJOS_CARGUE = [
-  { nombre: 'Rojo',    numero: 1, hex: '#dc3545', miembros: ['Nicoll Trivi\u00f1o', 'Estefania Parra', 'Angie María Tascon Jiménez'] },
+  { nombre: 'Rojo',    numero: 1, hex: '#dc3545', miembros: ['Nicoll Trivi\u00f1o', 'Estefania Parra', 'Luisa Mar\u00eda Osorio'], lider: 'Luisa Mar\u00eda Osorio' },
   { nombre: 'Naranja', numero: 2, hex: '#FF8C00', miembros: ['Daniela Nore\u00f1a', 'Juan David Moreno', 'Kelly Beltran'] },
   { nombre: 'Azul',    numero: 3, hex: '#0d6efd', miembros: ['Karina Riascos', 'Ana Lorena Ortiz', 'Vaneza Escobar'] },
   { nombre: 'Verde',   numero: 4, hex: '#2fb457', miembros: ['Leidy Valencia', 'Bivian Lorena Rivera', 'Brayan Camilo Izquierdo'] },
@@ -1340,18 +1352,26 @@ function limpiarSeccionB() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
-   9. TARJETA 4 — LOGISTICA Y DESPACHOS
+   9. TARJETA 4 — LOGISTICA Y DESPACHOS (2 Secciones)
+   ═════════════════════════════════════════════════════════════════════════════════
+   Seccion 1: Recepcion y Revision (Paso 1 obligatorio)
+   Seccion 2: Despacho y Asignacion de Planilla (Paso 2 dependiente)
    ═════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Datos temporales de Seccion 2 (tabla de despacho) ── */
+var logDatosDespacho = [];
+
+/* ════════════ SECCION 1: RECEPCION Y REVISION ════════════ */
+
 function logBuscar() {
   var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
-  var folderId = CONFIG.folders.trasladosConsulta;
+  var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
   var estado = $('log_estadoTraslado');
   var despachoEstado = $('log_despacho_estado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
   if (despachoEstado) despachoEstado.textContent = '';
 
-  // Accion: buscarDatosTraslado — busqueda hibrida texto+numerica
   apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
@@ -1361,15 +1381,16 @@ function logBuscar() {
         var numExactas = r.registro.__coincidenciasExactas || 0;
         var digitosBuscados = r.registro.__buscadoDigitos || '';
 
-        /* Auto-fill Recepcion y Entrega */
-        // Alias con punto final y 'Documento' = 'Traslado' en la carpeta de traslados
+        /* Auto-fill Seccion 1 datos bloqueados */
+        var trasladoCompletoLog = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
+        if ($('log_traslado')) $('log_traslado').value = trasladoCompletoLog;
+        if ($('log_documento_traslado')) $('log_documento_traslado').value = trasladoCompletoLog;
         if ($('log_bodega_origen')) $('log_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
         if ($('log_destino')) $('log_destino').value = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
         if ($('log_ruta')) $('log_ruta').value = reg['Zona'] || reg['Ruta'] || '';
-        autocompletarRuta('log_destino', 'log_ruta');
         if ($('log_concepto') && reg['Concepto']) $('log_concepto').value = reg['Concepto'] || '';
 
-        /* ── Urgente Logistica: auto segun Concepto ── */
+        /* Urgente: FIJO del consolidado, calculado segun Concepto */
         var conceptoValL = $('log_concepto') ? $('log_concepto').value.trim().toUpperCase() : '';
         var esConceptoUrgenteL = false;
         var CONCEPTOS_URGENTES_L = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
@@ -1386,23 +1407,16 @@ function logBuscar() {
           if ($('log_urgente')) $('log_urgente').value = 'NO';
         }
 
-        /* Fill Despacho read-only panel */
-        if ($('log_d_bodega_origen')) $('log_d_bodega_origen').value = reg['Bodega Origen'] || reg['Bodega Origen.'] || reg['Bodega'] || '';
-        if ($('log_d_destino')) $('log_d_destino').value = reg['Bodega Destino'] || reg['Bodega Destino.'] || reg['Destino'] || '';
-        if ($('log_d_ruta')) $('log_d_ruta').value = reg['Zona'] || reg['Ruta'] || '';
-        if ($('log_d_cantidad')) $('log_d_cantidad').value = reg['Cantidad'] || reg['CANTIDAD'] || '';
-        if ($('log_d_urgente')) $('log_d_urgente').value = reg['Urgente'] || 'NO';
-        if ($('log_d_resp_cendis')) $('log_d_resp_cendis').value = reg['RESPONSABLE DE ENTREGA CENDIS'] || reg['Responsable de Entrega'] || '';
-        if ($('log_d_quien_alista')) $('log_d_quien_alista').value = reg['QUIEN ALISTA'] || reg['Quien Alista'] || reg['Quien Alisto'] || '';
-        if ($('log_d_marca_temporal')) $('log_d_marca_temporal').value = reg['Marca temporal'] || reg['Fecha Inicial'] || reg['Timestamp'] || '';
+        /* Grupo Asignado: FIJO del consolidado de entrega */
+        if ($('log_grupo_asignado')) $('log_grupo_asignado').value = reg['Grupo Asignado'] || reg['GRUPO ASIGNADO'] || reg['Grupo'] || '';
 
         /* Mensaje detallado del tipo de coincidencia */
         var msgLog = '';
         if (tipoMatch === 'exacta') {
-          msgLog = 'Traslado <strong>' + traslado + '</strong> encontrado (coincidencia exacta).';
+          msgLog = 'Traslado <strong>' + trasladoCompletoLog + '</strong> encontrado (coincidencia exacta).';
         } else {
           var digitosInfo = digitosBuscados ? ' Digitos buscados: <strong>' + digitosBuscados + '</strong>.' : '';
-          msgLog = 'Coincidencia numerica parcial (<strong>' + traslado + '</strong>).' + digitosInfo;
+          msgLog = 'Coincidencia numerica parcial (<strong>' + trasladoCompletoLog + '</strong>).' + digitosInfo;
         }
         if (numCoincidencias > 1) {
           msgLog += ' <span class="text-warning">(' + numCoincidencias + ' coincidencias';
@@ -1411,17 +1425,11 @@ function logBuscar() {
         }
 
         if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Encontrado</span>';
-        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">Datos cargados</span>';
         logTrasladoValidado = reg;
-        // Actualizar el campo de entrada con el traslado completo de la API
-        var trasladoCompletoLog = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
-        if ($('log_traslado')) $('log_traslado').value = trasladoCompletoLog;
         showToast(msgLog, 'success');
       } else {
         logTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-danger">Sin datos</span>';
-        // Mostrar mensaje detallado del backend si existe
         var msgNoLog = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
         showToast(msgNoLog, 'danger');
       }
@@ -1436,10 +1444,10 @@ function logBuscar() {
 function logGuardarRecepcion() {
   var trasladoInput = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!trasladoInput) { showToast('Ingrese el numero de traslado.', 'danger'); return; }
-  // Usar el traslado COMPLETO de la API si disponible
   var trasladoCompletoLog = (logTrasladoValidado && (logTrasladoValidado['Traslado'] || logTrasladoValidado['Documento'] || logTrasladoValidado['Documento Traslado'] || logTrasladoValidado['Numero Traslado'])) || trasladoInput;
   var quienRecibio = $('log_quien_recibio') ? $('log_quien_recibio').value : '';
   if (!quienRecibio) { showToast('Seleccione quien recibio.', 'danger'); return; }
+  var revisadoVal = $('log_revisado') ? $('log_revisado').value : 'NO';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
@@ -1450,14 +1458,11 @@ function logGuardarRecepcion() {
     'Ruta': $('log_ruta') ? $('log_ruta').value : '',
     'Zona': $('log_ruta') ? $('log_ruta').value : '',
     'Urgente': $('log_urgente') ? $('log_urgente').value : 'NO',
+    'Grupo Asignado': $('log_grupo_asignado') ? $('log_grupo_asignado').value : '',
     'Concepto': $('log_concepto') ? $('log_concepto').value.trim() : '',
     'Quien Recibio': quienRecibio,
+    'Revisado': revisadoVal,
     'Observaciones': $('log_observaciones') ? $('log_observaciones').value.trim() : '',
-    'Cantidad': $('log_d_cantidad') ? $('log_d_cantidad').value : '',
-    'Responsable Entrega CENDIS': $('log_d_resp_cendis') ? $('log_d_resp_cendis').value : '',
-    'Quien Alista': $('log_d_quien_alista') ? $('log_d_quien_alista').value : '',
-    'Marca Temporal': $('log_d_marca_temporal') ? $('log_d_marca_temporal').value : '',
-    'Revisado': 'NO',
     'Marca temporal': ahora(),
     'Perfil': perfilActivo(),
     'Usuario': nombreUsuario()
@@ -1478,23 +1483,156 @@ function logGuardarRecepcion() {
 }
 
 function logLimpiar() {
-  limpiarCampos('log_');
-  var despachoEstado = $('log_despacho_estado');
-  if (despachoEstado) despachoEstado.textContent = '';
+  var campos = ['log_documento_traslado','log_bodega_origen','log_destino','log_ruta',
+    'log_urgente','log_grupo_asignado','log_concepto','log_observaciones'];
+  for (var i = 0; i < campos.length; i++) {
+    var el = $(campos[i]);
+    if (el) el.value = '';
+  }
+  var sel1 = $('log_quien_recibio'); if (sel1) sel1.selectedIndex = 0;
+  var sel2 = $('log_revisado'); if (sel2) sel2.value = 'NO';
+  var est = $('log_estadoTraslado'); if (est) est.innerHTML = '';
+  var despEst = $('log_despacho_estado'); if (despEst) despEst.textContent = '';
+  logTrasladoValidado = null;
 }
 
-function logImprimir() {
-  var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
-  if (!traslado) { showToast('Busque un traslado primero.', 'danger'); return; }
-  var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
+/* ════════════ SECCION 2: DESPACHO Y ASIGNACION DE PLANILLA ════════════ */
 
-  apiPost({ action: 'marcarImpresion', folderId: folderId, modulo: 'logistica', traslado: traslado })
+function logConsultarDespacho() {
+  var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
+  var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
+  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
+  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
+  if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
+
+  var consultaEstado = $('log_consulta_estado');
+  if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-warning text-dark">Consultando...</span>';
+  var despachoEstado = $('log_despacho_estado');
+  if (despachoEstado) despachoEstado.textContent = '';
+
+  apiGet({
+    action: 'consultarDespacho',
+    folderId: folderId,
+    modulo: 'logistica',
+    filtroRevisado: filtroRevisado,
+    filtroRuta: filtroRuta
+  })
+    .then(function (r) {
+      var tbody = $('log_tabla_body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      logDatosDespacho = [];
+
+      if (r && r.ok && r.registros && r.registros.length > 0) {
+        logDatosDespacho = r.registros;
+        for (var i = 0; i < r.registros.length; i++) {
+          var reg = r.registros[i];
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
+            '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
+            '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
+            '<td>' + (reg['Ruta'] || reg['Zona'] || '') + '</td>' +
+            '<td>' + (reg['Cantidad'] || '') + '</td>' +
+            '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
+            '<td>' + (reg['Grupo Asignado'] || '') + '</td>' +
+            '<td>' + (reg['Responsable Entrega CENDIS'] || '') + '</td>' +
+            '<td>' + (reg['Quien Recibio'] || '') + '</td>' +
+            '<td>' + (reg['Revisado'] || 'NO') + '</td>' +
+            '<td>' + (reg['Marca temporal'] || '') + '</td>';
+          tbody.appendChild(tr);
+        }
+        if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">' + r.registros.length + ' registros</span>';
+        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">' + r.registros.length + ' traslados encontrados</span>';
+        /* Habilitar botones de Seccion 2 */
+        var btnPDF = $('log_btnPDF'); if (btnPDF) btnPDF.disabled = false;
+        var btnGuardarDesp = $('log_btnGuardarDespacho'); if (btnGuardarDesp) btnGuardarDesp.disabled = false;
+        showToast(r.registros.length + ' traslados encontrados.', 'success');
+      } else {
+        if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-secondary">0 registros</span>';
+        if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-warning text-dark">Sin resultados</span>';
+        var btnPDF2 = $('log_btnPDF'); if (btnPDF2) btnPDF2.disabled = true;
+        var btnGuardarDesp2 = $('log_btnGuardarDespacho'); if (btnGuardarDesp2) btnGuardarDesp2.disabled = true;
+        showToast('No se encontraron recepciones con los filtros seleccionados.', 'info');
+      }
+    })
+    .catch(function (err) {
+      var consultaEstado2 = $('log_consulta_estado');
+      if (consultaEstado2) consultaEstado2.innerHTML = '<span class="badge bg-danger">Error</span>';
+      showToast('Error al consultar: ' + err.message, 'danger');
+    });
+}
+
+function logGuardarDespacho() {
+  if (!logDatosDespacho.length) { showToast('No hay traslados para guardar. Consulte primero.', 'danger'); return; }
+  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
+  if (!planilla) { showToast('Ingrese el numero de Planilla.', 'danger'); return; }
+  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
+  if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
+
+  var registrosPlanilla = [];
+  for (var i = 0; i < logDatosDespacho.length; i++) {
+    var reg = logDatosDespacho[i];
+    registrosPlanilla.push({
+      'Documento Traslado': reg['Documento Traslado'] || '',
+      'Bodega Origen': reg['Bodega Origen'] || '',
+      'Bodega Destino': reg['Bodega Destino'] || '',
+      'Ruta': reg['Ruta'] || reg['Zona'] || '',
+      'Cantidad': reg['Cantidad'] || '',
+      'Urgente': reg['Urgente'] || 'NO',
+      'Grupo Asignado': reg['Grupo Asignado'] || '',
+      'Responsable Entrega CENDIS': reg['Responsable Entrega CENDIS'] || '',
+      'Quien Recibio': reg['Quien Recibio'] || '',
+      'Revisado': reg['Revisado'] || 'NO',
+      'Planilla': planilla,
+      'Marca temporal': ahora(),
+      'Perfil': perfilActivo(),
+      'Usuario': nombreUsuario()
+    });
+  }
+
+  apiPost({
+    action: 'guardarDespacho',
+    folderId: folderId,
+    modulo: 'logistica',
+    planilla: planilla,
+    registros: registrosPlanilla
+  })
     .then(function (r) {
       if (r && r.ok) {
-        showToast('&#128424; Planilla impresa y marcada EN RUTA.', 'success');
-        window.print();
+        showToast('&#128190; <strong>Despacho</strong> con Planilla ' + planilla + ' guardado en Drive.', 'success');
+        logDatosDespacho = [];
+        var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
+        var btnPDF = $('log_btnPDF'); if (btnPDF) btnPDF.disabled = true;
+        var btnGuardarDesp = $('log_btnGuardarDespacho'); if (btnGuardarDesp) btnGuardarDesp.disabled = true;
+        if ($('log_planilla')) $('log_planilla').value = '';
       } else {
-        showToast('Error al marcar impresion: ' + (r.error || ''), 'danger');
+        showToast('Error al guardar Despacho: ' + (r.error || ''), 'danger');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error de conexion: ' + err.message, 'danger');
+    });
+}
+
+function logDescargarPDF() {
+  if (!logDatosDespacho.length) { showToast('No hay traslados para generar PDF. Consulte primero.', 'danger'); return; }
+  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
+  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
+
+  apiGet({
+    action: 'generarPDFPlanilla',
+    folderId: folderId,
+    modulo: 'logistica',
+    planilla: planilla || 'SIN-PLANILLA',
+    registros: JSON.stringify(logDatosDespacho)
+  })
+    .then(function (r) {
+      if (r && r.ok && r.url) {
+        window.open(r.url, '_blank');
+        showToast('&#128196; PDF generado correctamente.', 'success');
+      } else {
+        showToast('Error al generar PDF: ' + (r.error || 'Respuesta invalida'), 'danger');
       }
     })
     .catch(function (err) {
@@ -1671,7 +1809,9 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('t3b_btnGuardar'); if (btn) btn.addEventListener('click', t3bGuardarEntrega);
   btn = $('log_btnBuscar');  if (btn) btn.addEventListener('click', logBuscar);
   btn = $('log_btnGuardar'); if (btn) btn.addEventListener('click', logGuardarRecepcion);
-  btn = $('log_btnImprimir'); if (btn) btn.addEventListener('click', logImprimir);
+  btn = $('log_btnConsultar'); if (btn) btn.addEventListener('click', logConsultarDespacho);
+  btn = $('log_btnPDF'); if (btn) btn.addEventListener('click', logDescargarPDF);
+  btn = $('log_btnGuardarDespacho'); if (btn) btn.addEventListener('click', logGuardarDespacho);
   btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
   btn = $('t5_btnGuardar'); if (btn) btn.addEventListener('click', t5Guardar);
   btn = $('t6_btnAgregar'); if (btn) btn.addEventListener('click', t6AgregarItem);
