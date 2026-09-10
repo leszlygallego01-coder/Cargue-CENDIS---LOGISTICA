@@ -24,6 +24,14 @@
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Estilos propios -->
   <link rel="stylesheet" href="cargue_styles.css">
+  <style>
+    .btn-purple { background:#6f42c1; color:#fff; border-color:#6f42c1; }
+    .btn-purple:hover { background:#5a32a3; color:#fff; border-color:#5a32a3; }
+    .text-purple { color:#6f42c1; }
+    .bg-purple { background-color:#6f42c1; }
+    .log-subpanel-header.log-subpanel-trasbordo { background:linear-gradient(135deg,#6f42c1,#9b59b6); color:#fff; border-radius:8px 8px 0 0; padding:8px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .campo-bloqueado { background:#f0f0f0; border:1px solid #ddd; color:#555; cursor:not-allowed; }
+  </style>
 </head>
 <body>
 
@@ -312,12 +320,6 @@
       <label class="text-white small fw-bold mb-0" for="selPerfil">Perfil:</label>
       <select class="form-select form-select-sm mf-sel-perfil" id="selPerfil" placeholder="Buscar perfil...">
         <option value="administrador">&#128081; Administrador</option>
-        <option value="log_diego">&#128666; Diego (Logistica CENDIS)</option>
-        <option value="log_angelica">&#128666; Angelica (Logistica CENDIS)</option>
-        <option value="log_lorena">&#128666; Lorena (Logistica CENDIS)</option>
-        <option value="log_jenny">&#128666; Jenny (Logistica CENDIS)</option>
-        <option value="auxiliar_b09">&#128119; Auxiliar B09</option>
-        <option value="auxiliar">&#128119; Auxiliar (CEDIS)</option>
       </select>
     </div>
     <span id="perfilBadge" class="badge bg-danger mf-perfil-badge">&#128081; ADMINISTRADOR</span>
@@ -1235,66 +1237,39 @@
               <span class="log-subpanel-badge" id="log_despacho_estado"></span>
             </div>
             <div class="log-subpanel-body">
-              <!-- ════ Selector Modo: Despacho / Trasbordo ════ -->
-              <div class="row g-3 mb-3">
+              <!-- Tipo de operacion: DESPACHO / TRASBORDO -->
+              <div class="row g-3 align-items-end mb-2">
                 <div class="col-md-4">
-                  <label class="form-label fw-bold">Modo de Planilla *</label>
+                  <label class="form-label fw-bold">Tipo de Operacion</label>
                   <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="log_modo_planilla" id="log_modo_despacho" value="DESPACHO" checked>
-                    <label class="form-check-label" for="log_modo_despacho">&#128666; Despacho</label>
+                    <input class="form-check-input" type="radio" name="log_tipo_operacion" id="log_op_despacho" value="DESPACHO" checked>
+                    <label class="form-check-label" for="log_op_despacho">&#128666; Despacho</label>
                   </div>
                   <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="log_modo_planilla" id="log_modo_trasbordo" value="TRASBORDO">
-                    <label class="form-check-label" for="log_modo_trasbordo">&#128230; Trasbordo</label>
+                    <input class="form-check-input" type="radio" name="log_tipo_operacion" id="log_op_trasbordo" value="TRASBORDO">
+                    <label class="form-check-label" for="log_op_trasbordo">&#128070; Trasbordo</label>
                   </div>
                 </div>
               </div>
 
-              <!-- ════ Panel Trasbordo (oculto por defecto) ════ -->
-              <div id="log_trasbordo_panel" style="display:none;">
-                <div class="row g-3 mb-3 border rounded p-3 bg-light">
-                  <div class="col-12"><h6 class="text-primary mb-2">&#128230; Datos de Trasbordo — Registro Manual</h6></div>
-                  <div class="col-md-3"><label class="form-label">Dispensaci&oacute;n / Dipensa *</label>
-                    <input type="text" class="form-control" id="log_tr_dispensacion" placeholder="Nombre de dispensacion"></div>
-                  <div class="col-md-3"><label class="form-label">Direccion *</label>
-                    <input type="text" class="form-control" id="log_tr_direccion" placeholder="Direccion de entrega"></div>
-                  <div class="col-md-2"><label class="form-label">Telefono</label>
-                    <input type="text" class="form-control" id="log_tr_telefono" placeholder="Telefono"></div>
-                  <div class="col-md-2"><label class="form-label">Ciudad *</label>
-                    <input type="text" class="form-control" id="log_tr_ciudad" placeholder="Ciudad"></div>
-                  <div class="col-md-2"><label class="form-label">Unidades *</label>
-                    <input type="number" class="form-control" id="log_tr_unidades" placeholder="0" min="0"></div>
-                  <div class="col-md-4"><label class="form-label">Tipo de Carga *</label>
-                    <select class="form-select" id="log_tr_tipo_carga">
-                      <option value="">Seleccione...</option>
-                      <option value="PAQUETE">PAQUETE</option>
-                      <option value="CAJA">CAJA</option>
-                      <option value="ELECTRONICO">ELECTRONICO</option>
-                      <option value="NEVERA">NEVERA</option>
-                      <option value="NUTRICIONES">NUTRICIONES</option>
-                      <option value="PAÑALES">PAÑALES</option>
-                      <option value="SOBRE">SOBRE</option>
-                      <option value="CAJA Y PAÑAL">CAJA Y PAÑAL</option>
-                      <option value="CAJA Y NUTRICIONES">CAJA Y NUTRICIONES</option>
-                    </select></div>
-                  <div class="col-md-3" id="log_tr_temp_wrap" style="display:none;">
-                    <label class="form-label">Temperatura (°C) *</label>
-                    <input type="number" class="form-control" id="log_tr_temperatura" placeholder="Ej: 2 a 8" step="0.1">
-                  </div>
-                  <div class="col-md-4"><label class="form-label">Observaciones</label>
-                    <input type="text" class="form-control" id="log_tr_observaciones" placeholder="Observaciones (opcional)"></div>
+              <!-- Buscar Planilla Existente (siempre visible) -->
+              <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">&#128269; Buscar Planilla Existente</label>
+                  <input type="text" class="form-control" id="log_buscar_planilla" placeholder="Ej: PL-B09-002">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-mf-azul w-100" id="log_btnBuscarPlanilla">&#128269; Buscar Planilla</button>
+                </div>
+                <div class="col-md-4">
+                  <div id="log_buscar_planilla_estado" class="mf-estado"></div>
                 </div>
               </div>
 
-              <!-- ════ Panel Despacho (visible por defecto) ════ -->
+              <!-- ═══ Panel DESPACHO ═══ -->
               <div id="log_despacho_panel">
               <!-- Filtros de busqueda -->
               <div class="row g-3 align-items-end mb-3">
-                <div class="col-md-3"><label class="form-label fw-bold text-primary">&#128270; Buscar Planilla Existente</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="log_buscar_planilla" placeholder="Ej: PL-B09-001">
-                    <button class="btn btn-outline-primary" id="log_btnBuscarPlanilla" type="button">Buscar</button>
-                  </div></div>
                 <div class="col-md-2"><label class="form-label">Revisado</label>
                   <select class="form-select" id="log_filtro_revisado">
                     <option value="">Todos</option>
@@ -1324,8 +1299,8 @@
                     <option value="SI">SI</option>
                     <option value="NO">NO</option>
                   </select></div>
-                <div class="col-md-2"><label class="form-label">Planilla <span class="badge bg-info text-dark">Auto</span></label>
-                  <input type="text" class="form-control" id="log_planilla" placeholder="Se genera al guardar" readonly style="background:#e9ecef;cursor:not-allowed"></div>
+                <div class="col-md-2"><label class="form-label">Planilla *</label>
+                  <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
                 <div class="col-md-3"><label class="form-label">Conductor *</label>
                   <select class="form-select" id="log_conductor">
                     <option value="">Seleccione...</option>
@@ -1367,8 +1342,55 @@
                 <button class="btn btn-despacho-combinado" id="log_btnCombinado" disabled><span class="btn-comb-left">&#128196; Descargar en PDF</span><span class="btn-comb-right">&#128190; Guardar en Drive</span></button>
               </div>
               </div><!-- fin log_despacho_panel -->
-            </div><!-- fin log-subpanel-body -->
-          </div><!-- fin log-subpanel -->
+
+              <!-- ═══ Panel TRASBORDO ═══ -->
+              <div id="log_trasbordo_panel" style="display:none">
+                <h6 class="text-purple fw-bold mt-3 mb-2">&#128070; Registro de Trasbordo</h6>
+                <div class="row g-3 align-items-end mb-3">
+                  <div class="col-md-3"><label class="form-label">Planilla (Auto-generada) &#128274;</label>
+                    <input type="text" class="form-control campo-bloqueado" id="log_planilla_trasbordo" readonly placeholder="Se genera al guardar"></div>
+                  <div class="col-md-3"><label class="form-label">Conductor *</label>
+                    <select class="form-select" id="log_conductor_trasbordo">
+                      <option value="">Seleccione...</option>
+                    </select></div>
+                  <div class="col-md-2"><label class="form-label">Placa del Vehiculo</label>
+                    <input type="text" class="form-control" id="log_placa_trasbordo" placeholder="ABC-123" style="text-transform:uppercase"></div>
+                  <div class="col-md-3"><label class="form-label">Dispensacion *</label>
+                    <input type="text" class="form-control" id="log_dispensacion_trasbordo" placeholder="No. Dispensacion"></div>
+                  <div class="col-md-3"><label class="form-label">Direccion</label>
+                    <input type="text" class="form-control" id="log_direccion_trasbordo" placeholder="Direccion de entrega"></div>
+                  <div class="col-md-2"><label class="form-label">Telefono</label>
+                    <input type="text" class="form-control" id="log_telefono_trasbordo" placeholder="Telefono"></div>
+                  <div class="col-md-2"><label class="form-label">Ciudad</label>
+                    <input type="text" class="form-control" id="log_ciudad_trasbordo" placeholder="Ciudad"></div>
+                  <div class="col-md-2"><label class="form-label">Unidades</label>
+                    <input type="number" class="form-control" id="log_unidades_trasbordo" placeholder="0"></div>
+                  <div class="col-md-2"><label class="form-label">Tipo Carga</label>
+                    <select class="form-select" id="log_tipo_carga_trasbordo">
+                      <option value="">Seleccione...</option>
+                      <option value="PAQUETE">PAQUETE</option>
+                      <option value="CAJA">CAJA</option>
+                      <option value="ELECTRONICO">ELECTRONICO</option>
+                      <option value="NEVERA">NEVERA</option>
+                      <option value="NUTRICIONES">NUTRICIONES</option>
+                      <option value="PAÑALES">PAÑALES</option>
+                      <option value="SOBRE">SOBRE</option>
+                      <option value="CAJA Y PAÑAL">CAJA Y PAÑAL</option>
+                      <option value="CAJA Y NUTRICIONES">CAJA Y NUTRICIONES</option>
+                    </select></div>
+                  <div class="col-md-2" id="log_temp_trasbordo_row" style="display:none"><label class="form-label">Temperatura (°C) <span class="text-info">— NEVERA</span></label>
+                    <input type="text" class="form-control" id="log_temperatura_trasbordo" placeholder="N/A"></div>
+                  <div class="col-md-4"><label class="form-label">Observaciones</label>
+                    <input type="text" class="form-control" id="log_obs_trasbordo" placeholder="Observaciones (opcional)"></div>
+                </div>
+                <div class="d-flex gap-2 mt-3 no-print">
+                  <button class="btn btn-purple" id="log_btnGuardarTrasbordo">&#128190; Guardar Trasbordo en Drive</button>
+                  <button class="btn btn-outline-secondary" id="log_btnLimpiarTrasbordo">&#129532; Limpiar</button>
+                </div>
+              </div><!-- fin log_trasbordo_panel -->
+
+            </div>
+          </div>
 
         </div>
       </div>
@@ -1497,8 +1519,7 @@
               <option value="log_angelica">&#128666; Angelica (Logistica CENDIS)</option>
               <option value="log_lorena">&#128666; Lorena (Logistica CENDIS)</option>
               <option value="log_jenny">&#128666; Jenny (Logistica CENDIS)</option>
-              <option value="auxiliar_b09">&#128119; Auxiliar B09</option>
-              <option value="auxiliar">&#128119; Auxiliar (CEDIS)</option>
+              <option value="auxiliar">&#128119; Auxiliar</option>
             </select>
             <button class="btn btn-sm btn-primary mt-1" onclick="seleccionarPerfil(document.getElementById('modalSelPerfil').value); bootstrap.Modal.getInstance(document.getElementById('modalConfig')).hide();">
               Aplicar perfil
