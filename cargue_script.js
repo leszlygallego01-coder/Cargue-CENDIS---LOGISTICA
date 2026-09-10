@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwbgxWOBkxtTwnVPawmMKLERMjl_GD9YVdXonNAZminp8IZj9lDeSuSlzCcvAEAj0JP/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxDTJvYyQApFD1aCPkmNX-jxjw6hhGw9kMJyCv_FDpoKS_klRfY3dKFSKcQVQlYVA-i/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1055,17 +1055,18 @@ function t3aValidarTraslado() {
         t3aTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
-        // Mensaje diagnostico si hay archivos XLSX que no se pudieron leer
-        if (r && r.archivosXlsx && r.archivosXlsx > 0 && r.archivosEscaneados === 0) {
-          msgNo += ' La carpeta tiene ' + r.archivosXlsx + ' archivo(s) Excel que NO se pudieron convertir. ' +
-            'Verifique que Drive API este habilitado en Recursos > Servicios avanzados > Drive API. ' +
-            'El sistema intentara usar SheetJS como alternativa.';
+        // El backend ya retorna mensaje detallado con diagnosticos.
+        // Si el mensaje es generico (no tiene detalle de archivos), agregar info adicional
+        if (r && r.archivosEscaneados !== undefined && msgNo.indexOf('escanearon') === -1 && msgNo.indexOf('Escaneados') === -1) {
+          msgNo += ' [Escaneados: ' + r.archivosEscaneados;
+          if (r.archivosSheets) msgNo += ', Sheets: ' + r.archivosSheets;
+          if (r.archivosXlsx) msgNo += ', Excel: ' + r.archivosXlsx;
+          if (r.archivosBuscadosDirecto) msgNo += ', SheetJS directo: ' + r.archivosBuscadosDirecto;
+          if (r.archivosOmitidos) msgNo += ', Omitidos: ' + r.archivosOmitidos;
+          msgNo += ']';
         }
-        if (r && r.archivosConError && r.archivosConError.length > 0) {
+        if (r && r.archivosConError && r.archivosConError.length > 0 && msgNo.indexOf(r.archivosConError[0]) === -1) {
           msgNo += ' Archivos con error: ' + r.archivosConError.join(', ') + '.';
-        }
-        if (r && r.archivosOmitidos && r.archivosOmitidos.length > 0) {
-          msgNo += ' Archivos omitidos (ya convertidos): ' + r.archivosOmitidos.join(', ') + '.';
         }
         showToast(msgNo, 'danger');
       }
@@ -1470,8 +1471,17 @@ function logBuscar() {
         logTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         var msgNoLog = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
-        if (r && r.archivosXlsx && r.archivosXlsx > 0 && r.archivosEscaneados === 0) {
-          msgNoLog += ' La carpeta tiene ' + r.archivosXlsx + ' archivo(s) Excel que NO se pudieron convertir.';
+        // El backend ya retorna mensaje detallado; si es generico, agregar info adicional
+        if (r && r.archivosEscaneados !== undefined && msgNoLog.indexOf('escanearon') === -1 && msgNoLog.indexOf('Escaneados') === -1) {
+          msgNoLog += ' [Escaneados: ' + r.archivosEscaneados;
+          if (r.archivosSheets) msgNoLog += ', Sheets: ' + r.archivosSheets;
+          if (r.archivosXlsx) msgNoLog += ', Excel: ' + r.archivosXlsx;
+          if (r.archivosBuscadosDirecto) msgNoLog += ', SheetJS directo: ' + r.archivosBuscadosDirecto;
+          if (r.archivosOmitidos) msgNoLog += ', Omitidos: ' + r.archivosOmitidos;
+          msgNoLog += ']';
+        }
+        if (r && r.archivosConError && r.archivosConError.length > 0 && msgNoLog.indexOf(r.archivosConError[0]) === -1) {
+          msgNoLog += ' Archivos con error: ' + r.archivosConError.join(', ') + '.';
         }
         showToast(msgNoLog, 'danger');
       }
