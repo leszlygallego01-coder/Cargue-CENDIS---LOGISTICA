@@ -281,6 +281,14 @@
         searchField: ['text']
       });
     }
+    var ei = document.getElementById('b_estado_invima');
+    if(ei && typeof TomSelect !== 'undefined' && !ei.tomselect){
+      new TomSelect(ei, {
+        allowEmptyOption: true,
+        create: false,
+        searchField: ['text']
+      });
+    }
   }
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', initTomSelects);
@@ -304,6 +312,12 @@
       <label class="text-white small fw-bold mb-0" for="selPerfil">Perfil:</label>
       <select class="form-select form-select-sm mf-sel-perfil" id="selPerfil" placeholder="Buscar perfil...">
         <option value="administrador">&#128081; Administrador</option>
+        <option value="log_diego">&#128666; Diego (Logistica CENDIS)</option>
+        <option value="log_angelica">&#128666; Angelica (Logistica CENDIS)</option>
+        <option value="log_lorena">&#128666; Lorena (Logistica CENDIS)</option>
+        <option value="log_jenny">&#128666; Jenny (Logistica CENDIS)</option>
+        <option value="auxiliar_b09">&#128119; Auxiliar B09</option>
+        <option value="auxiliar">&#128119; Auxiliar (CEDIS)</option>
       </select>
     </div>
     <span id="perfilBadge" class="badge bg-danger mf-perfil-badge">&#128081; ADMINISTRADOR</span>
@@ -829,7 +843,7 @@
           <div class="row g-3 mb-3" id="seccion_invima">
             <div class="col-12"><span class="badge bg-info text-dark"><i class="bi bi-shield-check"></i> Datos INVIMA</span></div>
             <div class="col-md-3"><label class="form-label">Registro Invima</label><input class="form-control" id="b_registro_invima" placeholder="Ej. INVIMA 2024M-001"></div>
-            <div class="col-md-3"><label class="form-label">Estado Invima</label><input class="form-control" id="b_estado_invima" placeholder="Ej. Vigente, Vencido"></div>
+            <div class="col-md-3"><label class="form-label">Estado Invima</label><select class="form-select" id="b_estado_invima" placeholder="Seleccione..."><option value="">Seleccione...</option><option value="Vigente">Vigente</option><option value="Vencido">Vencido</option></select></div>
             <div class="col-md-3"><label class="form-label">Fecha Vencimiento Invima</label><input type="date" class="form-control" id="b_fecha_invima"></div>
           </div>
 
@@ -1027,7 +1041,7 @@
             <div class="row g-3 align-items-end mb-3">
               <div class="col-md-4">
                 <label class="form-label">Documento TRASLADO *</label>
-                <input type="text" class="form-control" id="t3b_traslado" placeholder="Numero de traslado asignado">
+                <input type="text" class="form-control" id="t3b_traslado" placeholder="Numero completo o ultimos 5 digitos">
               </div>
               <div class="col-md-3">
                 <button class="btn btn-mf-azul w-100" id="t3b_btnValidar">&#128269; Consultar asignaci&oacute;n</button>
@@ -1424,7 +1438,8 @@
               <option value="log_angelica">&#128666; Angelica (Logistica CENDIS)</option>
               <option value="log_lorena">&#128666; Lorena (Logistica CENDIS)</option>
               <option value="log_jenny">&#128666; Jenny (Logistica CENDIS)</option>
-              <option value="auxiliar">&#128119; Auxiliar</option>
+              <option value="auxiliar_b09">&#128119; Auxiliar B09</option>
+              <option value="auxiliar">&#128119; Auxiliar (CEDIS)</option>
             </select>
             <button class="btn btn-sm btn-primary mt-1" onclick="seleccionarPerfil(document.getElementById('modalSelPerfil').value); bootstrap.Modal.getInstance(document.getElementById('modalConfig')).hide();">
               Aplicar perfil
