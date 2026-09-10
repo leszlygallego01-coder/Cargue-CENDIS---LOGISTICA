@@ -1669,6 +1669,24 @@ function logLimpiar() {
 
 /* ════════════ SECCION 2: DESPACHO Y ASIGNACION DE PLANILLA ════════════ */
 
+/** Poblar select de Conductor (y cualquier otro select de conductores) */
+function poblarConductores() {
+  var conductores = CONFIG.conductores || [];
+  var selects = document.querySelectorAll('select[data-conductores], #log_conductor, #t3b_conductor');
+  for (var si = 0; si < selects.length; si++) {
+    var sel = selects[si];
+    if (!sel) continue;
+    // Evitar duplicar: si ya tiene opciones besides placeholder, skip
+    if (sel.options.length > 1) continue;
+    for (var ci = 0; ci < conductores.length; ci++) {
+      var opt = document.createElement('option');
+      opt.value = conductores[ci];
+      opt.textContent = conductores[ci];
+      sel.appendChild(opt);
+    }
+  }
+}
+
 function logConsultarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
@@ -1677,17 +1695,8 @@ function logConsultarDespacho() {
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
-  /* Poblar select de Conductor si esta vacio */
-  var selConductor = $('log_conductor');
-  if (selConductor && selConductor.options.length <= 1) {
-    var conductores = CONFIG.conductores || [];
-    for (var ci = 0; ci < conductores.length; ci++) {
-      var opt = document.createElement('option');
-      opt.value = conductores[ci];
-      opt.textContent = conductores[ci];
-      selConductor.appendChild(opt);
-    }
-  }
+  /* Poblar select de Conductor */
+  poblarConductores();
 
   var consultaEstado = $('log_consulta_estado');
   if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-warning text-dark">Consultando...</span>';
@@ -2060,6 +2069,7 @@ function generarBackup() {
    ═════════════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
   cargarConfig();
+  poblarConductores();
   aplicarPerfil();
 
   // Botones de tarjeta
