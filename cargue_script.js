@@ -1055,6 +1055,15 @@ function t3aValidarTraslado() {
         t3aTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         var msgNo = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        // Mensaje diagnostico si hay archivos XLSX que no se pudieron leer
+        if (r && r.archivosXlsx && r.archivosXlsx > 0 && r.archivosEscaneados === 0) {
+          msgNo += ' La carpeta tiene ' + r.archivosXlsx + ' archivo(s) Excel que NO se pudieron convertir. ' +
+            'Verifique que Drive API este habilitado en Recursos > Servicios avanzados > Drive API. ' +
+            'El sistema intentara usar SheetJS como alternativa.';
+        }
+        if (r && r.archivosConError && r.archivosConError.length > 0) {
+          msgNo += ' Archivos con error: ' + r.archivosConError.join(', ') + '.';
+        }
         showToast(msgNo, 'danger');
       }
     })
@@ -1458,6 +1467,9 @@ function logBuscar() {
         logTrasladoValidado = null;
         if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
         var msgNoLog = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+        if (r && r.archivosXlsx && r.archivosXlsx > 0 && r.archivosEscaneados === 0) {
+          msgNoLog += ' La carpeta tiene ' + r.archivosXlsx + ' archivo(s) Excel que NO se pudieron convertir.';
+        }
         showToast(msgNoLog, 'danger');
       }
     })
