@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbx3TriE5eIK6aIdC4xXJVYWMTeZ2rUw2Q783RhuHPC3jbaPwP3nB1JijmsTVZYBu_Iz/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxyLTuWO8xdN_iqSUtfBJUR8sfX21qFMqclGeXqg9rn5IqkEkvvT1JBclH4C26h1u73/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -954,7 +954,7 @@ function t3aValidarTraslado() {
   var estado = $('t3a_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
-  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'despachos', traslado: traslado })
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'asignacion', traslado: traslado })
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
         t3aTrasladoValidado = r.registro;
@@ -1063,6 +1063,9 @@ function t3aValidarTraslado() {
         }
         if (r && r.archivosConError && r.archivosConError.length > 0) {
           msgNo += ' Archivos con error: ' + r.archivosConError.join(', ') + '.';
+        }
+        if (r && r.archivosOmitidos && r.archivosOmitidos.length > 0) {
+          msgNo += ' Archivos omitidos (ya convertidos): ' + r.archivosOmitidos.join(', ') + '.';
         }
         showToast(msgNo, 'danger');
       }
@@ -1257,7 +1260,7 @@ function t3bValidarTraslado() {
       // PASO 2: Buscar datos adicionales en la hoja consolidada de despachos
       // (para traer Codigo, Descripcion, Unidades, Lote, Fecha Venc, etc.)
       var folderConsulta = CONFIG.folders.trasladosConsulta;
-      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'despachos', traslado: traslado })
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: traslado })
         .then(function (rConsol) {
           if (rConsol && rConsol.encontrado && rConsol.registro) {
             var reg = rConsol.registro;
