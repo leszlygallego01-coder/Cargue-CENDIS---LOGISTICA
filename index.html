@@ -1254,7 +1254,7 @@
               <div id="log_trasbordo_panel" style="display:none;">
                 <div class="row g-3 mb-3 border rounded p-3 bg-light">
                   <div class="col-12"><h6 class="text-primary mb-2">&#128230; Datos de Trasbordo — Registro Manual</h6></div>
-                  <div class="col-md-3"><label class="form-label">Dispensacion / Dipensa *</label>
+                  <div class="col-md-3"><label class="form-label">Dispensaci&oacute;n / Dipensa *</label>
                     <input type="text" class="form-control" id="log_tr_dispensacion" placeholder="Nombre de dispensacion"></div>
                   <div class="col-md-3"><label class="form-label">Direccion *</label>
                     <input type="text" class="form-control" id="log_tr_direccion" placeholder="Direccion de entrega"></div>
@@ -1290,6 +1290,11 @@
               <div id="log_despacho_panel">
               <!-- Filtros de busqueda -->
               <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-3"><label class="form-label fw-bold text-primary">&#128270; Buscar Planilla Existente</label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="log_buscar_planilla" placeholder="Ej: PL-B09-001">
+                    <button class="btn btn-outline-primary" id="log_btnBuscarPlanilla" type="button">Buscar</button>
+                  </div></div>
                 <div class="col-md-2"><label class="form-label">Revisado</label>
                   <select class="form-select" id="log_filtro_revisado">
                     <option value="">Todos</option>
@@ -1319,8 +1324,8 @@
                     <option value="SI">SI</option>
                     <option value="NO">NO</option>
                   </select></div>
-                <div class="col-md-2"><label class="form-label">Planilla *</label>
-                  <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
+                <div class="col-md-2"><label class="form-label">Planilla <span class="badge bg-info text-dark">Auto</span></label>
+                  <input type="text" class="form-control" id="log_planilla" placeholder="Se genera al guardar" readonly style="background:#e9ecef;cursor:not-allowed"></div>
                 <div class="col-md-3"><label class="form-label">Conductor *</label>
                   <select class="form-select" id="log_conductor">
                     <option value="">Seleccione...</option>
