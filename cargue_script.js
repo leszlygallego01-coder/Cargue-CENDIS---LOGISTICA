@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwmDWjkVLHY4tI9voxh5MnaMJGxr8ibzuf9WnTy1oY0FPj78uDYq8Ct7p_Mn7hKlQOW/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxFRZ9X19FDTDifXadndOvdHKuLQ9DBN4Nk4iuIojMeY5uwos161_8qmZ7s3h6bQVyw/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -306,49 +306,39 @@ var CONFIG_DEFAULT = {
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CREDENCIALES = {
   administrador: 'Medis2024Admin',
-  lider: 'Medis2024Lider',
-  auxiliar_entrega: 'Medis2024Aux',
-  recibido_logistica: 'Medis2024Recib',
-  planillar_logistica: 'Medis2024Plan',
   log_diego: 'Medis2024DiegoL',
   log_angelica: 'Medis2024AngelicaL',
   log_lorena: 'Medis2024LorenaL',
   log_jenny: 'Medis2024JennyL'
 };
 
-/* Nombres de los 32 auxiliares individuales */
+/* Nombres de los 38 auxiliares individuales (32 CEDIS + 6 B09) */
 var AUXILIARES_INDIVIDUALES = [
   'yuri','julio','hernan','diego','brian','karina','jhony','natalia',
   'manuel','claudia','daniela','juan','luzl','liz','ana','leidy',
   'bivian','vaneza','brayan','nicoll','luis','estefania','angela','camila',
-  'angie','mayra','derly','luisa','luzn','andrea','andres','diegoe'
+  'angie','mayra','derly','luisa','luzn','andrea','andres','diegoe',
+  'jose_santiago','yuliana','luisa_fernanda','nedi_yojana',
+  'beatriz_eugenia','mery_yolanda'
 ];
 
 var LABELS_PERFIL = {
   administrador: '&#128081; ADMINISTRADOR',
-  lider: '&#128104;&#8205;&#128188; LIDER',
-  auxiliar_entrega: '&#128230; AUXILIAR ENTREGA',
-  recibido_logistica: '&#9989; RECIBIDO LOGISTICA',
-  planillar_logistica: '&#128203; PLANILLAR LOGISTICA',
-  log_diego: '&#128666; Diego (Logistica)',
-  log_angelica: '&#128666; Angelica (Logistica)',
-  log_lorena: '&#128666; Lorena (Logistica)',
-  log_jenny: '&#128666; Jenny (Logistica)',
+  log_diego: '&#128666; Diego (Logistica CENDIS)',
+  log_angelica: '&#128666; Angelica (Logistica CENDIS)',
+  log_lorena: '&#128666; Lorena (Logistica CENDIS)',
+  log_jenny: '&#128666; Jenny (Logistica CENDIS)',
   auxiliar: '&#128119; AUXILIAR'
 };
 
 /* Perfiles y sus tarjetas visibles (reordenadas) */
 var PERFILES = {
-  administrador:           { label: 'Administrador',   tarjetas: ['t1','t2','t3','t4','t5','t6'] },
-  lider:                  { label: 'Lider',           tarjetas: ['t1','t3'] },
-  auxiliar_entrega:       { label: 'Auxiliar Entrega', tarjetas: ['t3'] },
-  recibido_logistica:     { label: 'Recibido Log',     tarjetas: ['t4'] },
-  planillar_logistica:    { label: 'Planillar Log',    tarjetas: ['t3','t4'] },
-  log_diego:              { label: 'Diego Logistica',  tarjetas: ['t4'] },
-  log_angelica:           { label: 'Angelica Logistica', tarjetas: ['t4'] },
-  log_lorena:             { label: 'Lorena Logistica', tarjetas: ['t4'] },
-  log_jenny:              { label: 'Jenny Logistica',  tarjetas: ['t4'] },
-  auxiliar:               { label: 'Auxiliar',         tarjetas: ['t1','t2','t3'] }
+  administrador:           { label: 'Administrador',            tarjetas: ['t1','t2','t3','t4','t5','t6'] },
+  log_diego:               { label: 'Diego Logistica CENDIS',   tarjetas: ['t4'] },
+  log_angelica:            { label: 'Angelica Logistica CENDIS', tarjetas: ['t4'] },
+  log_lorena:              { label: 'Lorena Logistica CENDIS', tarjetas: ['t4'] },
+  log_jenny:               { label: 'Jenny Logistica CENDIS',  tarjetas: ['t4'] },
+  auxiliar:                { label: 'Auxiliar',                 tarjetas: ['t1','t2','t3'] }
 };
 
 /* Modulos (orden de carpetas/backend) */
