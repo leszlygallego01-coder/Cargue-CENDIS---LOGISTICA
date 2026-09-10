@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzbuwRVsCh54BQ-jZiZo0RD0JCA68xQ6peGuw1tj7LU4KbFi8KhTLAS1HOzoPggVpBo/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbyOi9oPz670eOfTZpcYba5FgOA-gnagMAA_bckI0xR2LIzIVN2S5XGCP5KHmtjubSeu/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -484,34 +484,136 @@ function pintarPerfiles() {
  * doPost en Code.gs soporta las mismas acciones que doGet.
  */
 function apiGet(params) {
-  return apiPost(params);
+  return apiCall(params);
 }
 
 function apiPost(payload) {
-  return fetch(CONFIG.api_url, {
+  return apiCall(payload);
+}
+
+/**
+ * apiCall — Llamada robusta al backend Apps Script.
+ * Estrategia:
+ *   1. POST con text/plain (evita preflight CORS)
+ *   2. Si falla con "Failed to fetch", reintenta con GET + query params
+ *   3. Detecta redireccion a login de Google (HTML response)
+ *   4. Mensajes de diagnostico claros para el usuario
+ */
+function apiCall(payload) {
+  var url = CONFIG.api_url;
+  if (!url) return Promise.reject(new Error('URL de API no configurada.'));
+
+  // --- INTENTO 1: POST con text/plain (evita preflight) ---
+  return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     redirect: 'follow',
     body: JSON.stringify(payload)
-  }).then(function (r) { return r.json(); });
+  }).then(function (r) {
+    var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+    // Si la respuesta es HTML, significa que Google redirigio a login
+    if (ct.indexOf('text/html') !== -1) {
+      throw new Error('AUTH_REQUIRED');
+    }
+    return r.json();
+  }).catch(function (err) {
+    // Si el error es de auth, no reintentar con GET
+    if (err.message === 'AUTH_REQUIRED') {
+      throw new Error('La Web App requiere autenticacion. Desplieguela con acceso "Cualquier usuario" (publico).');
+    }
+    // Si es error de red (Failed to fetch), reintentar con GET
+    if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1)) {
+      console.log('[apiCall] POST fallo, reintentando con GET...');
+      return apiCallGet(payload);
+    }
+    throw err;
+  });
+}
+
+/**
+ * apiCallGet — Fallback: usa GET con query params en la URL.
+ * Codifica el payload como parametro "payload" en base64 para evitar
+ * problemas con caracteres especiales en la URL.
+ */
+function apiCallGet(payload) {
+  var url = CONFIG.api_url;
+  var params = [];
+  for (var key in payload) {
+    if (payload.hasOwnProperty(key)) {
+      params.push(encodeURIComponent(key) + '=' + encodeURIComponent(typeof payload[key] === 'object' ? JSON.stringify(payload[key]) : payload[key]));
+    }
+  }
+  var getUrl = url + (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+
+  return fetch(getUrl, {
+    method: 'GET',
+    redirect: 'follow'
+  }).then(function (r) {
+    var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+    if (ct.indexOf('text/html') !== -1) {
+      throw new Error('La Web App requiere autenticacion. Desplieguela con acceso "Cualquier usuario" (publico).');
+    }
+    return r.json();
+  });
 }
 
 function probarApi() {
-  apiGet({ action: 'ping' })
+  var e = $('estadoApi');
+  if (e) { e.textContent = 'Probando...'; e.className = 'badge bg-warning text-dark'; }
+
+  // Primero probar con GET directo (mas confiable para CORS)
+  var pingUrl = CONFIG.api_url + '?action=ping&_t=' + Date.now();
+  fetch(pingUrl, { method: 'GET', redirect: 'follow' })
     .then(function (r) {
-      var e = $('estadoApi');
+      var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+      if (ct.indexOf('text/html') !== -1) {
+        throw new Error('AUTH_REQUIRED');
+      }
+      return r.json();
+    })
+    .then(function (r) {
       if (r && r.ok) {
         if (e) { e.textContent = 'API OK'; e.className = 'badge bg-success'; }
         showToast('Conexion exitosa con Google Drive. <strong>API activa.</strong>', 'success');
       } else {
         if (e) { e.textContent = 'API ERROR'; e.className = 'badge bg-danger'; }
-        showToast('Error en la respuesta del servidor.', 'danger');
+        showToast('El servidor respondio pero con error: ' + (r.error || JSON.stringify(r)), 'danger');
       }
     })
     .catch(function (err) {
-      var e = $('estadoApi');
-      if (e) { e.textContent = 'SIN CONEXION'; e.className = 'badge bg-danger'; }
-      showToast('No se pudo conectar al servidor: ' + err.message, 'danger');
+      // Si GET tampoco funciona, probar POST
+      if (err.message === 'AUTH_REQUIRED') {
+        if (e) { e.textContent = 'SIN ACCESO'; e.className = 'badge bg-danger'; }
+        showToast('<strong>Error de autenticacion:</strong> La Web App de Apps Script esta desplegada con acceso restringido.<br>' +
+          '<em>Solucion:</em> En Apps Script vaya a <strong>Implementar > Nueva implementacion > Web app</strong><br>' +
+          'y cambie <strong>"Quien tiene acceso"</strong> a <strong>"Cualquier usuario"</strong> (publico).', 'danger');
+        return;
+      }
+      // Reintentar con POST
+      apiCall({ action: 'ping' })
+        .then(function (r) {
+          if (r && r.ok) {
+            if (e) { e.textContent = 'API OK'; e.className = 'badge bg-success'; }
+            showToast('Conexion exitosa via POST. <strong>API activa.</strong>', 'success');
+          } else {
+            if (e) { e.textContent = 'API ERROR'; e.className = 'badge bg-danger'; }
+            showToast('Error en la respuesta del servidor.', 'danger');
+          }
+        })
+        .catch(function (err2) {
+          if (e) { e.textContent = 'SIN CONEXION'; e.className = 'badge bg-danger'; }
+          var msg = err2.message || '';
+          if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1) {
+            showToast('<strong>No se pudo conectar al servidor.</strong><br>' +
+              'Posibles causas y soluciones:<br>' +
+              '1. <strong>Acceso restringido:</strong> Despliegue la Web App con "Quien tiene acceso: Cualquier usuario"<br>' +
+              '2. <strong>URL incorrecta:</strong> Verifique que la URL sea la del despliegue actual<br>' +
+              '3. <strong>Redireccion CORS:</strong> Intente abrir la URL directamente en el navegador<br>' +
+              '4. <strong>AdBlocker/Extensiones:</strong> Desactive bloqueadores en el navegador', 'danger');
+          } else {
+            showToast('No se pudo conectar al servidor: ' + msg, 'danger');
+          }
+        });
     });
 }
 
