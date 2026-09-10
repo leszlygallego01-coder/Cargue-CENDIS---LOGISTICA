@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxFRZ9X19FDTDifXadndOvdHKuLQ9DBN4Nk4iuIojMeY5uwos161_8qmZ7s3h6bQVyw/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbw1oAjz765SEonMNwjtgufu8-bSwuLDmTJR_A50OdZ84Ac5y4f4yU43QTk8xCSIOLXD/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1851,13 +1851,87 @@ function logLimpiar() {
   var est = $('log_estadoTraslado'); if (est) est.innerHTML = '';
   var despEst = $('log_despacho_estado'); if (despEst) despEst.textContent = '';
   logTrasladoValidado = null;
+
+  /* Limpiar campos trasbordo */
+  logLimpiarTrasbordo();
+
+  /* Resetear modo a DESPACHO */
+  var radioDesp = $('log_modo_despacho');
+  if (radioDesp) { radioDesp.checked = true; }
+  toggleModoPlanilla();
+
+  /* Limpiar tabla despacho */
+  logDatosDespacho = [];
+  logFilasSeleccionadas = [];
+  var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
+  if ($('log_planilla')) $('log_planilla').value = '';
+  if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
+  if ($('log_placa')) $('log_placa').value = '';
+  if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
+}
+
+/** Limpiar solo los campos del formulario trasbordo */
+function logLimpiarTrasbordo() {
+  var camposTr = ['log_tr_dispensacion','log_tr_direccion','log_tr_telefono','log_tr_ciudad','log_tr_unidades','log_tr_temperatura','log_tr_observaciones'];
+  for (var i = 0; i < camposTr.length; i++) {
+    var el = $(camposTr[i]);
+    if (el) el.value = '';
+  }
+  var selCarga = $('log_tr_tipo_carga'); if (selCarga) selCarga.selectedIndex = 0;
+  var tempWrap = $('log_tr_temp_wrap'); if (tempWrap) tempWrap.style.display = 'none';
 }
 
 /* ════════════ SECCION 2: DESPACHO Y ASIGNACION DE PLANILLA ════════════ */
 
+/** Alternar paneles Despacho / Trasbordo */
+function toggleModoPlanilla() {
+  var despacho = $('log_modo_despacho');
+  var trasbordo = $('log_modo_trasbordo');
+  var panelDesp = $('log_despacho_panel');
+  var panelTras = $('log_trasbordo_panel');
+  var btnComb = $('log_btnCombinado');
+  var esTrasbordo = trasbordo && trasbordo.checked;
+
+  if (panelDesp) panelDesp.style.display = esTrasbordo ? 'none' : '';
+  if (panelTras) panelTras.style.display = esTrasbordo ? '' : 'none';
+
+  /* Habilitar/deshabilitar boton combinado segun modo */
+  if (btnComb) {
+    if (esTrasbordo) {
+      btnComb.disabled = false;
+      /* Cambiar label del boton para trasbordo */
+      var left = btnComb.querySelector('.btn-comb-left');
+      var right = btnComb.querySelector('.btn-comb-right');
+      if (left) left.innerHTML = '&#128196; Descargar PDF';
+      if (right) right.innerHTML = '&#128190; Guardar Trasbordo';
+    } else {
+      btnComb.disabled = !logDatosDespacho.length;
+      var leftD = btnComb.querySelector('.btn-comb-left');
+      var rightD = btnComb.querySelector('.btn-comb-right');
+      if (leftD) leftD.innerHTML = '&#128196; Descargar en PDF';
+      if (rightD) rightD.innerHTML = '&#128190; Guardar en Drive';
+    }
+  }
+}
+
+/** Mostrar/ocultar campo Temperatura segun Tipo de Carga */
+function toggleTempTrasbordo() {
+  var selCarga = $('log_tr_tipo_carga');
+  var tempWrap = $('log_tr_temp_wrap');
+  if (!selCarga || !tempWrap) return;
+  var val = selCarga.value;
+  if (val === 'NEVERA') {
+    tempWrap.style.display = '';
+  } else {
+    tempWrap.style.display = 'none';
+    var tempInput = $('log_tr_temperatura');
+    if (tempInput) tempInput.value = '';
+  }
+}
+
 /** Poblar select de Conductor (y cualquier otro select de conductores) */
 function poblarConductores() {
-  var conductores = CONFIG.conductores || [];
+  var conductores = CONFIG.conductores || [];;
   var selects = document.querySelectorAll('select[data-conductores], #log_conductor, #t3b_conductor');
   for (var si = 0; si < selects.length; si++) {
     var sel = selects[si];
@@ -1881,6 +1955,9 @@ function logConsultarDespacho() {
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
+  /* Verificar modo activo */
+  var esTrasbordo = $('log_modo_trasbordo') && $('log_modo_trasbordo').checked;
+
   /* Poblar select de Conductor */
   poblarConductores();
 
@@ -1888,6 +1965,27 @@ function logConsultarDespacho() {
   if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-warning text-dark">Consultando...</span>';
   var despachoEstado = $('log_despacho_estado');
   if (despachoEstado) despachoEstado.textContent = '';
+
+  /* ── Modo TRASBORDO: solo verificar duplicado si hay planilla ── */
+  if (esTrasbordo) {
+    if (planilla) {
+      logVerificarDuplicadoPlanilla(planilla, folderId).then(function(rDup) {
+        if (rDup && rDup.duplicado) {
+          var btnComb = $('log_btnCombinado'); if (btnComb) btnComb.disabled = true;
+          if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-danger">Planilla duplicada</span>';
+          showToast('⚠️ Planilla "' + planilla + '" ya existe. No se puede crear duplicado.', 'warning');
+        } else {
+          var btnComb2 = $('log_btnCombinado'); if (btnComb2) btnComb2.disabled = false;
+          if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">Planilla disponible</span>';
+          showToast('✅ Planilla "' + planilla + '" disponible para registro.', 'success');
+        }
+      });
+    } else {
+      if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-info">Modo Trasbordo — Registro manual</span>';
+      var btnComb3 = $('log_btnCombinado'); if (btnComb3) btnComb3.disabled = false;
+    }
+    return;
+  }
 
   /* ── Si hay numero de planilla, consultar traslados de esa planilla ── */
   if (planilla) {
@@ -2017,11 +2115,11 @@ function logGenerarConsecutivo(bodegaOrigen) {
 }
 
 /**
- * logGuardarYDescargar — v3.7: Si planilla vacia, genera consecutivo automaticamente.
+ * logGuardarYDescargar — v3.8: Soporta modo DESPACHO (tabla traslados) y TRASBORDO (formulario manual).
  * Verifica duplicados antes de guardar. Luego guarda en Drive y genera PDF.
  */
 function logGuardarYDescargar() {
-  if (!logDatosDespacho.length) { showToast('No hay traslados para guardar. Consulte primero.', 'danger'); return; }
+  var esTrasbordo = $('log_modo_trasbordo') && $('log_modo_trasbordo').checked;
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
   if (!conductor) { showToast('Seleccione el Conductor.', 'danger'); return; }
@@ -2029,8 +2127,31 @@ function logGuardarYDescargar() {
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
-  var seleccionados = logObtenerSeleccion();
-  if (!seleccionados.length) { showToast('Seleccione al menos un traslado en la tabla.', 'danger'); return; }
+  /* ── MODO DESPACHO: validacion clasica ── */
+  if (!esTrasbordo) {
+    if (!logDatosDespacho.length) { showToast('No hay traslados para guardar. Consulte primero.', 'danger'); return; }
+    var seleccionados = logObtenerSeleccion();
+    if (!seleccionados.length) { showToast('Seleccione al menos un traslado en la tabla.', 'danger'); return; }
+  }
+
+  /* ── MODO TRASBORDO: validar campos obligatorios ── */
+  if (esTrasbordo) {
+    var trDisp = $('log_tr_dispensacion') ? $('log_tr_dispensacion').value.trim() : '';
+    var trDir  = $('log_tr_direccion') ? $('log_tr_direccion').value.trim() : '';
+    var trCiudad = $('log_tr_ciudad') ? $('log_tr_ciudad').value.trim() : '';
+    var trUnidades = $('log_tr_unidades') ? $('log_tr_unidades').value.trim() : '';
+    var trTipoCarga = $('log_tr_tipo_carga') ? $('log_tr_tipo_carga').value : '';
+    if (!trDisp)    { showToast('Dispensacion es obligatoria en Trasbordo.', 'danger'); return; }
+    if (!trDir)     { showToast('Direccion es obligatoria en Trasbordo.', 'danger'); return; }
+    if (!trCiudad)  { showToast('Ciudad es obligatoria en Trasbordo.', 'danger'); return; }
+    if (!trUnidades){ showToast('Unidades es obligatoria en Trasbordo.', 'danger'); return; }
+    if (!trTipoCarga){ showToast('Seleccione Tipo de Carga en Trasbordo.', 'danger'); return; }
+    if (trTipoCarga === 'NEVERA') {
+      var trTemp = $('log_tr_temperatura') ? $('log_tr_temperatura').value.trim() : '';
+      if (!trTemp) { showToast('Temperatura es obligatoria cuando Tipo de Carga es NEVERA.', 'danger'); return; }
+    }
+  }
+
   var obsGlobal = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
 
   /* Deshabilitar boton con spinner */
@@ -2041,7 +2162,12 @@ function logGuardarYDescargar() {
   /* Si planilla vacia, generar consecutivo automaticamente */
   var planillaPromise;
   if (!planilla) {
-    var bodegaOrigen = (seleccionados.length > 0 && seleccionados[0]['Bodega Origen']) ? seleccionados[0]['Bodega Origen'] : '';
+    var bodegaOrigen = '';
+    if (esTrasbordo) {
+      bodegaOrigen = $('log_tr_ciudad') ? $('log_tr_ciudad').value.trim() : '';
+    } else {
+      bodegaOrigen = (seleccionados.length > 0 && seleccionados[0]['Bodega Origen']) ? seleccionados[0]['Bodega Origen'] : '';
+    }
     planillaPromise = logGenerarConsecutivo(bodegaOrigen).then(function(r) {
       if (r && r.ok && r.consecutivo) {
         planilla = r.consecutivo;
@@ -2069,114 +2195,187 @@ function logGuardarYDescargar() {
   }).then(function(numeroPlanilla) {
     planilla = numeroPlanilla;
 
-    /* Construir registros para guardado */
-    var registrosPlanilla = [];
-    for (var i = 0; i < seleccionados.length; i++) {
-      var reg = seleccionados[i];
-      var obsFila = obsGlobal;
-      var revisadoFinal = reg['Revisado'] || 'NO';
-      var idxReg = -1;
-      for (var f = 0; f < logDatosDespacho.length; f++) {
-        if (logDatosDespacho[f]['Documento Traslado'] === reg['Documento Traslado']) { idxReg = f; break; }
-      }
-      if (idxReg >= 0) {
-        var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
-        if (selRev && selRev.value) revisadoFinal = selRev.value;
-        var badgeRev = document.querySelector('.log-revisado-fijo[data-idx="' + idxReg + '"]');
-        if (badgeRev) revisadoFinal = 'SI';
-      }
-      registrosPlanilla.push({
-        'Documento Traslado': reg['Documento Traslado'] || '',
-        'Bodega Origen': reg['Bodega Origen'] || '',
-        'Bodega Destino': reg['Bodega Destino'] || '',
-        'Ruta': reg['Ruta'] || reg['Zona'] || '',
-        'Cantidad': reg['Cantidad'] || '',
-        'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
-        'Temperatura': reg['Temperatura'] || '',
-        'Urgente': reg['Urgente'] || 'NO',
-        'Quien Recibio': reg['Quien Recibio'] || '',
-        'Revisado': revisadoFinal,
-        'Observaciones Planilla': obsFila,
-        'Planilla': planilla,
-        'Conductor': conductor,
-        'Placa del Vehiculo': placa,
+    /* ══════════ MODO TRASBORDO ══════════ */
+    if (esTrasbordo) {
+      var trDisp      = $('log_tr_dispensacion') ? $('log_tr_dispensacion').value.trim() : '';
+      var trDir       = $('log_tr_direccion') ? $('log_tr_direccion').value.trim() : '';
+      var trTel       = $('log_tr_telefono') ? $('log_tr_telefono').value.trim() : '';
+      var trCiudad    = $('log_tr_ciudad') ? $('log_tr_ciudad').value.trim() : '';
+      var trUnidades  = $('log_tr_unidades') ? $('log_tr_unidades').value.trim() : '';
+      var trTipoCarga = $('log_tr_tipo_carga') ? $('log_tr_tipo_carga').value : '';
+      var trTemp      = (trTipoCarga === 'NEVERA' && $('log_tr_temperatura')) ? $('log_tr_temperatura').value.trim() : '';
+      var trObs       = $('log_tr_observaciones') ? $('log_tr_observaciones').value.trim() : (obsGlobal || '');
+
+      var registroTrasbordo = {
+        'Planilla':       planilla,
+        'Conductor':      conductor,
+        'Placa':          placa,
+        'Dispensacion':   trDisp,
+        'Direccion':      trDir,
+        'Telefono':       trTel,
+        'Ciudad':         trCiudad,
+        'Unidades':       trUnidades,
+        'Tipo Carga':     trTipoCarga,
+        'Temperatura':    trTemp,
+        'Observaciones':  trObs,
         'Marca temporal': ahora(),
-        'Perfil': perfilActivo(),
-        'Usuario': nombreUsuario()
-      });
-    }
+        'Perfil':         perfilActivo(),
+        'Usuario':        nombreUsuario()
+      };
 
-    /* Construir registros para PDF */
-    var regsPDF = [];
-    for (var p = 0; p < seleccionados.length; p++) {
-      var regP = seleccionados[p];
-      var copia = {};
-      for (var k in regP) { if (regP.hasOwnProperty(k)) copia[k] = regP[k]; }
-      copia['Conductor'] = conductor;
-      copia['Placa del Vehiculo'] = placa;
-      var idxP = -1;
-      for (var fp = 0; fp < logDatosDespacho.length; fp++) {
-        if (logDatosDespacho[fp]['Documento Traslado'] === regP['Documento Traslado']) { idxP = fp; break; }
-      }
-      if (idxP >= 0) {
-        var selRevP = document.querySelector('.log-revisado-select[data-idx="' + idxP + '"]');
-        if (selRevP && selRevP.value) copia['Revisado'] = selRevP.value;
-        var badgeRevP = document.querySelector('.log-revisado-fijo[data-idx="' + idxP + '"]');
-        if (badgeRevP) copia['Revisado'] = 'SI';
-      }
-      if (!copia['Observaciones Planilla'] && obsGlobal) copia['Observaciones Planilla'] = obsGlobal;
-      regsPDF.push(copia);
-    }
-
-    /* PASO 1: Guardar en Drive */
-    return apiPost({
-      action: 'guardarDespacho',
-      folderId: folderId,
-      modulo: 'logistica',
-      planilla: planilla,
-      registros: registrosPlanilla
-    }).then(function(r) {
-      if (r && r.ok) {
-        var msg = '💾 <strong>Despacho</strong> con Planilla ' + planilla + ' guardado (' + registrosPlanilla.length + ' traslados).';
-        if (r.archivoUrl) {
-          msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">🔗 Abrir archivo en Drive</a>';
+      /* PASO 1: Guardar trasbordo en Drive */
+      return apiPost({
+        action: 'guardarTrasbordo',
+        folderId: folderId,
+        planilla: planilla,
+        registro: registroTrasbordo
+      }).then(function(r) {
+        if (r && r.ok) {
+          var msgT = '💾 <strong>Trasbordo</strong> con Planilla ' + planilla + ' guardado.';
+          if (r.archivoUrl) {
+            msgT += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">🔗 Abrir archivo en Drive</a>';
+          }
+          showToast(msgT, 'success');
+          /* PASO 2: Generar PDF de trasbordo */
+          return apiGet({
+            action: 'generarPDFTrasbordo',
+            folderId: folderId,
+            planilla: planilla,
+            registro: JSON.stringify(registroTrasbordo)
+          });
+        } else {
+          if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
+          showToast('Error al guardar Trasbordo: ' + (r.error || ''), 'danger');
+          throw new Error('GUARDAR_ERROR');
         }
-        showToast(msg, 'success');
-        /* PASO 2: Generar PDF */
-        return apiGet({
-          action: 'generarPDFPlanilla',
-          folderId: folderId,
-          modulo: 'logistica',
-          planilla: planilla || 'SIN-PLANILLA',
-          registros: JSON.stringify(regsPDF)
-        });
-      } else {
+      }).then(function(r2) {
         if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
-        var errMsg = 'Error al guardar Despacho: ' + (r.error || '');
-        if (r.duplicados && r.duplicados.length > 0) {
-          errMsg = '⚠️ <strong>Traslados duplicados</strong> — ya existen en la planilla de despacho:<br><strong>' + r.duplicados.join(', ') + '</strong>';
+        if (r2 && r2.ok && r2.url) {
+          window.open(r2.url, '_blank');
+          showToast('📄 PDF de Trasbordo generado correctamente.', 'success');
+        } else {
+          showToast('Error al generar PDF: ' + (r2.error || 'Respuesta invalida'), 'danger');
         }
-        showToast(errMsg, 'danger');
-        throw new Error('GUARDAR_ERROR');
+        /* Limpiar campos trasbordo y comunes */
+        logLimpiarTrasbordo();
+        if (btnComb) btnComb.disabled = false;
+        if ($('log_planilla')) $('log_planilla').value = '';
+        if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
+        if ($('log_placa')) $('log_placa').value = '';
+        if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
+      });
+
+    /* ══════════ MODO DESPACHO ══════════ */
+    } else {
+      /* Construir registros para guardado */
+      var registrosPlanilla = [];
+      for (var i = 0; i < seleccionados.length; i++) {
+        var reg = seleccionados[i];
+        var obsFila = obsGlobal;
+        var revisadoFinal = reg['Revisado'] || 'NO';
+        var idxReg = -1;
+        for (var f = 0; f < logDatosDespacho.length; f++) {
+          if (logDatosDespacho[f]['Documento Traslado'] === reg['Documento Traslado']) { idxReg = f; break; }
+        }
+        if (idxReg >= 0) {
+          var selRev = document.querySelector('.log-revisado-select[data-idx="' + idxReg + '"]');
+          if (selRev && selRev.value) revisadoFinal = selRev.value;
+          var badgeRev = document.querySelector('.log-revisado-fijo[data-idx="' + idxReg + '"]');
+          if (badgeRev) revisadoFinal = 'SI';
+        }
+        registrosPlanilla.push({
+          'Documento Traslado': reg['Documento Traslado'] || '',
+          'Bodega Origen': reg['Bodega Origen'] || '',
+          'Bodega Destino': reg['Bodega Destino'] || '',
+          'Ruta': reg['Ruta'] || reg['Zona'] || '',
+          'Cantidad': reg['Cantidad'] || '',
+          'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
+          'Temperatura': reg['Temperatura'] || '',
+          'Urgente': reg['Urgente'] || 'NO',
+          'Quien Recibio': reg['Quien Recibio'] || '',
+          'Revisado': revisadoFinal,
+          'Observaciones Planilla': obsFila,
+          'Planilla': planilla,
+          'Conductor': conductor,
+          'Placa del Vehiculo': placa,
+          'Marca temporal': ahora(),
+          'Perfil': perfilActivo(),
+          'Usuario': nombreUsuario()
+        });
       }
-    }).then(function(r2) {
-      if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
-      if (r2 && r2.ok && r2.url) {
-        window.open(r2.url, '_blank');
-        showToast('📄 PDF generado correctamente (' + regsPDF.length + ' traslados).', 'success');
-      } else {
-        showToast('Error al generar PDF: ' + (r2.error || 'Respuesta invalida'), 'danger');
+
+      /* Construir registros para PDF */
+      var regsPDF = [];
+      for (var p = 0; p < seleccionados.length; p++) {
+        var regP = seleccionados[p];
+        var copia = {};
+        for (var k in regP) { if (regP.hasOwnProperty(k)) copia[k] = regP[k]; }
+        copia['Conductor'] = conductor;
+        copia['Placa del Vehiculo'] = placa;
+        var idxP = -1;
+        for (var fp = 0; fp < logDatosDespacho.length; fp++) {
+          if (logDatosDespacho[fp]['Documento Traslado'] === regP['Documento Traslado']) { idxP = fp; break; }
+        }
+        if (idxP >= 0) {
+          var selRevP = document.querySelector('.log-revisado-select[data-idx="' + idxP + '"]');
+          if (selRevP && selRevP.value) copia['Revisado'] = selRevP.value;
+          var badgeRevP = document.querySelector('.log-revisado-fijo[data-idx="' + idxP + '"]');
+          if (badgeRevP) copia['Revisado'] = 'SI';
+        }
+        if (!copia['Observaciones Planilla'] && obsGlobal) copia['Observaciones Planilla'] = obsGlobal;
+        regsPDF.push(copia);
       }
-      /* Limpiar tabla y campos */
-      logDatosDespacho = [];
-      logFilasSeleccionadas = [];
-      var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
-      if (btnComb) btnComb.disabled = true;
-      if ($('log_planilla')) $('log_planilla').value = '';
-      if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
-      if ($('log_placa')) $('log_placa').value = '';
-      if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
-    });
+
+      /* PASO 1: Guardar en Drive */
+      return apiPost({
+        action: 'guardarDespacho',
+        folderId: folderId,
+        modulo: 'logistica',
+        planilla: planilla,
+        registros: registrosPlanilla
+      }).then(function(r) {
+        if (r && r.ok) {
+          var msg = '💾 <strong>Despacho</strong> con Planilla ' + planilla + ' guardado (' + registrosPlanilla.length + ' traslados).';
+          if (r.archivoUrl) {
+            msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">🔗 Abrir archivo en Drive</a>';
+          }
+          showToast(msg, 'success');
+          /* PASO 2: Generar PDF */
+          return apiGet({
+            action: 'generarPDFPlanilla',
+            folderId: folderId,
+            modulo: 'logistica',
+            planilla: planilla || 'SIN-PLANILLA',
+            registros: JSON.stringify(regsPDF)
+          });
+        } else {
+          if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
+          var errMsg = 'Error al guardar Despacho: ' + (r.error || '');
+          if (r.duplicados && r.duplicados.length > 0) {
+            errMsg = '⚠️ <strong>Traslados duplicados</strong> — ya existen en la planilla de despacho:<br><strong>' + r.duplicados.join(', ') + '</strong>';
+          }
+          showToast(errMsg, 'danger');
+          throw new Error('GUARDAR_ERROR');
+        }
+      }).then(function(r2) {
+        if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
+        if (r2 && r2.ok && r2.url) {
+          window.open(r2.url, '_blank');
+          showToast('📄 PDF generado correctamente (' + regsPDF.length + ' traslados).', 'success');
+        } else {
+          showToast('Error al generar PDF: ' + (r2.error || 'Respuesta invalida'), 'danger');
+        }
+        /* Limpiar tabla y campos */
+        logDatosDespacho = [];
+        logFilasSeleccionadas = [];
+        var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
+        if (btnComb) btnComb.disabled = true;
+        if ($('log_planilla')) $('log_planilla').value = '';
+        if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
+        if ($('log_placa')) $('log_placa').value = '';
+        if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
+      });
+    } /* fin modo DESPACHO */
   }).catch(function(err) {
     if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
     if (err.message !== 'DUPLICADO' && err.message !== 'GUARDAR_ERROR') {
@@ -2380,6 +2579,16 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('log_btnConsultar'); if (btn) btn.addEventListener('click', logConsultarDespacho);
   btn = $('log_btnCombinado'); if (btn) btn.addEventListener('click', logGuardarYDescargar);
   btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
+
+  // Radio buttons modo Despacho / Trasbordo
+  var rDesp = $('log_modo_despacho');
+  var rTras = $('log_modo_trasbordo');
+  if (rDesp) rDesp.addEventListener('change', toggleModoPlanilla);
+  if (rTras) rTras.addEventListener('change', toggleModoPlanilla);
+
+  // Tipo de Carga en Trasbordo: mostrar/ocultar Temperatura
+  var selTrCarga = $('log_tr_tipo_carga');
+  if (selTrCarga) selTrCarga.addEventListener('change', toggleTempTrasbordo);
 
   // Checkbox "Seleccionar todos" en tabla de despacho
   var chkAll = $('log_chk_all');
