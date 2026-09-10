@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbw1oAjz765SEonMNwjtgufu8-bSwuLDmTJR_A50OdZ84Ac5y4f4yU43QTk8xCSIOLXD/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbz0SVJm20Sqx7USsxK9JzflTy47GszqmNauE4PVO6rQJTi-A-sDpdgp2ULjdPHB3odv/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1865,6 +1865,7 @@ function logLimpiar() {
   logFilasSeleccionadas = [];
   var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
   if ($('log_planilla')) $('log_planilla').value = '';
+  if ($('log_buscar_planilla')) $('log_buscar_planilla').value = '';
   if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
   if ($('log_placa')) $('log_placa').value = '';
   if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
@@ -1951,7 +1952,6 @@ function logConsultarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
   var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
-  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
@@ -1966,54 +1966,46 @@ function logConsultarDespacho() {
   var despachoEstado = $('log_despacho_estado');
   if (despachoEstado) despachoEstado.textContent = '';
 
-  /* ── Modo TRASBORDO: solo verificar duplicado si hay planilla ── */
+  /* ── Modo TRASBORDO: solo habilitar boton ── */
   if (esTrasbordo) {
-    if (planilla) {
-      logVerificarDuplicadoPlanilla(planilla, folderId).then(function(rDup) {
-        if (rDup && rDup.duplicado) {
-          var btnComb = $('log_btnCombinado'); if (btnComb) btnComb.disabled = true;
-          if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-danger">Planilla duplicada</span>';
-          showToast('⚠️ Planilla "' + planilla + '" ya existe. No se puede crear duplicado.', 'warning');
-        } else {
-          var btnComb2 = $('log_btnCombinado'); if (btnComb2) btnComb2.disabled = false;
-          if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">Planilla disponible</span>';
-          showToast('✅ Planilla "' + planilla + '" disponible para registro.', 'success');
-        }
-      });
-    } else {
-      if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-info">Modo Trasbordo — Registro manual</span>';
-      var btnComb3 = $('log_btnCombinado'); if (btnComb3) btnComb3.disabled = false;
-    }
+    if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-info">Modo Trasbordo — Se generara planilla al guardar</span>';
+    var btnComb3 = $('log_btnCombinado'); if (btnComb3) btnComb3.disabled = false;
     return;
   }
 
-  /* ── Si hay numero de planilla, consultar traslados de esa planilla ── */
-  if (planilla) {
-    apiGet({ action: 'consultarPlanilla', numeroPlanilla: planilla })
+  /* ── Verificar si hay busqueda de planilla existente ── */
+  var buscarPlanilla = $('log_buscar_planilla') ? $('log_buscar_planilla').value.trim() : '';
+
+  if (buscarPlanilla) {
+    /* Consultar traslados de una planilla existente (solo lectura) */
+    apiGet({ action: 'consultarPlanilla', numeroPlanilla: buscarPlanilla })
       .then(function (rp) {
         if (rp && rp.ok && rp.registros && rp.registros.length > 0) {
-          logCargarTablaDespacho(rp.registros, consultaEstado, despachoEstado, planilla + ' (' + rp.registros.length + ' traslados)');
-          /* Bloquear boton combinado — planilla ya existe, no debe guardar duplicado */
+          logCargarTablaDespacho(rp.registros, consultaEstado, despachoEstado, buscarPlanilla + ' — ' + rp.registros.length + ' traslados (solo lectura)', true);
+          /* Bloquear boton combinado — planilla ya existe */
           var btnComb = $('log_btnCombinado'); if (btnComb) btnComb.disabled = true;
-          showToast('&#9888;&#65039; Planilla "' + planilla + '" ya existe con ' + rp.registros.length + ' traslados. Solo lectura.', 'warning');
+          showToast('📋 Planilla "' + buscarPlanilla + '" ya existe con ' + rp.registros.length + ' traslados. Solo lectura.', 'warning');
+          /* Mostrar planilla en campo readonly */
+          if ($('log_planilla')) $('log_planilla').value = buscarPlanilla;
         } else {
-          /* Planilla no encontrada en el Sheet — proceder con consulta normal + verificar duplicado en Drive */
-          logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente, planilla);
+          if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-secondary">Planilla no encontrada</span>';
+          showToast('Planilla "' + buscarPlanilla + '" no encontrada en el sistema.', 'info');
+          /* Proceder con consulta normal */
+          logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente);
         }
       })
       .catch(function (err) {
-        /* Si falla la consulta de planilla, proceder con consulta normal */
-        logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente, planilla);
+        logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente);
       });
     return;
   }
 
-  /* ── Sin planilla: consulta normal de traslados pendientes ── */
-  logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente, '');
+  /* ── Sin planilla de busqueda: consulta normal de traslados pendientes ── */
+  logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente);
 }
 
-/** Consulta normal de despacho (traslados pendientes) + verificacion de duplicado */
-function logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente, planilla) {
+/** Consulta normal de despacho (traslados pendientes) */
+function logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtroUrgente) {
   apiGet({
     action: 'consultarDespacho',
     folderId: folderId,
@@ -2031,16 +2023,6 @@ function logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtro
 
       if (r && r.ok && r.registros && r.registros.length > 0) {
         logCargarTablaDespacho(r.registros, $('log_consulta_estado'), $('log_despacho_estado'), r.registros.length + ' traslados pendientes');
-
-        /* Si hay numero de planilla ingresado, verificar duplicado en Drive/Sheet */
-        if (planilla) {
-          logVerificarDuplicadoPlanilla(planilla, folderId).then(function(rDup) {
-            if (rDup && rDup.duplicado) {
-              var btnCombD = $('log_btnCombinado'); if (btnCombD) btnCombD.disabled = true;
-              showToast('⚠️ Planilla "' + planilla + '" ya existe en Drive. Solo lectura.', 'warning');
-            }
-          });
-        }
       } else {
         if ($('log_consulta_estado')) $('log_consulta_estado').innerHTML = '<span class="badge bg-secondary">0 registros</span>';
         if ($('log_despacho_estado')) $('log_despacho_estado').innerHTML = '<span class="badge bg-warning text-dark">Sin resultados</span>';
@@ -2055,8 +2037,10 @@ function logConsultarDespachoNormal(folderId, filtroRevisado, filtroRuta, filtro
     });
 }
 
-/** Carga traslados en la tabla de despacho (compartida entre consulta normal y por planilla) */
-function logCargarTablaDespacho(registros, consultaEstado, despachoEstado, msg) {
+/** Carga traslados en la tabla de despacho (compartida entre consulta normal y por planilla)
+ *  @param {boolean} soloLectura - si true, deshabilita checkboxes y selects (planilla existente)
+ */
+function logCargarTablaDespacho(registros, consultaEstado, despachoEstado, msg, soloLectura) {
   var tbody = $('log_tabla_body');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -2066,6 +2050,7 @@ function logCargarTablaDespacho(registros, consultaEstado, despachoEstado, msg) 
   for (var i = 0; i < registros.length; i++) {
     var reg = registros[i];
     var tr = document.createElement('tr');
+    if (soloLectura) tr.classList.add('table-secondary');
     /* Checkbox por fila */
     var tdChk = document.createElement('td');
     tdChk.className = 'log-chk-col';
@@ -2073,13 +2058,14 @@ function logCargarTablaDespacho(registros, consultaEstado, despachoEstado, msg) 
     chk.type = 'checkbox';
     chk.className = 'log-row-chk';
     chk.setAttribute('data-idx', i);
-    chk.checked = true;  /* seleccionado por defecto */
+    chk.checked = true;
+    if (soloLectura) { chk.disabled = true; }
     chk.addEventListener('change', logActualizarSeleccion);
     tdChk.appendChild(chk);
     tr.appendChild(tdChk);
-    /* Datos — solo columnas solicitadas: Revisado, Documento Traslado, Bodega Origen, Cantidad, Tipo, Urgente, Temperatura */
+    /* Datos */
     var tds =
-      '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success log-revisado-fijo" data-idx="' + i + '">&#9989; SI</span>'; else return '<select class="form-select form-select-sm log-revisado-select" data-idx="' + i + '" data-orig="NO"><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
+      '<td class="log-revisado-col">' + (function() { var rv = String(reg['Revisado'] || 'NO').toUpperCase().trim(); if (rv === 'SI') return '<span class="badge bg-success">&#9989; SI</span>'; else if (soloLectura) return '<span class="badge bg-secondary">NO</span>'; else return '<select class="form-select form-select-sm log-revisado-select" data-idx="' + i + '" data-orig="NO"><option value="NO" selected>NO</option><option value="SI">SI</option></select>'; })() + '</td>' +
       '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
       '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
       '<td>' + (reg['Cantidad'] || '') + '</td>' +
@@ -2091,9 +2077,9 @@ function logCargarTablaDespacho(registros, consultaEstado, despachoEstado, msg) 
   }
   /* Inicializar seleccion y actualizar UI */
   logActualizarSeleccion();
-  if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">' + registros.length + ' registros</span>';
-  if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">' + registros.length + ' traslados encontrados</span>';
-  showToast(msg || (registros.length + ' traslados encontrados.'), 'success');
+  if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-success">' + registros.length + ' registros</span>' + (soloLectura ? ' <span class="badge bg-warning text-dark">Solo lectura</span>' : '');
+  if (despachoEstado) despachoEstado.innerHTML = '<span class="badge bg-info">' + registros.length + ' traslados encontrados</span>' + (soloLectura ? ' — Planilla existente' : '');
+  showToast(msg || (registros.length + ' traslados encontrados.'), soloLectura ? 'warning' : 'success');
 }
 
 /** Verifica si una planilla ya existe en Drive (carpeta de planillas) */
@@ -2120,7 +2106,8 @@ function logGenerarConsecutivo(bodegaOrigen) {
  */
 function logGuardarYDescargar() {
   var esTrasbordo = $('log_modo_trasbordo') && $('log_modo_trasbordo').checked;
-  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
+  /* Planilla es SIEMPRE auto-generada — campo es readonly */
+  var planilla = '';
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
   if (!conductor) { showToast('Seleccione el Conductor.', 'danger'); return; }
   var placa = $('log_placa') ? $('log_placa').value.trim().toUpperCase() : '';
@@ -2159,28 +2146,29 @@ function logGuardarYDescargar() {
   var btnHtmlOrig = btnComb ? btnComb.innerHTML : '';
   if (btnComb) { btnComb.disabled = true; btnComb.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...'; }
 
-  /* Si planilla vacia, generar consecutivo automaticamente */
-  var planillaPromise;
-  if (!planilla) {
-    var bodegaOrigen = '';
-    if (esTrasbordo) {
-      bodegaOrigen = $('log_tr_ciudad') ? $('log_tr_ciudad').value.trim() : '';
+  /* Siempre generar consecutivo automaticamente — planilla NO es editable */
+  var bodegaOrigen = '';
+  if (esTrasbordo) {
+    /* En modo TRASBORDO, determinar bodega por perfil del usuario */
+    var perfil = perfilActivo();
+    if (AUXILIARES_B09.indexOf(perfil) >= 0) {
+      bodegaOrigen = 'B09 POPAYAN PARQUE INDUSTRIAL CAUCA';
     } else {
-      bodegaOrigen = (seleccionados.length > 0 && seleccionados[0]['Bodega Origen']) ? seleccionados[0]['Bodega Origen'] : '';
+      bodegaOrigen = 'CENDIS PRINCIPAL TULUA';
     }
-    planillaPromise = logGenerarConsecutivo(bodegaOrigen).then(function(r) {
-      if (r && r.ok && r.consecutivo) {
-        planilla = r.consecutivo;
-        if ($('log_planilla')) $('log_planilla').value = planilla;
-        showToast('Consecutivo generado: ' + planilla, 'info');
-        return planilla;
-      } else {
-        throw new Error(r.error || 'No se pudo generar el consecutivo');
-      }
-    });
   } else {
-    planillaPromise = Promise.resolve(planilla);
+    bodegaOrigen = (seleccionados.length > 0 && seleccionados[0]['Bodega Origen']) ? seleccionados[0]['Bodega Origen'] : '';
   }
+  var planillaPromise = logGenerarConsecutivo(bodegaOrigen).then(function(r) {
+    if (r && r.ok && r.consecutivo) {
+      planilla = r.consecutivo;
+      if ($('log_planilla')) $('log_planilla').value = planilla;
+      showToast('Consecutivo generado: ' + planilla, 'info');
+      return planilla;
+    } else {
+      throw new Error(r.error || 'No se pudo generar el consecutivo');
+    }
+  });
 
   planillaPromise.then(function(numeroPlanilla) {
     /* Verificar duplicado antes de guardar */
@@ -2260,6 +2248,7 @@ function logGuardarYDescargar() {
         logLimpiarTrasbordo();
         if (btnComb) btnComb.disabled = false;
         if ($('log_planilla')) $('log_planilla').value = '';
+        if ($('log_buscar_planilla')) $('log_buscar_planilla').value = '';
         if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
         if ($('log_placa')) $('log_placa').value = '';
         if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
@@ -2371,6 +2360,7 @@ function logGuardarYDescargar() {
         var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
         if (btnComb) btnComb.disabled = true;
         if ($('log_planilla')) $('log_planilla').value = '';
+        if ($('log_buscar_planilla')) $('log_buscar_planilla').value = '';
         if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
         if ($('log_placa')) $('log_placa').value = '';
         if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
@@ -2589,6 +2579,14 @@ document.addEventListener('DOMContentLoaded', function () {
   // Tipo de Carga en Trasbordo: mostrar/ocultar Temperatura
   var selTrCarga = $('log_tr_tipo_carga');
   if (selTrCarga) selTrCarga.addEventListener('change', toggleTempTrasbordo);
+
+  // Buscar planilla existente
+  var btnBuscarPl = $('log_btnBuscarPlanilla');
+  if (btnBuscarPl) btnBuscarPl.addEventListener('click', logConsultarDespacho);
+  var inputBuscarPl = $('log_buscar_planilla');
+  if (inputBuscarPl) inputBuscarPl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); logConsultarDespacho(); }
+  });
 
   // Checkbox "Seleccionar todos" en tabla de despacho
   var chkAll = $('log_chk_all');
