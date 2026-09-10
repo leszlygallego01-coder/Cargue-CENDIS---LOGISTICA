@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxBCcSJpTrjO2eMcf6sUNzddzSYzwWhWeePV_IuYb0-cWupSz6gqpy0SPSHmYedXLm-/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwMFzZaOnHFNvqBkSL0qNncx2DBciJV9BpaOmJMjJM6U9sT526jsJb_wUa6PV8eAq8v/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1463,7 +1463,8 @@ function logBuscar() {
         if (!reg) {
           logTrasladoValidado = null;
           if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-          showToast('Traslado no encontrado.', 'danger');
+          var msgNoReg = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos de origen.';
+          showToast(msgNoReg, 'danger');
           return;
         }
         logLlenarCamposTraslado(reg, traslado, estado);
