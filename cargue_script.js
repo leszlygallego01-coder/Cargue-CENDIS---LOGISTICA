@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyOi9oPz670eOfTZpcYba5FgOA-gnagMAA_bckI0xR2LIzIVN2S5XGCP5KHmtjubSeu/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwmDWjkVLHY4tI9voxh5MnaMJGxr8ibzuf9WnTy1oY0FPj78uDYq8Ct7p_Mn7hKlQOW/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -690,7 +690,11 @@ function t1Guardar() {
    ═════════════════════════════════════════════════════════════════════════════════ */
 var t2Items = [];
 
-/** Alterna etiqueta del campo b_traslado: EXTERNA → "Factura", INTERNA → "Traslado" */
+/** Alterna etiqueta del campo b_traslado: EXTERNA → "Factura", INTERNA → "Traslado"
+ *  Ademas: EXTERNA → muestra campo Proveedor (texto), oculta Bodega Origen (dropdown)
+ *           INTERNA → muestra Bodega Origen (dropdown), oculta Proveedor
+ *  Campos INVIMA: siempre editables (manuales) para ambos tipos
+ */
 function toggleLabelRecepcion() {
   var tipo = document.querySelector('input[name="tipoRecepcion"]:checked');
   var esExterna = tipo && tipo.value === 'EXTERNA';
@@ -701,6 +705,24 @@ function toggleLabelRecepcion() {
     lbl.className = 'form-label rec-doc-label ' + (esExterna ? 'externa' : 'interna');
   }
   if (inp) inp.placeholder = esExterna ? 'Numero de factura' : 'Numero de traslado';
+
+  // Toggle Bodega Origen vs Proveedor
+  var wrapBodega = $('wrap_bodega_origen');
+  var wrapProveedor = $('wrap_proveedor');
+  if (esExterna) {
+    if (wrapBodega) wrapBodega.style.display = 'none';
+    if (wrapProveedor) wrapProveedor.style.display = '';
+  } else {
+    if (wrapBodega) wrapBodega.style.display = '';
+    if (wrapProveedor) wrapProveedor.style.display = 'none';
+  }
+
+  // Limpiar campos INVIMA y Proveedor al cambiar tipo
+  var camposLimpiar = ['b_registro_invima', 'b_estado_invima', 'b_fecha_invima', 'b_proveedor'];
+  camposLimpiar.forEach(function(id) {
+    var el = $(id);
+    if (el) el.value = '';
+  });
 }
 
 function t2AgregarItem() {
@@ -708,7 +730,9 @@ function t2AgregarItem() {
   tipo = tipo ? tipo.value : 'EXTERNA';
   var esExterna = tipo === 'EXTERNA';
   var docNum = $('b_traslado') ? $('b_traslado').value.trim() : '';
-  var bodegaOrigen = $('b_bodega_origen') ? $('b_bodega_origen').value : '';
+  var bodegaOrigen = esExterna
+    ? ($('b_proveedor') ? $('b_proveedor').value.trim() : '')
+    : ($('b_bodega_origen') ? $('b_bodega_origen').value : '');
   var destino = $('b_destino') ? $('b_destino').value : '';
   var fechaRecep = $('b_fecha_recepcion') ? $('b_fecha_recepcion').value : '';
   var codigo = $('b_codigo') ? $('b_codigo').value.trim() : '';
@@ -723,22 +747,29 @@ function t2AgregarItem() {
   var estado = $('b_estado') ? $('b_estado').value : '';
   var observaciones = $('b_observaciones') ? $('b_observaciones').value.trim() : '';
 
-  if (!docNum || !codigo || !descripcion || !lote || !vencimiento || !enviada || !recibida || !responsable) {
-    var campoFaltante = esExterna ? 'Factura' : 'Traslado';
-    showToast('Complete los campos obligatorios de recepcion (incluyendo ' + campoFaltante + ').', 'danger');
+  var campoOrigenLabel = esExterna ? 'Proveedor' : 'Bodega Origen';
+  if (!docNum || !bodegaOrigen || !codigo || !descripcion || !lote || !vencimiento || !enviada || !recibida || !responsable) {
+    showToast('Complete los campos obligatorios de recepcion (incluyendo ' + campoOrigenLabel + ').', 'danger');
     return;
   }
+
+  // Leer campos INVIMA
+  var regInvima = $('b_registro_invima') ? $('b_registro_invima').value.trim() : '';
+  var estInvima = $('b_estado_invima') ? $('b_estado_invima').value.trim() : '';
+  var fechaInvima = $('b_fecha_invima') ? $('b_fecha_invima').value : '';
 
   var item = {
     'Tipo Recepcion': tipo,
     'Documento Recepcion': esExterna ? 'Factura' : 'Traslado',
     'Numero Documento': docNum,
-    'Bodega Origen': bodegaOrigen,
+    'Bodega Origen': esExterna ? '' : bodegaOrigen,
+    'Proveedor': esExterna ? bodegaOrigen : '',
     'Bodega Destino': destino, 'Fecha Recepcion': fechaRecep, 'Codigo Producto': codigo,
     'Descripcion': descripcion, 'Laboratorio': laboratorio, 'Lote': lote,
     'Fecha Vencimiento': vencimiento, 'Cantidad Enviada': enviada, 'Cantidad Recibida': recibida,
     'Diferencia': diferencia, 'Responsable Recepcion': responsable,
-    'Estado Recepcion Tecnica': estado, 'Observaciones': observaciones
+    'Estado Recepcion Tecnica': estado, 'Observaciones': observaciones,
+    'Registro Invima': regInvima, 'Estado Invima': estInvima, 'Fecha Vencimiento Invima': fechaInvima
   };
   t2Items.push(item);
   t2PintarTabla();
@@ -749,11 +780,13 @@ function t2PintarTabla() {
   var head = $('t2_tablaHead');
   var body = $('t2_tablaBody');
   if (!head || !body) return;
-  var cols = ['Tipo', 'Doc.', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
+  var cols = ['Tipo', 'Doc.', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Reg. Invima', 'Est. Invima', 'Venc. Invima', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
   head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
   body.innerHTML = '';
   t2Items.forEach(function (item, idx) {
     var tr = document.createElement('tr');
+    var origLabel = (item['Tipo Recepcion'] === 'EXTERNA') ? 'Proveedor' : 'Bod. Orig.';
+    var origValue = (item['Tipo Recepcion'] === 'EXTERNA') ? (item['Proveedor'] || '') : (item['Bodega Origen'] || '');
     tr.innerHTML =
       '<td>' + (item['Tipo Recepcion'] || '') + '</td>' +
       '<td><small class="text-muted">' + (item['Documento Recepcion'] || '') + '</small> ' + (item['Numero Documento'] || '') + '</td>' +
@@ -761,6 +794,9 @@ function t2PintarTabla() {
       '<td>' + (item['Descripcion'] || '') + '</td>' +
       '<td>' + (item['Lote'] || '') + '</td>' +
       '<td>' + (item['Fecha Vencimiento'] || '') + '</td>' +
+      '<td><small>' + (item['Registro Invima'] || '-') + '</small></td>' +
+      '<td><small>' + (item['Estado Invima'] || '-') + '</small></td>' +
+      '<td><small>' + (item['Fecha Vencimiento Invima'] || '-') + '</small></td>' +
       '<td>' + (item['Cantidad Enviada'] || '') + '</td>' +
       '<td>' + (item['Cantidad Recibida'] || '') + '</td>' +
       '<td>' + (item['Diferencia'] || '') + '</td>' +
