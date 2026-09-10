@@ -1235,6 +1235,59 @@
               <span class="log-subpanel-badge" id="log_despacho_estado"></span>
             </div>
             <div class="log-subpanel-body">
+              <!-- ════ Selector Modo: Despacho / Trasbordo ════ -->
+              <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">Modo de Planilla *</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="log_modo_planilla" id="log_modo_despacho" value="DESPACHO" checked>
+                    <label class="form-check-label" for="log_modo_despacho">&#128666; Despacho</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="log_modo_planilla" id="log_modo_trasbordo" value="TRASBORDO">
+                    <label class="form-check-label" for="log_modo_trasbordo">&#128230; Trasbordo</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ════ Panel Trasbordo (oculto por defecto) ════ -->
+              <div id="log_trasbordo_panel" style="display:none;">
+                <div class="row g-3 mb-3 border rounded p-3 bg-light">
+                  <div class="col-12"><h6 class="text-primary mb-2">&#128230; Datos de Trasbordo — Registro Manual</h6></div>
+                  <div class="col-md-3"><label class="form-label">Dispensacion / Dipensa *</label>
+                    <input type="text" class="form-control" id="log_tr_dispensacion" placeholder="Nombre de dispensacion"></div>
+                  <div class="col-md-3"><label class="form-label">Direccion *</label>
+                    <input type="text" class="form-control" id="log_tr_direccion" placeholder="Direccion de entrega"></div>
+                  <div class="col-md-2"><label class="form-label">Telefono</label>
+                    <input type="text" class="form-control" id="log_tr_telefono" placeholder="Telefono"></div>
+                  <div class="col-md-2"><label class="form-label">Ciudad *</label>
+                    <input type="text" class="form-control" id="log_tr_ciudad" placeholder="Ciudad"></div>
+                  <div class="col-md-2"><label class="form-label">Unidades *</label>
+                    <input type="number" class="form-control" id="log_tr_unidades" placeholder="0" min="0"></div>
+                  <div class="col-md-4"><label class="form-label">Tipo de Carga *</label>
+                    <select class="form-select" id="log_tr_tipo_carga">
+                      <option value="">Seleccione...</option>
+                      <option value="PAQUETE">PAQUETE</option>
+                      <option value="CAJA">CAJA</option>
+                      <option value="ELECTRONICO">ELECTRONICO</option>
+                      <option value="NEVERA">NEVERA</option>
+                      <option value="NUTRICIONES">NUTRICIONES</option>
+                      <option value="PAÑALES">PAÑALES</option>
+                      <option value="SOBRE">SOBRE</option>
+                      <option value="CAJA Y PAÑAL">CAJA Y PAÑAL</option>
+                      <option value="CAJA Y NUTRICIONES">CAJA Y NUTRICIONES</option>
+                    </select></div>
+                  <div class="col-md-3" id="log_tr_temp_wrap" style="display:none;">
+                    <label class="form-label">Temperatura (°C) *</label>
+                    <input type="number" class="form-control" id="log_tr_temperatura" placeholder="Ej: 2 a 8" step="0.1">
+                  </div>
+                  <div class="col-md-4"><label class="form-label">Observaciones</label>
+                    <input type="text" class="form-control" id="log_tr_observaciones" placeholder="Observaciones (opcional)"></div>
+                </div>
+              </div>
+
+              <!-- ════ Panel Despacho (visible por defecto) ════ -->
+              <div id="log_despacho_panel">
               <!-- Filtros de busqueda -->
               <div class="row g-3 align-items-end mb-3">
                 <div class="col-md-2"><label class="form-label">Revisado</label>
@@ -1308,8 +1361,9 @@
               <div class="log-despacho-btns mt-3 no-print">
                 <button class="btn btn-despacho-combinado" id="log_btnCombinado" disabled><span class="btn-comb-left">&#128196; Descargar en PDF</span><span class="btn-comb-right">&#128190; Guardar en Drive</span></button>
               </div>
-            </div>
-          </div>
+              </div><!-- fin log_despacho_panel -->
+            </div><!-- fin log-subpanel-body -->
+          </div><!-- fin log-subpanel -->
 
         </div>
       </div>
