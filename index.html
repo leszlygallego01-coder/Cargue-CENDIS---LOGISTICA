@@ -384,7 +384,7 @@
               <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="tipoRecepcion" id="r_interna" value="INTERNA"><label class="form-check-label" for="r_interna">Interna</label></div>
             </div>
             <div class="col-md-3"><label class="form-label" id="lbl_doc_recepcion">Factura *</label><input class="form-control" id="b_traslado" placeholder="Numero de factura"></div>
-            <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
+            <div class="col-md-3" id="wrap_bodega_origen"><label class="form-label" id="lbl_bodega_origen">Bodega Origen *</label>
               <select class="form-select" id="b_bodega_origen">
                 <option value="">Seleccione...</option>
                 <option>CENDIS PRINCIPAL TULUA</option>
@@ -565,6 +565,7 @@
                 <option>02M FLORENCIA CAQUETA</option>
                 <option>35 YOPAL CASANARE</option>
               </select></div>
+            <div class="col-md-3" id="wrap_proveedor" style="display:none"><label class="form-label">Proveedor *</label><input class="form-control" id="b_proveedor" placeholder="Nombre del proveedor"></div>
             <div class="col-md-3"><label class="form-label">Bodega Destino *</label>
               <select class="form-select" id="b_destino">
                 <option value="">Seleccione...</option>
@@ -777,6 +778,17 @@
                 <option>TEMPERATURA ALTERADA</option>
                 <option>DOCUMENTACION INCOMPLETA</option>
               </select></div>
+          </div>
+
+          <!-- Seccion INVIMA -->
+          <div class="row g-3 mb-3" id="seccion_invima">
+            <div class="col-12"><span class="badge bg-info text-dark"><i class="bi bi-shield-check"></i> Datos INVIMA</span></div>
+            <div class="col-md-3"><label class="form-label">Registro Invima</label><input class="form-control" id="b_registro_invima" placeholder="Ej. INVIMA 2024M-001"></div>
+            <div class="col-md-3"><label class="form-label">Estado Invima</label><input class="form-control" id="b_estado_invima" placeholder="Ej. Vigente, Vencido"></div>
+            <div class="col-md-3"><label class="form-label">Fecha Vencimiento Invima</label><input type="date" class="form-control" id="b_fecha_invima"></div>
+          </div>
+
+          <div class="row g-3">
             <div class="col-12"><label class="form-label">Observaciones</label><textarea class="form-control" id="b_observaciones" rows="2" placeholder="Observaciones sobre la recepcion..."></textarea></div>
           </div>
 
