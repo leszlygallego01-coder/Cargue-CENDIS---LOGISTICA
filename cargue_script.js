@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbz67oWQTu1NsVNrBNCLJnXno27G5hb7WjUTgEZL6DTwW7z8Vd3Q7EH9lC0gKQ65Bt_F/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxDTJvYyQApFD1aCPkmNX-jxjw6hhGw9kMJyCv_FDpoKS_klRfY3dKFSKcQVQlYVA-i/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -480,9 +480,11 @@ function pintarPerfiles() {
 /* ═════════════════════════════════════════════════════════════════════════════════
    5. API — COMUNICACION CON GOOGLE APPS SCRIPT
    ═════════════════════════════════════════════════════════════════════════════════ */
+/* Usar POST para TODAS las llamadas (GET causa CORS redirect en GAS ContentService)
+ * doPost en Code.gs soporta las mismas acciones que doGet.
+ */
 function apiGet(params) {
-  var url = CONFIG.api_url + '?' + new URLSearchParams(params).toString();
-  return fetch(url, { redirect: 'follow' }).then(function (r) { return r.json(); });
+  return apiPost(params);
 }
 
 function apiPost(payload) {
