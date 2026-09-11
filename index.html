@@ -297,6 +297,23 @@
         searchField: ['text']
       });
     }
+    /* v3.8.5: Tom Select para selects de Bodega Origen */
+    var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_origen'];
+    for(var bi=0;bi<boSelectors.length;bi++){
+      var boEl = document.querySelector(boSelectors[bi]);
+      if(boEl && typeof TomSelect !== 'undefined' && !boEl.tomselect){
+        new TomSelect(boEl, {
+          allowEmptyOption: true,
+          create: false,
+          searchField: ['text'],
+          render: {
+            option: function(item, escape){
+              return '<div class="ts-opt">'+item.text+'</div>';
+            }
+          }
+        });
+      }
+    }
   }
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', initTomSelects);
@@ -1305,12 +1322,18 @@
                     <option value="SI">SI</option>
                     <option value="NO">NO</option>
                   </select></div>
+                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
+                  <select class="form-select" id="log_filtro_bodega_origen" data-bodegas>
+                    <option value="">Todas las bodegas</option>
+                  </select></div>
                 <div class="col-md-2"><label class="form-label">Planilla *</label>
                   <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
                 <div class="col-md-3"><label class="form-label">Conductor *</label>
                   <input type="text" class="form-control" id="log_conductor" placeholder="Nombre del conductor"></div>
                 <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
-                  <input type="text" class="form-control" id="log_bodega_origen_despacho" placeholder="Ej: BODEGA VALLE"></div>
+                  <select class="form-select" id="log_bodega_origen_despacho" data-bodegas>
+                    <option value="">Seleccione...</option>
+                  </select></div>
                 <div class="col-md-2"><label class="form-label">Placa del Vehiculo</label>
                   <input type="text" class="form-control" id="log_placa" placeholder="ABC-123" style="text-transform:uppercase"></div>
                 <div class="col-md-4"><label class="form-label">Observaciones Planilla</label>
@@ -1361,7 +1384,9 @@
                   <div class="col-md-3"><label class="form-label">Conductor *</label>
                     <input type="text" class="form-control" id="log_conductor_trasbordo" placeholder="Nombre del conductor"></div>
                   <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
-                    <input type="text" class="form-control" id="log_bodega_origen_trasbordo" placeholder="Ej: BODEGA VALLE"></div>
+                    <select class="form-select" id="log_bodega_origen_trasbordo" data-bodegas>
+                      <option value="">Seleccione...</option>
+                    </select></div>
                   <div class="col-md-2"><label class="form-label">Placa del Vehiculo</label>
                     <input type="text" class="form-control" id="log_placa_trasbordo" placeholder="ABC-123" style="text-transform:uppercase"></div>
                   <div class="col-md-3"><label class="form-label">Dispensacion *</label>
