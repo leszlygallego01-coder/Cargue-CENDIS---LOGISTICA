@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxoo-4_x-s0jvAwLe8PH61SUkqEoD2E4QzDokiFARhsdrvyDOnvv7hFA0vl-nTIY47-/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbw30zgekO9IjU93ww9lrCGS8Lg1sDbEekKAA6is4X3sz5A3q0lO_1OD4gwAE_YZHG_I/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -2168,7 +2168,7 @@ function logGuardarTrasbordo() {
       if (r.archivoUrl) msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">&#128279; Abrir archivo</a>';
       showToast(msg, 'success');
       /* Generar PDF de trasbordo */
-      apiGet({ action: 'generarPDFTrasbordo', folderId: folderId, planilla: planilla, registros: JSON.stringify(registro) })
+      apiPost({ action: 'generarPDFTrasbordo', folderId: folderId, planilla: planilla, registro: JSON.stringify(registro) })
         .then(function (r2) {
           if (r2 && r2.ok && r2.url) {
             window.open(r2.url, '_blank');
