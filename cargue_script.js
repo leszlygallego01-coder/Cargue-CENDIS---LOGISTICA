@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbygjOqjK5lQtuRJOGNCDlY9xfcMhgYBxs5s0ajx0kxVDLT_544pS2aCwcrWufONrLJu/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxoo-4_x-s0jvAwLe8PH61SUkqEoD2E4QzDokiFARhsdrvyDOnvv7hFA0vl-nTIY47-/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -2241,6 +2241,58 @@ function logConsultarDespacho() {
     });
 }
 
+/** v3.8.1: Diagnostico detallado de consultarDespacho */
+function logDiagnosticarDespacho() {
+  var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
+  var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
+  var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
+  var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
+  if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
+
+  showToast('Ejecutando diagnostico...', 'info');
+  apiGet({
+    action: 'diagnosticarDespacho',
+    folderId: folderId,
+    filtroRevisado: filtroRevisado,
+    filtroRuta: filtroRuta,
+    filtroUrgente: filtroUrgente
+  })
+    .then(function (d) {
+      if (!d) { showToast('Sin respuesta del diagnostico.', 'danger'); return; }
+      var resumen = 'DIAGNOSTICO v' + (d.version || '?') + '\n';
+      resumen += 'Carpeta: ' + (d.folderName || '?') + '\n';
+      resumen += 'Fuente A: ' + (d.sourceFileName || '?') + ' (ID: ' + (d.sourceFileId || '?') + ')\n';
+      resumen += 'Hojas: ' + (d.sourceSheets ? d.sourceSheets.join(', ') : '?') + '\n';
+      resumen += 'Filas datos: ' + (d.sourceDataRows || 0) + '\n';
+      resumen += 'Cabeceras: ' + (d.sourceHeaders ? d.sourceHeaders.join(' | ') : '?') + '\n';
+      resumen += 'Col Doc Traslado: ' + (d.docTrasladoCol >= 0 ? 'indice ' + d.docTrasladoCol : 'NO ENCONTRADA') + '\n';
+      resumen += 'Consolidado: ' + (d.consolidadoFileName || 'No encontrado') + '\n';
+      resumen += 'Hojas consol: ' + (d.consolidadoSheets ? d.consolidadoSheets.join(', ') : '?') + '\n';
+      resumen += 'CD filas: ' + (d.controlDespachoDataRows || 0) + '\n';
+      resumen += 'CD col Doc: ' + (d.controlDespachoDocCol >= 0 ? 'indice ' + d.controlDespachoDocCol : 'NO ENCONTRADA') + '\n';
+      resumen += 'Excluidos total: ' + (d.totalExcluidos || 0) + '\n';
+      resumen += 'Coincidencias: ' + (d.exclusionMatches || 0) + '\n';
+      if (d.exclusionSample && d.exclusionSample.length) resumen += 'Muestra: ' + d.exclusionSample.join(', ') + '\n';
+      resumen += 'SIMULACION: Raw=' + (d.registrosRaw || 0) + ', PostExcl=' + (d.registrosPostExclusion || 0) + ', Final=' + (d.registrosPostFiltros || 0) + '\n';
+      resumen += 'Filtros: ' + JSON.stringify(d.filtros || {});
+      if (d.errors && d.errors.length) resumen += '\nERRORES: ' + d.errors.join('; ');
+      // Mostrar en modal
+      var modalBody = document.getElementById('mfModalBody');
+      if (modalBody) {
+        modalBody.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;background:#f8f9fa;padding:12px;border-radius:8px;">' + resumen.replace(/</g, '&lt;') + '</pre>';
+        var modalTitle = document.getElementById('mfModalLabel');
+        if (modalTitle) modalTitle.textContent = 'Diagnostico consultarDespacho';
+        var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('mfModal'));
+        modal.show();
+      } else {
+        showToast(resumen, 'info');
+      }
+    })
+    .catch(function (err) {
+      showToast('Error en diagnostico: ' + err.message, 'danger');
+    });
+}
+
 /**
  * logGuardarYDescargar — Funcion combinada que primero guarda en Drive
  * (archivo consolidado) y luego genera el PDF de la planilla.
@@ -2604,6 +2656,7 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('log_btnConsultar'); if (btn) btn.addEventListener('click', logConsultarDespacho);
   btn = $('log_btnCombinado'); if (btn) btn.addEventListener('click', logGuardarYDescargar);
   btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
+  btn = $('log_btnDiagnostico'); if (btn) btn.addEventListener('click', logDiagnosticarDespacho);
   btn = $('log_btnBuscarPlanilla'); if (btn) btn.addEventListener('click', logBuscarPlanilla);
   btn = $('log_btnGuardarTrasbordo'); if (btn) btn.addEventListener('click', logGuardarTrasbordo);
   btn = $('log_btnLimpiarTrasbordo'); if (btn) btn.addEventListener('click', logLimpiarTrasbordo);
