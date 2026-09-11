@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbySX5Tqlm5zvXSJg_7ejf0fxNuH0C9pJcKG54dHMT6bkaunQJTMtfMwlNe5vvt4i1Mp/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxJdi1RPTEXVuoAa8wWEGp4vZ1qnSK78pMWIgJob8nZZw4GaJHgwjVTieiRCA-ut8d1/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -309,7 +309,13 @@ var CREDENCIALES = {
   log_diego: 'Medis2024DiegoL',
   log_angelica: 'Medis2024AngelicaL',
   log_lorena: 'Medis2024LorenaL',
-  log_jenny: 'Medis2024JennyL'
+  log_jenny: 'Medis2024JennyL',
+  jose_santiago: 'Medis2024JoseS',
+  yuliana: 'Medis2024Yuliana',
+  luisa_fernanda: 'Medis2024LuisaF',
+  nedi_yojana: 'Medis2024NediY',
+  beatriz_eugenia: 'Medis2024BeatrizE',
+  mery_yolanda: 'Medis2024MeryY'
 };
 
 /* Nombres de los 38 auxiliares individuales (32 CEDIS + 6 B09) */
@@ -328,6 +334,12 @@ var LABELS_PERFIL = {
   log_angelica: '&#128666; Angelica (Logistica CENDIS)',
   log_lorena: '&#128666; Lorena (Logistica CENDIS)',
   log_jenny: '&#128666; Jenny (Logistica CENDIS)',
+  jose_santiago: '&#128119; Jose Santiago (Auxiliar B09)',
+  yuliana: '&#128119; Yuliana (Auxiliar B09)',
+  luisa_fernanda: '&#128119; Luisa Fernanda (Auxiliar B09)',
+  nedi_yojana: '&#128119; Nedi Yojana (Auxiliar B09)',
+  beatriz_eugenia: '&#128119; Beatriz Eugenia (Auxiliar B09)',
+  mery_yolanda: '&#128119; Mery Yolanda (Auxiliar B09)',
   auxiliar: '&#128119; AUXILIAR'
 };
 
@@ -338,6 +350,12 @@ var PERFILES = {
   log_angelica:            { label: 'Angelica Logistica CENDIS', tarjetas: ['t4'] },
   log_lorena:              { label: 'Lorena Logistica CENDIS', tarjetas: ['t4'] },
   log_jenny:               { label: 'Jenny Logistica CENDIS',  tarjetas: ['t4'] },
+  jose_santiago:           { label: 'Jose Santiago Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
+  yuliana:                 { label: 'Yuliana Auxiliar B09',     tarjetas: ['t1','t2','t3','t4'] },
+  luisa_fernanda:          { label: 'Luisa Fernanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
+  nedi_yojana:             { label: 'Nedi Yojana Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
+  beatriz_eugenia:         { label: 'Beatriz Eugenia Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
+  mery_yolanda:            { label: 'Mery Yolanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   auxiliar:                { label: 'Auxiliar',                 tarjetas: ['t1','t2','t3'] }
 };
 
@@ -397,7 +415,9 @@ function nombreUsuario() {
 
 function aplicarPerfil() {
   var perfil = perfilActivo();
-  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0) perfil = 'auxiliar';
+  /* B09 users keep their own profile (t1-t4); other auxiliares map to generic 'auxiliar' */
+  var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
+  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0) perfil = 'auxiliar';
   var def = PERFILES[perfil] || PERFILES.administrador;
   var visibles = def.tarjetas;
   var todas = ['t1','t2','t3','t4','t5','t6'];
@@ -436,7 +456,8 @@ function pintarPerfiles() {
   var info = $('perfilesUsuarioInfo');
   if (info) {
     var perfil = perfilActivo();
-    var real = AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 ? 'auxiliar' : perfil;
+    var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
+    var real = (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0) ? 'auxiliar' : perfil;
     var def = PERFILES[real] || PERFILES.administrador;
     var h = '<strong>Perfil activo:</strong> ' + (LABELS_PERFIL[real] || perfil) + '<br>';
     h += '<strong>Tarjetas visibles:</strong> ' + def.tarjetas.join(', ') + '<br>';
@@ -876,8 +897,24 @@ function t3AplicarRotacionA() {
   var grupoSelect = $('t3a_grupo_asignado');
   var esB05AltoCosto = bodega.toUpperCase().indexOf('B05 ALTO COSTO') >= 0;
   var esCendis = bodega.toUpperCase().indexOf('CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL') >= 0;
+  var esB09 = bodega.toUpperCase().indexOf('B09') >= 0;
 
-  if (esB05AltoCosto) {
+  if (esB09) {
+    // ── Grupo B09 — preseleccionar primer grupo B09 disponible ──
+    var gruposB09 = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre.indexOf('B09') >= 0; });
+    if (gruposB09.length && grupoSelect) {
+      var grupoB09 = gruposB09[0]; // B09-1 por defecto
+      for (var ib = 0; ib < grupoSelect.options.length; ib++) {
+        if (grupoSelect.options[ib].value.indexOf('B09-1') >= 0) {
+          grupoSelect.selectedIndex = ib;
+          grupoSelect.style.borderColor = grupoB09.hex;
+          grupoSelect.style.color = grupoB09.hex;
+          grupoSelect.style.fontWeight = 'bold';
+          break;
+        }
+      }
+    }
+  } else if (esB05AltoCosto) {
     // ── Grupo Especial Gris (8) — UNA persona aleatoria del grupo ──
     var grupoGris = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === 'Gris'; })[0];
     if (grupoGris) {
@@ -982,7 +1019,13 @@ var GRUPOS_FIJOS_CARGUE = [
   { nombre: 'Morado',  numero: 5, hex: '#6f42c1', miembros: ['Jhony Saenz', 'Natalia Galvez', 'Valentina Cano'] },
   { nombre: 'Amarillo',numero: 6, hex: '#ffc107', miembros: ['Liz Karime Valencia', 'Angela Vanessa Aguirre', 'Derly Yulieth Mosquera'] },
   { nombre: 'Fucsia',  numero: 7, hex: '#FF00FF', miembros: ['Manuel David Salazar', 'Luz Nelly Chaves', 'Luis Felipe Marin'], lider: 'Luz Nelly Chaves' },
-  { nombre: 'Gris',    numero: 8, hex: '#6c757d', miembros: ['Claudia Echeverry', 'Camila Posada', 'Angela Vera', 'Mayra Alejandra Franco', 'Andrea Vanegas'], lider: 'Andrea Vanegas' }
+  { nombre: 'Gris',    numero: 8, hex: '#6c757d', miembros: ['Claudia Echeverry', 'Camila Posada', 'Angela Vera', 'Mayra Alejandra Franco', 'Andrea Vanegas'], lider: 'Andrea Vanegas' },
+  { nombre: 'B09-1', numero: 9, hex: '#17a2b8', miembros: ['Jose Santiago Ramirez Obando'], lider: 'Jose Santiago Ramirez Obando' },
+  { nombre: 'B09-2', numero: 10, hex: '#e83e8c', miembros: ['Yuliana Andrea Quira Manquillo'], lider: 'Yuliana Andrea Quira Manquillo' },
+  { nombre: 'B09-3', numero: 11, hex: '#20c997', miembros: ['Luisa Fernanda Garcia Orozco'], lider: 'Luisa Fernanda Garcia Orozco' },
+  { nombre: 'B09-4', numero: 12, hex: '#fd7e14', miembros: ['Nedi Yojana Zamora Yandi'], lider: 'Nedi Yojana Zamora Yandi' },
+  { nombre: 'B09-5', numero: 13, hex: '#6f42c1', miembros: ['Beatriz Eugenia Urbano Botina'], lider: 'Beatriz Eugenia Urbano Botina' },
+  { nombre: 'B09-6', numero: 14, hex: '#343a40', miembros: ['Mery Yolanda Cadavid Bermudez'], lider: 'Mery Yolanda Cadavid Bermudez' }
 ];
 
 /* ── Listener de cambio en Grupo Asignado — colorea el select al cambiar manualmente ── */
@@ -1007,7 +1050,7 @@ var GRUPOS_FIJOS_CARGUE = [
 function autoAsignarGrupoAleatorio() {
   var gs = $('t3a_grupo_asignado');
   if (!gs) return;
-  // Elegir grupo aleatorio entre 1 y 8 (incluyendo Gris)
+  // Elegir grupo aleatorio entre 1 y 8 (grupos CEDIS, no B09 individuales por defecto)
   var numGrupo = 1 + Math.floor(Math.random() * 8);
   var grupoInfo = null;
   for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
@@ -1851,7 +1894,7 @@ function logLimpiar() {
 /** Poblar select de Conductor (y cualquier otro select de conductores) */
 function poblarConductores() {
   var conductores = CONFIG.conductores || [];
-  var selects = document.querySelectorAll('select[data-conductores], #log_conductor, #t3b_conductor');
+  var selects = document.querySelectorAll('select[data-conductores], #log_conductor, #t3b_conductor, #log_conductor_trasbordo');
   for (var si = 0; si < selects.length; si++) {
     var sel = selects[si];
     if (!sel) continue;
@@ -2011,6 +2054,25 @@ function logGenerarConsecutivo() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
+   logVerificarPlanillaDuplicada - Verifica si una planilla ya existe (despacho O trasbordo)
+   Retorna Promise que resuelve { duplicado: true/false, mensaje: '...' }
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function logVerificarPlanillaDuplicada(numeroPlanilla, folderId) {
+  if (!numeroPlanilla) return Promise.resolve({ duplicado: false });
+  var fid = folderId || (CONFIG.folders ? CONFIG.folders.logistica : '');
+  return apiGet({ action: 'verificarPlanillaDuplicada', numeroPlanilla: numeroPlanilla, folderId: fid })
+    .then(function (r) {
+      if (r && r.ok && r.duplicado) {
+        return { duplicado: true, mensaje: r.mensaje || 'Planilla duplicada' };
+      }
+      return { duplicado: false };
+    })
+    .catch(function () {
+      return { duplicado: false }; // Si falla la verificacion, no bloquear
+    });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
    logGuardarTrasbordo - Guarda un registro de trasbordo en Drive
    ═════════════════════════════════════════════════════════════════════════════════ */
 function logGuardarTrasbordo() {
@@ -2050,10 +2112,16 @@ function logGuardarTrasbordo() {
     promesa = logGenerarConsecutivo().then(function (cons) {
       if (!cons) return null;
       planilla = cons;
-      return apiPost({ action: 'guardarTrasbordo', folderId: folderId, planilla: planilla, registro: registro });
+      return logVerificarPlanillaDuplicada(planilla, folderId).then(function (verif) {
+        if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return null; }
+        return apiPost({ action: 'guardarTrasbordo', folderId: folderId, planilla: planilla, registro: registro });
+      });
     });
   } else {
-    promesa = apiPost({ action: 'guardarTrasbordo', folderId: folderId, planilla: planilla, registro: registro });
+    promesa = logVerificarPlanillaDuplicada(planilla, folderId).then(function (verif) {
+      if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return null; }
+      return apiPost({ action: 'guardarTrasbordo', folderId: folderId, planilla: planilla, registro: registro });
+    });
   }
 
   promesa.then(function (r) {
@@ -2155,11 +2223,20 @@ function logGuardarYDescargar() {
   /* Si no hay planilla, generar consecutivo automaticamente */
   if (!planilla) {
     logGenerarConsecutivo().then(function (cons) {
-      if (cons) logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados);
+      if (cons) {
+        logVerificarPlanillaDuplicada(cons, folderId).then(function (verif) {
+          if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
+          logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados);
+        });
+      }
     });
     return;
   }
-  logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados);
+  /* v3.8: Verificar planilla duplicada (despacho + trasbordo) antes de guardar */
+  logVerificarPlanillaDuplicada(planilla, folderId).then(function (verif) {
+    if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
+    logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados);
+  });
 }
 
 /* Ejecucion real del guardado y descarga */
