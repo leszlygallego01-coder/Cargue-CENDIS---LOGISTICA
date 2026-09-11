@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyXpRg4VWps1HFEYcVfInb_DYxI9700AAIS7s__QHNzoMP7ZoLYcZ7M6-mH6cC3CE7Y/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxQueXJ02uQ3KJxROdrkq6fF0x6HDKVLOiFZrEW3_Y02724ZyeGOMFyyd5bEA6e-4iL/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1948,7 +1948,7 @@ function poblarConductores() {
   }
 }
 
-/* ── v3.8.6: Poblar selects de Bodega Origen (soporte multi-select) ── */
+/* ── v3.8.7: Poblar selects de Bodega Origen (soporte multi-select) ── */
 function poblarBodegas() {
   var bodegas = CONFIG.bodegas || [];
   if (!bodegas.length) {
@@ -2060,53 +2060,6 @@ function logBuscarPlanilla() {
 /* ═════════════════════════════════════════════════════════════════════════════════
    logCargarTablaDespacho - Renderiza la tabla de despacho con modo solo lectura
    ═════════════════════════════════════════════════════════════════════════════════ */
-/* ═════════════════════════════════════════════════════════════════════════════════
-   logBuscarDocumento - v3.8.6 Busca un traslado por Documento Traslado en Seccion 2
-   Soporta numero completo o ultimos 5 digitos (endsWith), replicando Seccion 1
-   ═════════════════════════════════════════════════════════════════════════════════ */
-function logBuscarDocumento() {
-  var traslado = $('log_buscar_documento') ? $('log_buscar_documento').value.trim() : '';
-  if (!traslado) { showToast('Ingrese el numero de Documento Traslado (completo o ultimos 5 digitos).', 'danger'); return; }
-  var estadoEl = $('log_buscar_documento_estado');
-  if (estadoEl) estadoEl.innerHTML = '<span class="badge bg-warning text-dark">Buscando traslado...</span>';
-
-  /* Usar el mismo flujo que Seccion 1: buscarTraslado en carpeta de trasladosConsulta */
-  var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
-  var folderConsulta = CONFIG.folders.trasladosConsulta || folderId;
-
-  apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: traslado })
-    .then(function (r) {
-      if (r && r.encontrado) {
-        /* Multiples coincidencias */
-        if (r.multiple && r.registros && r.registros.length > 1) {
-          if (estadoEl) estadoEl.innerHTML = '<span class="badge bg-warning text-dark">' + r.registros.length + ' coincidencias</span>';
-          logMostrarSelectorMultiples(r.registros, traslado);
-          return;
-        }
-        /* Coincidencia unica */
-        var reg = r.registro || (r.registros ? r.registros[0] : null);
-        if (reg) {
-          var trasladoCompleto = reg['Traslado'] || reg['Documento'] || reg['Documento Traslado'] || reg['Numero Traslado'] || traslado;
-          if (estadoEl) estadoEl.innerHTML = '<span class="badge bg-success">&#9989; Encontrado: ' + trasladoCompleto + '</span>';
-          /* Llenar campos de Seccion 1 si estan visibles */
-          logLlenarCamposTraslado(reg, traslado, $('log_estadoTraslado'));
-          showToast('Traslado ' + trasladoCompleto + ' encontrado.', 'success');
-        } else {
-          if (estadoEl) estadoEl.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-          showToast('Traslado no encontrado.', 'danger');
-        }
-      } else {
-        if (estadoEl) estadoEl.innerHTML = '<span class="badge bg-danger">&#10060; No encontrado</span>';
-        var msg = (r && r.mensaje) ? r.mensaje : 'Traslado no encontrado en la base de datos.';
-        showToast(msg, 'danger');
-      }
-    })
-    .catch(function (err) {
-      if (estadoEl) estadoEl.innerHTML = '<span class="badge bg-danger">Error</span>';
-      showToast('Error al buscar traslado: ' + err.message, 'danger');
-    });
-}
-
 function logCargarTablaDespacho(registros, soloLectura) {
   var tbody = $('log_tabla_body');
   if (!tbody) return;
@@ -2313,7 +2266,7 @@ function logConsultarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
   var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
-  /* v3.8.6: Multi-select Bodega Origen — read array from Tom Select */
+  /* v3.8.7: Multi-select Bodega Origen — read array from Tom Select */
   var filtroBodegaOrigen = '';
   var boEl = $('log_filtro_bodega_origen');
   if (boEl && boEl.tomselect) {
@@ -2787,7 +2740,7 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('log_btnDiagnostico'); if (btn) btn.addEventListener('click', logDiagnosticarDespacho);
   btn = $('log_btnBuscarPlanilla'); if (btn) btn.addEventListener('click', logBuscarPlanilla);
   /* v3.8.6: Buscar por Documento Traslado en Seccion 2 */
-  btn = $('log_btnBuscarDocumento'); if (btn) btn.addEventListener('click', logBuscarDocumento);
+  /* v3.8.7: Buscador de traslado en Trasbordo removido — no aplica para este flujo */
   btn = $('log_btnGuardarTrasbordo'); if (btn) btn.addEventListener('click', logGuardarTrasbordo);
   btn = $('log_btnLimpiarTrasbordo'); if (btn) btn.addEventListener('click', logLimpiarTrasbordo);
   /* Radio tipo operacion */
