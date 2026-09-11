@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxU31XIu8YeuUOlb2Zw2rJVq36ENlzTu7evB4Q64_r_Wu5pkqqgrsJ1dUTReKj2IbFR/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbx6u6FCFdbKKFiUVvwCRKamAEWG54kZSgCyPJbzYtD09i8xMCDn53IZtRGoLx4m7xUA/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -298,7 +298,8 @@ var CONFIG_DEFAULT = {
     rotacion:    { file: 'BD_ROTACION_DIARIA',            sheet: 'DATOS' },
     entrega:     { fileId: '1xC5Nj2VMNgh6N5XIfMTN-aJ2i8nQExANAEhgthWRNpU', sheet: 'DATOS', gid: 1372653954 }
   },
-  conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS', 'EDINSON JAIR SANCHEZ', 'ELKIN MAZABUEL', 'ALEX YAIRO ANGUCHO', 'BRAYANT TUMINA', 'JOSE LUIS GIRALDO', 'MARVIN URRUTIA', 'ALEXANDER OSORIO', 'SEBASTIAN MORENO', 'SEBASTIAN BOHORQUEZ', 'YEISON CORRALES', 'JOHN ALEXANDER GUTIERREZ', 'HENRY CORONADO', 'MARCOS MEJIA', 'JULIO MERCADO', 'JULIAN CHAVEZ', 'SANTIAGO MANZANO MEXT', 'DIEGO JARAMILLO MEXT', 'JULIAN GONZALEZ', 'EDITH RIVERA MEXT', 'SEBASTIAN MORALES', 'JESSICA ROLON', 'JENNY SIN INFORMACION CONDUCTOR', 'JORGE JARAMILLO CONDUCTOR EXTERNO', 'RUBEN ELIECER GRISALES CONDUCTOR EXTERNO', 'JUAN DIEGO GARCIA EXT', 'ANULADO', 'SUPERVISORES REVISAR', 'DEIBI ESPITIA EXT', 'GELVER MARIN GRANDA', 'ELKIN DUQUE EXT', 'JOHN RUEDA', 'BRYAN CIFUENTES']
+  conductores: ['DIEGO CASTELLANOS', 'WILFER PEREZ', 'JEFFERSON DAZA', 'CARLOS RINCON', 'JORGE CACERES', 'JHONATAN BUSTOS', 'EDINSON JAIR SANCHEZ', 'ELKIN MAZABUEL', 'ALEX YAIRO ANGUCHO', 'BRAYANT TUMINA', 'JOSE LUIS GIRALDO', 'MARVIN URRUTIA', 'ALEXANDER OSORIO', 'SEBASTIAN MORENO', 'SEBASTIAN BOHORQUEZ', 'YEISON CORRALES', 'JOHN ALEXANDER GUTIERREZ', 'HENRY CORONADO', 'MARCOS MEJIA', 'JULIO MERCADO', 'JULIAN CHAVEZ', 'SANTIAGO MANZANO MEXT', 'DIEGO JARAMILLO MEXT', 'JULIAN GONZALEZ', 'EDITH RIVERA MEXT', 'SEBASTIAN MORALES', 'JESSICA ROLON', 'JENNY SIN INFORMACION CONDUCTOR', 'JORGE JARAMILLO CONDUCTOR EXTERNO', 'RUBEN ELIECER GRISALES CONDUCTOR EXTERNO', 'JUAN DIEGO GARCIA EXT', 'ANULADO', 'SUPERVISORES REVISAR', 'DEIBI ESPITIA EXT', 'GELVER MARIN GRANDA', 'ELKIN DUQUE EXT', 'JOHN RUEDA', 'BRYAN CIFUENTES'],
+  bodegas: ['02M FLORENCIA CAQUETA', '35 YOPAL CASANARE', 'B05 ALTO COSTO', 'B10 BODEGA BOGOTA', 'B9 POPAYAN PARQUE CALDAS', 'BOD. 80 FACTURACION', 'BOD. N11 MEDISFARMA', 'BOD. N40 BOGOTA MEDIFARMA', 'CASOS JURIDICOS', 'CENDIS PRINCIPAL TULUA', 'EXTERNA', 'M03 NEIVA HUILA', 'M07 UBATE CUNDINAMARCA', 'M100 TUMACO NARIÑO', 'M102 IPIALES NARIÑO', 'M103 SANDONA NARIÑO', 'M104 LEIVA NARIÑO', 'M107 BELEN DE UMBRIA', 'M108 DOSQUEBRADAS RISARALDA', 'M111 PUERTO TEJADA CAUCA', 'M112 BOLIVAR CAUCA', 'M116 TIMBIQUI CAUCA', 'M117 EL BORDO CAUCA', 'M118 MERCADERES CAUCA', 'M119 CORINTO CAUCA', 'M120 ROSAS CAUCA', 'M123 MONIQUIRA BOYACA', 'M124 CARTAGENA DEL CHAIRA', 'M125 SAN VICENTE DEL CAGUAN', 'M126 PUERTO RICO CAQUETA', 'M130 EL DONCELLO CAQUETA', 'M133 SAN JOSE DE FRAGUA', 'M137 BALBOA CAUCA', 'M138 BUENOS AIRES CAUCA', 'M139 BUENOS AIRES - SANO', 'M140 CAJIBIO CAUCA', 'M141 CAJIBIO ROSARIO CAUCA', 'M143 INZA CAUCA', 'M144 VEGA CAUCA', 'M145 LA VEGA - SAN MIGUEL', 'M146 LOPEZ DE MICAY', 'M147 MIRANDA CAUCA', 'M148 MORALES CAUCA', 'M149 PADILLA CAUCA', 'M15 IBAGUE TOLIMA', 'M151 PIENDAMO CAUCA', 'M152 POPAYAN CAUCA', 'M153 PURACE COCONUCO', 'M154 PURACE SANTA ISABEL', 'M155 ROSAS CAUCA (OTROS)', 'M156 SANTANDER QUILICHAO', 'M157 SUAREZ CAUCA', 'M158 SUCRE CAUCA', 'M159 TIMBIO CAUCA', 'M16 MEDELLIN ANTIOQUIA', 'M160 ALVARADO TOLIMA', 'M161 AMBALEMA TOLIMA', 'M162 ANZOATEGUI TOLIMA', 'M163 ARMERO TOLIMA', 'M164 ATACO TOLIMA', 'M165 CAJAMARCA TOLIMA', 'M166 CARMEN DE APICALA', 'M167 CASABIANCA TOLIMA', 'M168 CHAPARRAL TOLIMA', 'M169 COYAIMA TOLIMA', 'M17 ALVERNIA VALLE DEL CAUCA', 'M170 CUNDAY TOLIMA', 'M171 GUAMO TOLIMA', 'M172 HONDA TOLIMA', 'M173 ICONONZO TOLIMA', 'M174 LERIDA TOLIMA', 'M175 LIBANO TOLIMA', 'M176 MARIQUITA TOLIMA', 'M177 PALOCABILDO TOLIMA', 'M178 PRADO TOLIMA', 'M179 PURIFICACION TOLIMA', 'M18 BUENAVENTURA VALLE', 'M180 RIOBLANCO TOLIMA', 'M181 ROVIRA TOLIMA', 'M182 SAN ANTONIO TOLIMA', 'M183 VILLAHERMOSA TOLIMA', 'M184 EL TAMBO CAUCA', 'M185 SAN AGUSTIN HUILA', 'M188 PAEZ CAUCA', 'M189 CALDONO CAUCA', 'M190 ALMAGUER CAUCA', 'M193 FLORENCIA CAUCA', 'M194 GUACHENE CAUCA', 'M195 LA SIERRA CAUCA', 'M197 PUERTO TEJADA CAUCA', 'M20 JAMUNDI VALLE DEL CAUCA', 'M209 LA VIRGINIA RISARALDA', 'M21 CARTAGO VALLE DEL CAUCA', 'M210 GUATICA RISARALDA', 'M211 QUINCHIA RISARALDA', 'M212 PUEBLO RICO RISARALDA', 'M213 CALI VALLE DEL CAUCA', 'M214 PEREIRA CUBA RISARALDA', 'M217 TULUA E.D VALLE', 'M218 SAN SEBASTIAN CAUCA', 'M219 POPAYAN PARQUE CALDAS', 'M220 POPAYAN CAUCA', 'M223 CALI VALLE DEL CAUCA', 'M225 BUGA VALLE DEL CAUCA', 'M235 POPAYAN CAUCA', 'M239 PARATEBUENO CUNDINAMARCA', 'M240 SAN JUAN DEL CESAR', 'M241 FONSECA GUAJIRA', 'M243 BOD. NUEVA EPS', 'M244 TOCANCIPA CUNDINAMARCA', 'M245 BUCARAMANGA', 'M249 PALMIRA VALLE DEL CAUCA', 'M251 ANAPOIMA CUNDINAMARCA', 'M253 PURACE CAUCA', 'M257 PEREIRA PINARES', 'M259 FUSAGASUGA CUNDINAMARCA', 'M260 LA MESA CUNDINAMARCA', 'M266 PEREIRA RISARALDA', 'M267 PEREIRA GARZAS RISARALDA', 'M268 URIBIA LA GUAJIRA', 'M27 PALMIRA VALLE DEL CAUCA', 'M270 SANTA ROSA CAUCA', 'M283 DUITAMA BOYACA', 'M286 CHIQUINQUIRA BOYACA', 'M29 FLORIDA VALLE DEL CAUCA', 'M291 LA HERRADURA BOYACA', 'M292 GARAGOA BOYACA', 'M305 VILLETA CUNDINAMARCA', 'M306 GUADUAS CUNDINAMARCA', 'M307 RICAURTE CUNDINAMARCA', 'M308 BOJACA CUNDINAMARCA', 'M309 TENJO CUNDINAMARCA', 'M31 SAN VICENTE TULUA', 'M310 VILLA DE LEYVA BOYACA', 'M311 GUICAN BOYACA', 'M313 MIRAFLORES MIRANDA', 'M314 GUATEQUE GUAJIRA', 'M32 PASTO NARIÑO', 'M33 CALI VALLE DEL CAUCA', 'M337 CARTAGENA DE INDIAS', 'M34 TUNJA BOYACA', 'M42 PEREIRA RISARALDA', 'M43 MANIZALES CALDAS', 'M46 ARMENIA QUINDIO', 'M61 PASTO NARIÑO', 'M65 SOATA BOYACA', 'M73 SOGAMOSO BOYACA', 'M75 RIOHACHA GUAJIRA', 'M76 PUERTO BOYACA', 'M77 SILVIA CAUCA', 'M78 PIENDAMO CAUCA', 'M79 CALOTO CAUCA', 'M82 SANTANDER QUILICHAO', 'M84 POPAYAN CAUCA', 'M85 POPAYAN CAUCA', 'M87 YUMBO VALLE DEL CAUCA', 'M88 GUACARI VALLE DEL CAUCA', 'M89 GINEBRA VALLE DEL CAUCA', 'M90 CERRITO VALLE DEL CAUCA', 'M91 CALIMA VALLE DEL CAUCA', 'M92 CANDELARIA VALLE DEL CAUCA', 'M93 PRADERA VALLE DEL CAUCA', 'M94 CALI VALLE DEL CAUCA', 'M95 POPAYAN CAUCA', 'M96 SANTANDER CAUCA', 'N31 MDF. SURTIDROGAS', 'SM226 ORTEGA TOLIMA', 'SM256 MANAURE GUAJIRA', 'SM299 MAICAO GUAJIRA', 'SM300 BARRANCAS GUAJIRA', 'SM301 HATONUEVO GUAJIRA', 'SM302 VILLANUEVA GUAJIRA', 'SM303 URUMITA GUAJIRA', 'SM304 DIBULLA GUAJIRA', 'ST07 MDF. POPAYAN SUR', 'ST28 BODEGA LOGISTICA', 'URG01 MDF. URGENCIA']
 };
 
 /* ═════════════════════════════════════════════════════════════════════════════════
@@ -1947,6 +1948,56 @@ function poblarConductores() {
   }
 }
 
+/* ── v3.8.5: Poblar selects de Bodega Origen ── */
+function poblarBodegas() {
+  var bodegas = CONFIG.bodegas || [];
+  if (!bodegas.length) {
+    bodegas = (typeof CONFIG_DEFAULT !== 'undefined' && CONFIG_DEFAULT.bodegas) ? CONFIG_DEFAULT.bodegas.slice() : [];
+  }
+  if (!bodegas.length) return;
+  var selects = document.querySelectorAll('select[data-bodegas], #log_bodega_origen_despacho, #log_bodega_origen_trasbordo, #log_filtro_bodega_origen');
+  for (var si = 0; si < selects.length; si++) {
+    var sel = selects[si];
+    if (!sel) continue;
+    // Verificar si necesita repoblado
+    var needsRepopulate = false;
+    if (sel.options.length <= 1) {
+      needsRepopulate = true;
+    } else if (sel.options.length !== bodegas.length + 1) {
+      needsRepopulate = true;
+    } else {
+      if (String(sel.options[sel.options.length - 1].value || '') !== String(bodegas[bodegas.length - 1] || '')) {
+        needsRepopulate = true;
+      }
+    }
+    if (!needsRepopulate) continue;
+
+    var placeholderText = 'Seleccione...';
+    if (sel.id === 'log_filtro_bodega_origen') {
+      placeholderText = 'Todas las bodegas';
+    } else if (sel.options.length > 0 && sel.options[0].value === '') {
+      placeholderText = sel.options[0].textContent || 'Seleccione...';
+    }
+    sel.innerHTML = '';
+    var phOpt = document.createElement('option');
+    phOpt.value = '';
+    phOpt.textContent = placeholderText;
+    sel.appendChild(phOpt);
+    for (var bi = 0; bi < bodegas.length; bi++) {
+      var opt = document.createElement('option');
+      opt.value = bodegas[bi];
+      opt.textContent = bodegas[bi];
+      sel.appendChild(opt);
+    }
+    // Sincronizar Tom Select si existe
+    if (sel.tomselect) {
+      sel.tomselect.clearOptions();
+      sel.tomselect.addOption([{value: '', text: placeholderText}].concat(bodegas.map(function(b){ return {value: b, text: b}; })));
+      sel.tomselect.setValue('');
+    }
+  }
+}
+
 /* ── Toggle tipo de operacion DESPACHO / TRASBORDO ── */
 function toggleTipoOperacion() {
   var rads = document.querySelectorAll('input[name="log_tipo_operacion"]');
@@ -1957,7 +2008,8 @@ function toggleTipoOperacion() {
   if (despPanel) despPanel.style.display = (val === 'DESPACHO') ? '' : 'none';
   if (trasPanel) trasPanel.style.display = (val === 'TRASBORDO') ? '' : 'none';
   /* Poblar conductores en trasbordo si no estan */
-  if (val === 'TRASBORDO') poblarConductores();
+  if (val === 'TRASBORDO') { poblarConductores(); poblarBodegas(); }
+  if (val === 'DESPACHO') poblarBodegas();
 }
 
 /* ── Toggle temperatura en trasbordo cuando Tipo Carga = NEVERA ── */
@@ -2117,7 +2169,7 @@ function logGuardarTrasbordo() {
   var conductor = $('log_conductor_trasbordo') ? $('log_conductor_trasbordo').value : '';
   if (!conductor) { showToast('Ingrese el nombre del Conductor.', 'danger'); return; }
   var bodegaOrigenTrasbordo = $('log_bodega_origen_trasbordo') ? $('log_bodega_origen_trasbordo').value.trim() : '';
-  if (!bodegaOrigenTrasbordo) { showToast('Ingrese la Bodega Origen.', 'danger'); return; }
+  if (!bodegaOrigenTrasbordo) { showToast('Seleccione la Bodega Origen.', 'danger'); return; }
   var dispensacion = $('log_dispensacion_trasbordo') ? $('log_dispensacion_trasbordo').value.trim() : '';
   if (!dispensacion) { showToast('Ingrese el numero de Dispensacion.', 'danger'); return; }
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
@@ -2194,7 +2246,13 @@ function logLimpiarTrasbordo() {
     'log_ciudad_trasbordo','log_unidades_trasbordo','log_temperatura_trasbordo','log_obs_trasbordo'];
   for (var i = 0; i < campos.length; i++) {
     var el = $(campos[i]);
-    if (el) el.value = '';
+    if (!el) continue;
+    if (el.tagName === 'SELECT') {
+      el.selectedIndex = 0;
+      if (el.tomselect) el.tomselect.setValue('');
+    } else {
+      el.value = '';
+    }
   }
   var sel = $('log_tipo_carga_trasbordo'); if (sel) sel.selectedIndex = 0;
   var tempRow = $('log_temp_trasbordo_row'); if (tempRow) tempRow.style.display = 'none';
@@ -2204,12 +2262,14 @@ function logConsultarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
   var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
+  var filtroBodegaOrigen = $('log_filtro_bodega_origen') ? $('log_filtro_bodega_origen').value : '';
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
-  /* Poblar select de Conductor */
+  /* Poblar selects de Conductor y Bodega */
   poblarConductores();
+  poblarBodegas();
 
   var consultaEstado = $('log_consulta_estado');
   if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-warning text-dark">Consultando...</span>';
@@ -2224,7 +2284,8 @@ function logConsultarDespacho() {
     modulo: 'logistica',
     filtroRevisado: filtroRevisado,
     filtroRuta: filtroRuta,
-    filtroUrgente: filtroUrgente
+    filtroUrgente: filtroUrgente,
+    filtroBodegaOrigen: filtroBodegaOrigen
   })
     .then(function (r) {
       if (r && r.ok && r.registros && r.registros.length > 0) {
@@ -2305,7 +2366,7 @@ function logGuardarYDescargar() {
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
   if (!conductor) { showToast('Ingrese el nombre del Conductor.', 'danger'); return; }
   var bodegaOrigenDespacho = $('log_bodega_origen_despacho') ? $('log_bodega_origen_despacho').value.trim() : '';
-  if (!bodegaOrigenDespacho) { showToast('Ingrese la Bodega Origen.', 'danger'); return; }
+  if (!bodegaOrigenDespacho) { showToast('Seleccione la Bodega Origen.', 'danger'); return; }
   var placa = $('log_placa') ? $('log_placa').value.trim().toUpperCase() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
@@ -2442,7 +2503,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
             if (btnComb) btnComb.disabled = true;
             if ($('log_planilla')) $('log_planilla').value = '';
             if ($('log_conductor')) $('log_conductor').value = '';
-            if ($('log_bodega_origen_despacho')) $('log_bodega_origen_despacho').value = '';
+            if ($('log_bodega_origen_despacho')) { $('log_bodega_origen_despacho').selectedIndex = 0; if ($('log_bodega_origen_despacho').tomselect) $('log_bodega_origen_despacho').tomselect.setValue(''); }
             if ($('log_placa')) $('log_placa').value = '';
             if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
           })
@@ -2623,6 +2684,7 @@ function generarBackup() {
 document.addEventListener('DOMContentLoaded', function () {
   cargarConfig();
   poblarConductores();
+  poblarBodegas();
   aplicarPerfil();
 
   // Botones de tarjeta
