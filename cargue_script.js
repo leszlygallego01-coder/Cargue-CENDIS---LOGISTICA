@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzXe7keHgysEgCLs9Nw2A0SmVuZ7bfBPkh8y91uO0vQ0UMGx9tqONUu4vMh0ndKmRTp/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbygjOqjK5lQtuRJOGNCDlY9xfcMhgYBxs5s0ajx0kxVDLT_544pS2aCwcrWufONrLJu/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1891,20 +1891,58 @@ function logLimpiar() {
 
 /* ════════════ SECCION 2: DESPACHO Y ASIGNACION DE PLANILLA ════════════ */
 
-/** Poblar select de Conductor (y cualquier otro select de conductores) */
+/** Poblar select de Conductor (y cualquier otro select de conductores)
+ *  v3.8.1 FIX: Siempre repoblar (remover opciones previas) para evitar dropdowns vacios.
+ */
 function poblarConductores() {
   var conductores = CONFIG.conductores || [];
+  if (!conductores.length) {
+    // Fallback: usar lista por defecto si CONFIG no tiene conductores
+    conductores = (typeof CONFIG_DEFAULT !== 'undefined' && CONFIG_DEFAULT.conductores) ? CONFIG_DEFAULT.conductores.slice() : [];
+  }
+  if (!conductores.length) return; // Nada que poblar
   var selects = document.querySelectorAll('select[data-conductores], #log_conductor, #t3b_conductor, #log_conductor_trasbordo');
   for (var si = 0; si < selects.length; si++) {
     var sel = selects[si];
     if (!sel) continue;
-    // Evitar duplicar: si ya tiene opciones besides placeholder, skip
-    if (sel.options.length > 1) continue;
+    // Cortocircuito: si ya tiene las opciones correctas, no repoblar
+    var needsRepopulate = false;
+    if (sel.options.length <= 1) {
+      needsRepopulate = true; // Solo placeholder o vacio
+    } else if (sel.options.length !== conductores.length + 1) {
+      needsRepopulate = true; // Cantidad diferente
+    } else {
+      // Verificar que el ultimo conductor coincide (spot check)
+      if (String(sel.options[sel.options.length - 1].value || '') !== String(conductores[conductores.length - 1] || '')) {
+        needsRepopulate = true;
+      }
+    }
+    if (!needsRepopulate) continue;
+
+    // v3.8.1: Repoblar — remover opciones previas, mantener solo placeholder
+    var placeholderText = 'Seleccione...';
+    if (sel.options.length > 0 && sel.options[0].value === '') {
+      placeholderText = sel.options[0].textContent || 'Seleccione...';
+    }
+    // Limpiar todas las opciones
+    sel.innerHTML = '';
+    // Re-agregar placeholder
+    var phOpt = document.createElement('option');
+    phOpt.value = '';
+    phOpt.textContent = placeholderText;
+    sel.appendChild(phOpt);
+    // Agregar conductores
     for (var ci = 0; ci < conductores.length; ci++) {
       var opt = document.createElement('option');
       opt.value = conductores[ci];
       opt.textContent = conductores[ci];
       sel.appendChild(opt);
+    }
+    // Si es Tom Select widget, sincronizar opciones
+    if (sel.tomselect) {
+      sel.tomselect.clearOptions();
+      sel.tomselect.addOption([{value: '', text: placeholderText}].concat(conductores.map(function(c){ return {value: c, text: c}; })));
+      sel.tomselect.setValue('');
     }
   }
 }
