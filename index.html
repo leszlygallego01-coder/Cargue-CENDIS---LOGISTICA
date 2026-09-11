@@ -297,12 +297,13 @@
         searchField: ['text']
       });
     }
-    /* v3.8.5: Tom Select para selects de Bodega Origen */
+    /* v3.8.6: Tom Select para selects de Bodega Origen */
     var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_origen'];
     for(var bi=0;bi<boSelectors.length;bi++){
       var boEl = document.querySelector(boSelectors[bi]);
       if(boEl && typeof TomSelect !== 'undefined' && !boEl.tomselect){
-        new TomSelect(boEl, {
+        var isMulti = boEl.hasAttribute('multiple');
+        var tsOpts = {
           allowEmptyOption: true,
           create: false,
           searchField: ['text'],
@@ -311,7 +312,12 @@
               return '<div class="ts-opt">'+item.text+'</div>';
             }
           }
-        });
+        };
+        if(isMulti){
+          tsOpts.plugins = ['remove_button'];
+          tsOpts.maxItems = null;
+        }
+        new TomSelect(boEl, tsOpts);
       }
     }
   }
@@ -1289,6 +1295,20 @@
                 </div>
               </div>
 
+              <!-- Buscar por Documento Traslado (endsWith) -->
+              <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">&#128269; Buscar por Documento Traslado</label>
+                  <input type="text" class="form-control" id="log_buscar_documento" placeholder="Completo o ultimos 5 digitos">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-mf-azul w-100" id="log_btnBuscarDocumento">&#128269; Buscar Traslado</button>
+                </div>
+                <div class="col-md-4">
+                  <div id="log_buscar_documento_estado" class="mf-estado"></div>
+                </div>
+              </div>
+
               <!-- ═══ Panel DESPACHO ═══ -->
               <div id="log_despacho_panel">
               <!-- Filtros de busqueda -->
@@ -1322,9 +1342,8 @@
                     <option value="SI">SI</option>
                     <option value="NO">NO</option>
                   </select></div>
-                <div class="col-md-3"><label class="form-label">Bodega Origen</label>
-                  <select class="form-select" id="log_filtro_bodega_origen" data-bodegas>
-                    <option value="">Todas las bodegas</option>
+                <div class="col-md-3"><label class="form-label">Bodega Origen <span class="text-info">(multi-select)</span></label>
+                  <select class="form-select" id="log_filtro_bodega_origen" data-bodegas multiple placeholder="Todas las bodegas">
                   </select></div>
                 <div class="col-md-2"><label class="form-label">Planilla *</label>
                   <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
