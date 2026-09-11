@@ -297,7 +297,7 @@
         searchField: ['text']
       });
     }
-    /* v3.8.6: Tom Select para selects de Bodega Origen */
+    /* v3.8.7: Tom Select para selects de Bodega Origen */
     var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_origen'];
     for(var bi=0;bi<boSelectors.length;bi++){
       var boEl = document.querySelector(boSelectors[bi]);
@@ -1292,20 +1292,6 @@
                 </div>
                 <div class="col-md-4">
                   <div id="log_buscar_planilla_estado" class="mf-estado"></div>
-                </div>
-              </div>
-
-              <!-- Buscar por Documento Traslado (endsWith) -->
-              <div class="row g-3 align-items-end mb-3">
-                <div class="col-md-3">
-                  <label class="form-label fw-bold">&#128269; Buscar por Documento Traslado</label>
-                  <input type="text" class="form-control" id="log_buscar_documento" placeholder="Completo o ultimos 5 digitos">
-                </div>
-                <div class="col-md-2">
-                  <button class="btn btn-mf-azul w-100" id="log_btnBuscarDocumento">&#128269; Buscar Traslado</button>
-                </div>
-                <div class="col-md-4">
-                  <div id="log_buscar_documento_estado" class="mf-estado"></div>
                 </div>
               </div>
 
