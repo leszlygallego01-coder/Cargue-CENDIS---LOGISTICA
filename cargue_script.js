@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbw30zgekO9IjU93ww9lrCGS8Lg1sDbEekKAA6is4X3sz5A3q0lO_1OD4gwAE_YZHG_I/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxU31XIu8YeuUOlb2Zw2rJVq36ENlzTu7evB4Q64_r_Wu5pkqqgrsJ1dUTReKj2IbFR/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1901,7 +1901,7 @@ function poblarConductores() {
     conductores = (typeof CONFIG_DEFAULT !== 'undefined' && CONFIG_DEFAULT.conductores) ? CONFIG_DEFAULT.conductores.slice() : [];
   }
   if (!conductores.length) return; // Nada que poblar
-  var selects = document.querySelectorAll('select[data-conductores], #log_conductor, #t3b_conductor, #log_conductor_trasbordo');
+  var selects = document.querySelectorAll('select[data-conductores], #t3b_conductor');
   for (var si = 0; si < selects.length; si++) {
     var sel = selects[si];
     if (!sel) continue;
@@ -2115,7 +2115,9 @@ function logVerificarPlanillaDuplicada(numeroPlanilla, folderId) {
    ═════════════════════════════════════════════════════════════════════════════════ */
 function logGuardarTrasbordo() {
   var conductor = $('log_conductor_trasbordo') ? $('log_conductor_trasbordo').value : '';
-  if (!conductor) { showToast('Seleccione el Conductor.', 'danger'); return; }
+  if (!conductor) { showToast('Ingrese el nombre del Conductor.', 'danger'); return; }
+  var bodegaOrigenTrasbordo = $('log_bodega_origen_trasbordo') ? $('log_bodega_origen_trasbordo').value.trim() : '';
+  if (!bodegaOrigenTrasbordo) { showToast('Ingrese la Bodega Origen.', 'danger'); return; }
   var dispensacion = $('log_dispensacion_trasbordo') ? $('log_dispensacion_trasbordo').value.trim() : '';
   if (!dispensacion) { showToast('Ingrese el numero de Dispensacion.', 'danger'); return; }
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
@@ -2130,6 +2132,7 @@ function logGuardarTrasbordo() {
 
   var registro = {
     'Conductor': conductor,
+    'Bodega Origen': bodegaOrigenTrasbordo,
     'Placa': $('log_placa_trasbordo') ? $('log_placa_trasbordo').value.trim().toUpperCase() : '',
     'Dispensacion': dispensacion,
     'Direccion': $('log_direccion_trasbordo') ? $('log_direccion_trasbordo').value.trim() : '',
@@ -2186,7 +2189,7 @@ function logGuardarTrasbordo() {
 
 /* ── Limpiar campos de trasbordo ── */
 function logLimpiarTrasbordo() {
-  var campos = ['log_planilla_trasbordo','log_conductor_trasbordo','log_placa_trasbordo',
+  var campos = ['log_planilla_trasbordo','log_conductor_trasbordo','log_bodega_origen_trasbordo','log_placa_trasbordo',
     'log_dispensacion_trasbordo','log_direccion_trasbordo','log_telefono_trasbordo',
     'log_ciudad_trasbordo','log_unidades_trasbordo','log_temperatura_trasbordo','log_obs_trasbordo'];
   for (var i = 0; i < campos.length; i++) {
@@ -2194,7 +2197,6 @@ function logLimpiarTrasbordo() {
     if (el) el.value = '';
   }
   var sel = $('log_tipo_carga_trasbordo'); if (sel) sel.selectedIndex = 0;
-  var selCond = $('log_conductor_trasbordo'); if (selCond) selCond.selectedIndex = 0;
   var tempRow = $('log_temp_trasbordo_row'); if (tempRow) tempRow.style.display = 'none';
 }
 
@@ -2301,7 +2303,9 @@ function logGuardarYDescargar() {
   if (!logDatosDespacho.length) { showToast('No hay traslados para guardar. Consulte primero.', 'danger'); return; }
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
-  if (!conductor) { showToast('Seleccione el Conductor.', 'danger'); return; }
+  if (!conductor) { showToast('Ingrese el nombre del Conductor.', 'danger'); return; }
+  var bodegaOrigenDespacho = $('log_bodega_origen_despacho') ? $('log_bodega_origen_despacho').value.trim() : '';
+  if (!bodegaOrigenDespacho) { showToast('Ingrese la Bodega Origen.', 'danger'); return; }
   var placa = $('log_placa') ? $('log_placa').value.trim().toUpperCase() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
@@ -2316,7 +2320,7 @@ function logGuardarYDescargar() {
       if (cons) {
         logVerificarPlanillaDuplicada(cons, folderId).then(function (verif) {
           if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
-          logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados);
+          logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados, bodegaOrigenDespacho);
         });
       }
     });
@@ -2325,12 +2329,12 @@ function logGuardarYDescargar() {
   /* v3.8: Verificar planilla duplicada (despacho + trasbordo) antes de guardar */
   logVerificarPlanillaDuplicada(planilla, folderId).then(function (verif) {
     if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
-    logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados);
+    logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados, bodegaOrigenDespacho);
   });
 }
 
 /* Ejecucion real del guardado y descarga */
-function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados) {
+function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados, bodegaOrigenDespacho) {
   var obsGlobal = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
 
   /* --- Construir registros para guardado --- */
@@ -2352,7 +2356,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
     }
     registrosPlanilla.push({
       'Documento Traslado': reg['Documento Traslado'] || '',
-      'Bodega Origen': reg['Bodega Origen'] || '',
+      'Bodega Origen': bodegaOrigenDespacho || reg['Bodega Origen'] || '',
       'Bodega Destino': reg['Bodega Destino'] || '',
       'Ruta': reg['Ruta'] || reg['Zona'] || '',
       'Cantidad': reg['Cantidad'] || '',
@@ -2437,7 +2441,8 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
             var tbody = $('log_tabla_body'); if (tbody) tbody.innerHTML = '';
             if (btnComb) btnComb.disabled = true;
             if ($('log_planilla')) $('log_planilla').value = '';
-            if ($('log_conductor')) $('log_conductor').selectedIndex = 0;
+            if ($('log_conductor')) $('log_conductor').value = '';
+            if ($('log_bodega_origen_despacho')) $('log_bodega_origen_despacho').value = '';
             if ($('log_placa')) $('log_placa').value = '';
             if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
           })
