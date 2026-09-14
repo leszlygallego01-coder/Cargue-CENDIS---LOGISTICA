@@ -31,6 +31,8 @@
     .bg-purple { background-color:#6f42c1; }
     .log-subpanel-header.log-subpanel-trasbordo { background:linear-gradient(135deg,#6f42c1,#9b59b6); color:#fff; border-radius:8px 8px 0 0; padding:8px 16px; display:flex; justify-content:space-between; align-items:center; }
     .campo-bloqueado { background:#f0f0f0; border:1px solid #ddd; color:#555; cursor:not-allowed; }
+    .btn-despacho-combinado.mf-pdf-only .btn-comb-right { background:#ccc; border-color:#ccc; color:#888; text-decoration:line-through; pointer-events:none; }
+    .btn-despacho-combinado.mf-pdf-only .btn-comb-left { background:#fff; color:#800000; border:2.5px solid #800000; border-right:2.5px solid #800000; border-radius:10px; }
   </style>
 </head>
 <body>
@@ -1597,6 +1599,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
 <script src="cargue_script.js"></script>
 </body>
 </html>
