@@ -251,6 +251,12 @@ body.mf-login-activo {
   border-radius: 40px; padding: 12px 20px;
   box-shadow: 0 8px 22px rgba(33, 136, 56, .35);
 }
+/* Boton flotante consolidado */
+.mf-float-consolidado {
+  position: fixed; right: 22px; bottom: 80px; z-index: 1050;
+  border-radius: 40px; padding: 12px 20px;
+  box-shadow: 0 8px 22px rgba(255, 193, 7, .45);
+}
 
 /* ---------- Alertas / estado ---------- */
 .mf-estado { font-size: .82rem; font-weight: 600; }
