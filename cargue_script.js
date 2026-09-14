@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxwqtEEijkNwoErF-NuudunMhpvaouO1Iq_f-D7P6OKREj-kDTXhkfXsyyblOeo1A59/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwwoy9QiSaIeMaLDjpZZozyNwS9DN8tu1qvCH-FvfsGLUn0O8g1nS10Kv7ItE1Tf3hy/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -2443,7 +2443,9 @@ function logDescargarPDFExistente() {
   if (spinnerBtn) { spinnerBtn.disabled = true; spinnerBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generando PDF...'; }
 
   try {
-    var jsPDF = window.jspdf.jsPDF;
+    /* Acceso robusto a jsPDF — funciona con CDN jsdelivr, unpkg o inline */
+    var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!jsPDF) { throw new Error('Librería jsPDF no disponible. Recargue la página (F5) e intente de nuevo.'); }
     var doc = new jsPDF('p', 'mm', 'letter');
     var pageW = doc.internal.pageSize.getWidth();
     var margin = 14;
