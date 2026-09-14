@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwezuqN5E7kpWaWEfsrWVK3LcdqhtkRSeVxGl8tRf8IVTlCXzxv9NTPo66lxpEXdlss/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzhP06AFhQRXTWYngK_BhmidE14y2Qz6Ech2NbQSC6sLlPInDokgSxfrEsEebRXFVwj/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -769,6 +769,16 @@ function t2AgregarItem() {
   var regInvima = $('b_registro_invima') ? $('b_registro_invima').value.trim() : '';
   var estInvima = $('b_estado_invima') ? $('b_estado_invima').value.trim() : '';
 
+  // Verificar duplicado en la lista actual
+  var claveDuplicado = tipo + '|' + docNum + '|' + codigo + '|' + lote + '|' + vencimiento;
+  var yaExiste = t2Items.some(function (it) {
+    return (it['Tipo Recepcion'] + '|' + it['Numero Documento'] + '|' + it['Codigo Producto'] + '|' + it['Lote'] + '|' + it['Fecha Vencimiento']) === claveDuplicado;
+  });
+  if (yaExiste) {
+    showToast('Este item ya fue agregado a la lista (misma factura, codigo, lote y vencimiento).', 'warning');
+    return;
+  }
+
   var item = {
     'Tipo Recepcion': tipo,
     'Documento Recepcion': esExterna ? 'Factura' : 'Traslado',
@@ -827,20 +837,28 @@ function t2Guardar() {
   if (!folderId) { showToast('Configure la carpeta Drive de Recepcion.', 'danger'); return; }
   var okCount = 0;
   var errCount = 0;
+  var erroresDetalle = [];
   var total = t2Items.length;
-  t2Items.forEach(function (item) {
+  t2Items.forEach(function (item, idx) {
     item['Marca temporal'] = ahora();
     item['Perfil'] = perfilActivo();
     item['Usuario'] = nombreUsuario();
     apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'recepcion', registro: item })
       .then(function (r) {
-        if (r && r.ok) okCount++; else errCount++;
+        if (r && r.ok) {
+          okCount++;
+        } else {
+          errCount++;
+          if (r && r.error) erroresDetalle.push('Item ' + (idx + 1) + ': ' + r.error);
+        }
         if (okCount + errCount === total) {
           if (errCount === 0) {
             showToast('&#128190; <strong>' + total + '</strong> registros de Recepcion guardados en Drive.', 'success');
             t2Items = []; t2PintarTabla();
           } else {
-            showToast('Guardados ' + okCount + '/' + total + '. Errores: ' + errCount, 'danger');
+            var msg = 'Guardados ' + okCount + '/' + total + '. Errores: ' + errCount;
+            if (erroresDetalle.length > 0) msg += ' — ' + erroresDetalle.join('; ');
+            showToast(msg, 'danger', 10000);
           }
         }
       })
@@ -2899,22 +2917,80 @@ function t6Guardar() {
 /* ═════════════════════════════════════════════════════════════════════════════════
    12. BACKUP / DESCARGA DE ARCHIVO DE SEGURIDAD
    ═════════════════════════════════════════════════════════════════════════════════ */
-function generarBackup() {
-  var backupLocal = { _meta: { generado: ahora(), perfil: perfilActivo(), version: '3.0' } };
-  MODULOS.forEach(function (m) {
-    backupLocal[m] = { folder: CONFIG.folders[m], registros: [] };
+/* ═════════════════════════════════════════════════════════════════════════════════
+   12b. ENVIAR DATOS AL CONSOLIDADO
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function enviarConsolidado() {
+  if (typeof $ !== 'undefined' && typeof $.fn !== 'undefined') {
+    var $btns = $('[id^="btnConsolidado"]');
+    $btns.prop('disabled', true).html('&#8987; Enviando...');
+  }
+  api('procesarYConsolidarDrive', {}).then(function (resp) {
+    if (typeof $ !== 'undefined') {
+      var $btns = $('[id^="btnConsolidado"]');
+      $btns.prop('disabled', false).html('&#128228; Enviar datos al Consolidado');
+    }
+    if (resp && resp.ok) {
+      showToast('&#9989; Datos enviados al Consolidado exitosamente.', 'success');
+    } else {
+      showToast('&#10060; Error al enviar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger');
+    }
+  }).catch(function (err) {
+    if (typeof $ !== 'undefined') {
+      var $btns = $('[id^="btnConsolidado"]');
+      $btns.prop('disabled', false).html('&#128228; Enviar datos al Consolidado');
+    }
+    showToast('&#10060; Error de conexion al enviar al Consolidado.', 'danger');
   });
-  if (typeof XLSX !== 'undefined') {
+}
+
+function generarBackup() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Libreria XLSX no cargada. Intente mas tarde.', 'danger');
+    return;
+  }
+  showToast('Preparando backup...', 'info');
+  var modulosBackup = ['seguridad','recepcion','asignacion','entrega','despachos','logistica','facturacion','inventario','rotacion'];
+  var modulosKeys   = ['seguridad','recepcion_log','asignacion','entregaLogistica','despacho_log','entregaLogistica','facturacion','inventario','rotacion'];
+  var pendientes = modulosBackup.length;
+  var datosModulos = {};
+  modulosBackup.forEach(function (m, idx) {
+    var key = modulosKeys[idx];
+    var folderId = CONFIG.folders[m] || CONFIG.folders[modulosBackup[idx]] || '';
+    api('leerHoja', { folderId: folderId, modulo: key }).then(function (resp) {
+      if (resp && resp.ok && resp.datos && resp.datos.length) {
+        datosModulos[m] = resp.datos;
+      } else {
+        datosModulos[m] = [];
+      }
+      pendientes--;
+      if (pendientes === 0) construirXLSX();
+    }).catch(function () {
+      datosModulos[m] = [];
+      pendientes--;
+      if (pendientes === 0) construirXLSX();
+    });
+  });
+
+  function construirXLSX() {
     var wb = XLSX.utils.book_new();
-    MODULOS.forEach(function (m) {
-      var data = [['Marca temporal', 'Perfil', 'Usuario', 'Modulo', 'Datos...']];
+    modulosBackup.forEach(function (m) {
+      var regs = datosModulos[m] || [];
+      var data = [];
+      if (regs.length > 0) {
+        var headers = Object.keys(regs[0]);
+        data.push(headers);
+        regs.forEach(function (r) {
+          data.push(headers.map(function (h) { return r[h] !== undefined ? r[h] : ''; }));
+        });
+      } else {
+        data.push(['Sin datos']);
+      }
       var ws = XLSX.utils.aoa_to_sheet(data);
-      XLSX.utils.book_append_sheet(wb, ws, m);
+      XLSX.utils.book_append_sheet(wb, ws, m.substring(0, 31));
     });
     XLSX.writeFile(wb, 'Backup_MEDISFARMA_' + hoy() + '.xlsx');
-    showToast('&#128190; Archivo de seguridad XLSX descargado.', 'success');
-  } else {
-    showToast('Libreria XLSX no cargada. Intente mas tarde.', 'danger');
+    showToast('&#128190; Backup XLSX con datos reales descargado.', 'success');
   }
 }
 
@@ -2995,6 +3071,8 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('cfg_guardar'); if (btn) btn.addEventListener('click', guardarConfig);
   btn = $('btnBackupTop'); if (btn) btn.addEventListener('click', generarBackup);
   btn = $('btnBackupFloat'); if (btn) btn.addEventListener('click', generarBackup);
+  btn = $('btnConsolidadoTop'); if (btn) btn.addEventListener('click', enviarConsolidado);
+  btn = $('btnConsolidadoFloat'); if (btn) btn.addEventListener('click', enviarConsolidado);
 
   // Perfil selector
   var sel = $('selPerfil');
