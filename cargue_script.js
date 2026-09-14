@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxQueXJ02uQ3KJxROdrkq6fF0x6HDKVLOiFZrEW3_Y02724ZyeGOMFyyd5bEA6e-4iL/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxJdi1RPTEXVuoAa8wWEGp4vZ1qnSK78pMWIgJob8nZZw4GaJHgwjVTieiRCA-ut8d1/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1887,6 +1887,7 @@ function logLimpiar() {
   var bp = $('log_buscar_planilla'); if (bp) bp.value = '';
   var bpe = $('log_buscar_planilla_estado'); if (bpe) bpe.innerHTML = '';
   logModoSoloLectura = false;
+  logRestaurarModoNormal();
   logTrasladoValidado = null;
 }
 
@@ -2043,10 +2044,42 @@ function logBuscarPlanilla() {
         if ($('log_planilla')) $('log_planilla').value = numero;
         /* Poblar planilla en campo de trasbordo */
         if ($('log_planilla_trasbordo')) $('log_planilla_trasbordo').value = numero;
+        /* Poblar campos de encabezado desde el primer registro encontrado */
+        var reg0 = r.registros[0] || {};
+        if ($('log_conductor') && reg0['Conductor']) $('log_conductor').value = reg0['Conductor'];
+        if ($('log_placa') && reg0['Placa del Vehiculo']) $('log_placa').value = reg0['Placa del Vehiculo'];
+        if ($('log_obs_planilla') && reg0['Observaciones Planilla']) $('log_obs_planilla').value = reg0['Observaciones Planilla'];
+        /* Bodega Origen: intentar poblar el select */
+        var bodegaVal = reg0['Bodega Origen'] || '';
+        if (bodegaVal && $('log_bodega_origen_despacho')) {
+          var selBod = $('log_bodega_origen_despacho');
+          var found = false;
+          for (var bo = 0; bo < selBod.options.length; bo++) {
+            if (selBod.options[bo].value.trim().toUpperCase() === bodegaVal.trim().toUpperCase()) {
+              selBod.selectedIndex = bo; found = true; break;
+            }
+          }
+          if (!found) { /* Agregar opcion si no existe */
+            var newOpt = document.createElement('option');
+            newOpt.value = bodegaVal; newOpt.textContent = bodegaVal; newOpt.selected = true;
+            selBod.insertBefore(newOpt, selBod.firstChild);
+          }
+          if (selBod.tomselect) selBod.tomselect.setValue(bodegaVal);
+        }
+        /* Deshabilitar campos editables en modo planilla existente */
+        var camposBloquear = ['log_planilla','log_conductor','log_placa','log_obs_planilla','log_bodega_origen_despacho'];
+        for (var cb = 0; cb < camposBloquear.length; cb++) {
+          var elCB = $(camposBloquear[cb]);
+          if (elCB) { elCB.setAttribute('readonly', ''); elCB.classList.add('campo-bloqueado'); elCB.disabled = true; }
+        }
+        /* Cambiar boton combinado a modo "Solo PDF" */
+        var btnComb = $('log_btnCombinado');
+        if (btnComb) { btnComb.classList.add('mf-pdf-only'); btnComb.disabled = false; }
         if (estEl) estEl.innerHTML = '<span class="badge bg-success">Planilla ' + numero + ': ' + r.total + ' traslados</span>';
-        showToast('Planilla ' + numero + ' encontrada con ' + r.total + ' traslados (modo solo lectura).', 'success');
+        showToast('Planilla ' + numero + ' encontrada con ' + r.total + ' traslados. Solo descarga PDF disponible.', 'success');
       } else {
         logModoSoloLectura = false;
+        logRestaurarModoNormal();
         if (estEl) estEl.innerHTML = '<span class="badge bg-secondary">Planilla no encontrada</span>';
         showToast('No se encontraron registros para la planilla ' + numero + '.', 'info');
       }
@@ -2291,6 +2324,7 @@ function logConsultarDespacho() {
   if (despachoEstado) despachoEstado.textContent = '';
 
   logModoSoloLectura = false;  /* Consulta normal = modo edicion */
+  logRestaurarModoNormal();
 
   apiGet({
     action: 'consultarDespacho',
@@ -2370,11 +2404,203 @@ function logDiagnosticarDespacho() {
     });
 }
 
+/* ═════════════════════════════════════════════════════════════════════════════════
+   logRestaurarModoNormal - Restaura campos y boton a modo normal (no planilla existente)
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function logRestaurarModoNormal() {
+  logModoSoloLectura = false;
+  var camposDesbloquear = ['log_planilla','log_conductor','log_placa','log_obs_planilla','log_bodega_origen_despacho'];
+  for (var cb = 0; cb < camposDesbloquear.length; cb++) {
+    var elU = $(camposDesbloquear[cb]);
+    if (elU) { elU.removeAttribute('readonly'); elU.classList.remove('campo-bloqueado'); elU.disabled = false; }
+  }
+  var btnComb = $('log_btnCombinado');
+  if (btnComb) btnComb.classList.remove('mf-pdf-only');
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   logDescargarPDFExistente - Genera PDF client-side de planilla existente y fuerza descarga
+   Estructura: Encabezado (Planilla, Conductor, Bodega Origen, Placa, Observaciones)
+              + Tabla de traslados (Documento, Bodega Origen, Cantidad, Tipo, Urgente, Temperatura)
+   Nombre: Planilla_[NUMERO_PLANILLA].pdf
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function logDescargarPDFExistente() {
+  if (!logDatosDespacho.length) { showToast('No hay traslados para generar PDF.', 'danger'); return; }
+  var planilla = $('log_planilla') ? $('log_planilla').value.trim() : 'SIN-PLANILLA';
+  var conductor = $('log_conductor') ? $('log_conductor').value.trim() : '';
+  var bodegaOrigen = $('log_bodega_origen_despacho') ? $('log_bodega_origen_despacho').value.trim() : '';
+  var placa = $('log_placa') ? $('log_placa').value.trim() : '';
+  var observaciones = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
+
+  /* Si los datos no vienen del form, tomar del primer registro */
+  if (!conductor && logDatosDespacho[0]) conductor = logDatosDespacho[0]['Conductor'] || '';
+  if (!placa && logDatosDespacho[0]) placa = logDatosDespacho[0]['Placa del Vehiculo'] || '';
+  if (!bodegaOrigen && logDatosDespacho[0]) bodegaOrigen = logDatosDespacho[0]['Bodega Origen'] || '';
+  if (!observaciones && logDatosDespacho[0]) observaciones = logDatosDespacho[0]['Observaciones Planilla'] || '';
+
+  var spinnerBtn = $('log_btnCombinado');
+  var btnHtmlOrig = spinnerBtn ? spinnerBtn.innerHTML : '';
+  if (spinnerBtn) { spinnerBtn.disabled = true; spinnerBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generando PDF...'; }
+
+  try {
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF('p', 'mm', 'letter');
+    var pageW = doc.internal.pageSize.getWidth();
+    var margin = 14;
+    var contentW = pageW - margin * 2;
+
+    /* ── Encabezado institucional ── */
+    doc.setFillColor(128, 0, 0);
+    doc.rect(0, 0, pageW, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MEDISFARMA', margin, 12);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Planilla de Despacho', margin, 18);
+    doc.setFontSize(9);
+    doc.text('Fecha: ' + ahora(), pageW - margin, 12, { align: 'right' });
+    doc.text('Generado: ' + new Date().toLocaleString('es-CO'), pageW - margin, 17, { align: 'right' });
+
+    /* ── Linea decorativa ── */
+    doc.setDrawColor(128, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(margin, 30, pageW - margin, 30);
+
+    /* ── Datos del encabezado de la planilla ── */
+    var y = 36;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+
+    var headerFields = [
+      ['PLANILLA', planilla],
+      ['CONDUCTOR', conductor],
+      ['BODEGA ORIGEN', bodegaOrigen],
+      ['PLACA DEL VEHÍCULO', placa],
+      ['OBSERVACIONES', observaciones || '(Sin observaciones)']
+    ];
+
+    for (var hf = 0; hf < headerFields.length; hf++) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(128, 0, 0);
+      doc.text(headerFields[hf][0] + ':', margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(33, 37, 41);
+      doc.text(String(headerFields[hf][1]), margin + 48, y);
+      y += 6;
+    }
+
+    y += 4;
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, pageW - margin, y);
+    y += 6;
+
+    /* ── Tabla de traslados ── */
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(128, 0, 0);
+    doc.text('TRASLADOS ASOCIADOS (' + logDatosDespacho.length + ')', margin, y);
+    y += 4;
+
+    var tableHeaders = [
+      ['Documento\nTraslado', 'Bodega\nOrigen', 'Cantidad', 'Tipo', 'Urgente', 'Temperatura']
+    ];
+    var tableBody = [];
+    for (var ti = 0; ti < logDatosDespacho.length; ti++) {
+      var tr = logDatosDespacho[ti];
+      tableBody.push([
+        String(tr['Documento Traslado'] || ''),
+        String(tr['Bodega Origen'] || ''),
+        String(tr['Cantidad'] || ''),
+        String(tr['Tipo'] || tr['Tipo Carga'] || tr['Tipo de Carga'] || ''),
+        String(tr['Urgente'] || 'NO'),
+        String(tr['Temperatura'] || '-')
+      ]);
+    }
+
+    doc.autoTable({
+      startY: y,
+      head: tableHeaders,
+      body: tableBody,
+      margin: { left: margin, right: margin },
+      headStyles: {
+        fillColor: [128, 0, 0],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center',
+        valign: 'middle',
+        cellPadding: 3
+      },
+      bodyStyles: {
+        fontSize: 8,
+        cellPadding: 2,
+        textColor: [33, 37, 41]
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },  /* Documento Traslado */
+        1: { cellWidth: 40 },  /* Bodega Origen */
+        2: { halign: 'center', cellWidth: 18 },  /* Cantidad */
+        3: { halign: 'center', cellWidth: 22 },  /* Tipo */
+        4: { halign: 'center', cellWidth: 18 },  /* Urgente */
+        5: { halign: 'center', cellWidth: 22 }   /* Temperatura */
+      },
+      didDrawCell: function(data) {
+        /* Resaltar filas urgentes */
+        if (data.section === 'body' && data.column.index === 4) {
+          var urgVal = String(data.cell.raw || '').toUpperCase();
+          if (urgVal === 'SI') {
+            doc.setFillColor(255, 193, 7);
+            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text('SI', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+          }
+        }
+      },
+      styles: { overflow: 'linebreak' }
+    });
+
+    /* ── Pie de página ── */
+    var finalY = doc.lastAutoTable.finalY + 10;
+    if (finalY > doc.internal.pageSize.getHeight() - 20) finalY = doc.internal.pageSize.getHeight() - 20;
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Documento generado automáticamente · MEDISFARMA CEDIS · Planilla existente (solo lectura)', margin, finalY);
+    doc.text('Página ' + doc.internal.getNumberOfPages(), pageW - margin, finalY, { align: 'right' });
+
+    /* ── Forzar descarga directa ── */
+    var filename = 'Planilla_' + planilla.replace(/[^a-zA-Z0-9\-_]/g, '_') + '.pdf';
+    doc.save(filename);
+
+    showToast('📄 PDF "' + filename + '" descargado correctamente (' + logDatosDespacho.length + ' traslados).', 'success');
+  } catch (ePdf) {
+    showToast('Error al generar PDF: ' + ePdf.message, 'danger');
+  }
+
+  if (spinnerBtn) { spinnerBtn.disabled = false; spinnerBtn.innerHTML = btnHtmlOrig; if (logModoSoloLectura) spinnerBtn.classList.add('mf-pdf-only'); }
+}
+
 /**
  * logGuardarYDescargar — Funcion combinada que primero guarda en Drive
  * (archivo consolidado) y luego genera el PDF de la planilla.
  */
 function logGuardarYDescargar() {
+  /* ═══ MODO SOLO LECTURA (planilla existente): solo PDF, sin Drive ═══ */
+  if (logModoSoloLectura) {
+    logDescargarPDFExistente();
+    return;
+  }
   if (!logDatosDespacho.length) { showToast('No hay traslados para guardar. Consulte primero.', 'danger'); return; }
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
@@ -2739,6 +2965,8 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('log_btnLimpiar'); if (btn) btn.addEventListener('click', logLimpiar);
   btn = $('log_btnDiagnostico'); if (btn) btn.addEventListener('click', logDiagnosticarDespacho);
   btn = $('log_btnBuscarPlanilla'); if (btn) btn.addEventListener('click', logBuscarPlanilla);
+  /* Si el usuario limpia el campo de busqueda de planilla, restaurar modo normal */
+  var bpInput = $('log_buscar_planilla'); if (bpInput) bpInput.addEventListener('input', function() { if (!this.value.trim() && logModoSoloLectura) logRestaurarModoNormal(); });
   /* v3.8.6: Buscar por Documento Traslado en Seccion 2 */
   /* v3.8.7: Buscador de traslado en Trasbordo removido — no aplica para este flujo */
   btn = $('log_btnGuardarTrasbordo'); if (btn) btn.addEventListener('click', logGuardarTrasbordo);
