@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwAN2KOVntoaPlM51dyRCjN-oY2lRCCV4k1m_xkaMQ5l6saLyeNIsLECtS4OpcBpazr/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxJdi1RPTEXVuoAa8wWEGp4vZ1qnSK78pMWIgJob8nZZw4GaJHgwjVTieiRCA-ut8d1/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -730,7 +730,7 @@ function toggleLabelRecepcion() {
   }
 
   // Limpiar campos INVIMA y Proveedor al cambiar tipo
-  var camposLimpiar = ['b_registro_invima', 'b_estado_invima', 'b_fecha_invima', 'b_proveedor'];
+  var camposLimpiar = ['b_registro_invima', 'b_estado_invima', 'b_proveedor'];
   camposLimpiar.forEach(function(id) {
     var el = $(id);
     if (el) el.value = '';
@@ -768,7 +768,6 @@ function t2AgregarItem() {
   // Leer campos INVIMA
   var regInvima = $('b_registro_invima') ? $('b_registro_invima').value.trim() : '';
   var estInvima = $('b_estado_invima') ? $('b_estado_invima').value.trim() : '';
-  var fechaInvima = $('b_fecha_invima') ? $('b_fecha_invima').value : '';
 
   var item = {
     'Tipo Recepcion': tipo,
@@ -781,7 +780,7 @@ function t2AgregarItem() {
     'Fecha Vencimiento': vencimiento, 'Cantidad Enviada': enviada, 'Cantidad Recibida': recibida,
     'Diferencia': diferencia, 'Responsable Recepcion': responsable,
     'Estado Recepcion Tecnica': estado, 'Observaciones': observaciones,
-    'Registro Invima': regInvima, 'Estado Invima': estInvima, 'Fecha Vencimiento Invima': fechaInvima
+    'Registro Invima': regInvima, 'Estado Invima': estInvima
   };
   t2Items.push(item);
   t2PintarTabla();
@@ -792,7 +791,7 @@ function t2PintarTabla() {
   var head = $('t2_tablaHead');
   var body = $('t2_tablaBody');
   if (!head || !body) return;
-  var cols = ['Tipo', 'Doc.', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Reg. Invima', 'Est. Invima', 'Venc. Invima', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
+  var cols = ['Tipo', 'Doc.', 'Codigo', 'Descripcion', 'Lote', 'Venc.', 'Reg. Invima', 'Est. Invima', 'Enviada', 'Recibida', 'Dif.', 'Estado', 'Acc'];
   head.innerHTML = cols.map(function (c) { return '<th>' + c + '</th>'; }).join('');
   body.innerHTML = '';
   t2Items.forEach(function (item, idx) {
@@ -808,7 +807,6 @@ function t2PintarTabla() {
       '<td>' + (item['Fecha Vencimiento'] || '') + '</td>' +
       '<td><small>' + (item['Registro Invima'] || '-') + '</small></td>' +
       '<td><small>' + (item['Estado Invima'] || '-') + '</small></td>' +
-      '<td><small>' + (item['Fecha Vencimiento Invima'] || '-') + '</small></td>' +
       '<td>' + (item['Cantidad Enviada'] || '') + '</td>' +
       '<td>' + (item['Cantidad Recibida'] || '') + '</td>' +
       '<td>' + (item['Diferencia'] || '') + '</td>' +
