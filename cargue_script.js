@@ -29,7 +29,7 @@ function showToast(msg, type) {
   setTimeout(function () { if (d.parentNode) d.remove(); }, 6000);
 }
 
-/** alertDuplicado(traslado) — v3.13.0
+/** alertDuplicado(traslado) — v3.14.0
  *  Muestra una alerta roja prominente y persistente cuando se detecta un traslado duplicado.
  *  Toast normal + un banner rojo fijo en la parte superior que desaparece al hacer click.
  */
@@ -338,7 +338,10 @@ var CREDENCIALES = {
   yeimy_aldana: 'Medis2024YeimyA',
   vig_leidy: 'Medis2024VigLei',
   vig_james: 'Medis2024VigJam',
-  vig_manuel: 'Medis2024VigMan'
+  vig_manuel: 'Medis2024VigMan',
+  luzn: 'Medis2024LuzN',
+  luisa: 'Medis2024Luisa',
+  andrea: 'Medis2024Andrea'
 };
 
 /* Nombres de los 39 auxiliares individuales (33 CEDIS + 6 B09) */
@@ -354,6 +357,9 @@ var AUXILIARES_INDIVIDUALES = [
 /* Vigilantes (solo Seguridad) */
 var VIGILANTE_USERS = ['vig_leidy','vig_james','vig_manuel'];
 
+/* Lideres de grupo — Seguridad + Recepcion + Planilla Entrega (con Anulacion) */
+var LIDER_USERS = ['luzn','luisa','andrea'];
+
 var LABELS_PERFIL = {
   administrador: '&#128081; ADMINISTRADOR',
   log_diego: '&#128666; Diego (Logistica CENDIS)',
@@ -367,6 +373,9 @@ var LABELS_PERFIL = {
   beatriz_eugenia: '&#128119; Beatriz Eugenia (Auxiliar B09)',
   mery_yolanda: '&#128119; Mery Yolanda (Auxiliar B09)',
   yeimy_aldana: '&#128119; Yeimy Aldana (Auxiliar CEDIS)',
+  luzn: '&#11088; Luzn (Lider)',
+  luisa: '&#11088; Luisa (Lider)',
+  andrea: '&#11088; Andrea (Lider)',
   auxiliar: '&#128119; AUXILIAR',
   vig_leidy: '&#128737; Leidy (Vigilante)',
   vig_james: '&#128737; James (Vigilante)',
@@ -387,6 +396,9 @@ var PERFILES = {
   beatriz_eugenia:         { label: 'Beatriz Eugenia Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   mery_yolanda:            { label: 'Mery Yolanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   yeimy_aldana:            { label: 'Yeimy Aldana Auxiliar CEDIS', tarjetas: ['t1','t2','t3'] },
+  luzn:                   { label: 'Luzn Lider de Grupo',     tarjetas: ['t1','t2','t3'] },
+  luisa:                  { label: 'Luisa Lider de Grupo',     tarjetas: ['t1','t2','t3'] },
+  andrea:                 { label: 'Andrea Lider de Grupo',   tarjetas: ['t1','t2','t3'] },
   auxiliar:                { label: 'Auxiliar',                 tarjetas: ['t1','t2','t3'] },
   vigilante:               { label: 'Vigilante',                 tarjetas: ['t1'] }
 };
@@ -441,6 +453,10 @@ function esVigilante() {
   return VIGILANTE_USERS.indexOf(perfilActivo()) >= 0;
 }
 
+function esLider() {
+  return LIDER_USERS.indexOf(perfilActivo()) >= 0;
+}
+
 function nombreUsuario() {
   var p = perfilActivo();
   if (AUXILIARES_INDIVIDUALES.indexOf(p) >= 0) {
@@ -451,11 +467,13 @@ function nombreUsuario() {
 
 function aplicarPerfil() {
   var perfil = perfilActivo();
+  var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
   /* Vigilante users map to 'vigilante' profile (only t1 - Seguridad) */
   if (VIGILANTE_USERS.indexOf(perfil) >= 0) perfil = 'vigilante';
+  /* Lider users keep their own profile (t1-t3 + Anulacion); no mapping to 'auxiliar' */
+  else if (LIDER_USERS.indexOf(perfil) >= 0) { /* keep perfil as-is, they have own PERFILES entry */ }
   /* B09 users keep their own profile (t1-t4); other auxiliares map to generic 'auxiliar' */
-  var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
-  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) perfil = 'auxiliar';
+  else if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) perfil = 'auxiliar';
   var def = PERFILES[perfil] || PERFILES.administrador;
   var visibles = def.tarjetas;
   var todas = ['t1','t2','t3','t4','t5','t6'];
@@ -480,9 +498,9 @@ function aplicarPerfil() {
       if (tab) { tab.classList.remove('d-none'); tab.style.display = ''; }
     });
   }
-  /* v3.10.0: Seccion C (Anulacion) solo visible para Administradores */
+  /* v3.14.0: Seccion C (Anulacion) visible para Administradores y Lideres */
   var secC = $('t3_seccionC');
-  if (secC) secC.style.display = esAdministrador() ? '' : 'none';
+  if (secC) secC.style.display = (esAdministrador() || esLider()) ? '' : 'none';
 
   /* v3.9.0: Restringir UI para Vigilantes — sin config, backup, consolidado, visor, ni cambio de perfil */
   var esVig = esVigilante();
@@ -520,8 +538,8 @@ function pintarPerfiles() {
   if (info) {
     var perfil = perfilActivo();
     var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
-    /* v3.9.0: Vigilantes se mapean a perfil 'vigilante' */
-    var real = VIGILANTE_USERS.indexOf(perfil) >= 0 ? 'vigilante' : ((AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) ? 'auxiliar' : perfil);
+    /* v3.14.0: Vigilantes se mapean a 'vigilante', Lideres mantienen su perfil propio */
+    var real = VIGILANTE_USERS.indexOf(perfil) >= 0 ? 'vigilante' : (LIDER_USERS.indexOf(perfil) >= 0 ? perfil : ((AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) ? 'auxiliar' : perfil));
     var def = PERFILES[real] || PERFILES.administrador;
     var h = '<strong>Perfil activo:</strong> ' + (LABELS_PERFIL[real] || perfil) + '<br>';
     h += '<strong>Tarjetas visibles:</strong> ' + def.tarjetas.join(', ') + '<br>';
@@ -553,12 +571,12 @@ function pintarPerfiles() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
-   5. API — COMUNICACION CON GOOGLE APPS SCRIPT  (v3.13.0 — timeout + robustez)
+   5. API — COMUNICACION CON GOOGLE APPS SCRIPT  (v3.14.0 — timeout + robustez)
    ═════════════════════════════════════════════════════════════════════════════════ */
 /* Usar POST para TODAS las llamadas (GET causa CORS redirect en GAS ContentService)
  * doPost en Code.gs soporta las mismas acciones que doGet.
  *
- * v3.13.0: Se agrega fetchWithTimeout() con AbortController + Promise.race
+ * v3.14.0: Se agrega fetchWithTimeout() con AbortController + Promise.race
  * como fallback para navegadores antiguos.  Timeout por defecto 30s,
  * ampliable a 120s para operaciones pesadas (procesarYConsolidarDrive).
  */
@@ -1154,6 +1172,9 @@ var GRUPOS_FIJOS_CARGUE = [
 
 /* Vigilantes (solo Seguridad) */
 var VIGILANTE_USERS = ['vig_leidy','vig_james','vig_manuel'];
+
+/* Líderes de Grupo (Seguridad + Recepción Técnica + Planilla Entrega con Anulación) */
+var LIDER_USERS = ['luzn','luisa','andrea'];
 
 /* ── Listener de cambio en Grupo Asignado — colorea el select al cambiar manualmente ── */
 (function initGrupoSelectListener() {
@@ -1787,7 +1808,7 @@ function t3cGuardarAnulacion() {
   var btnGuardar = $('t3c_btnGuardar');
   if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Verificando...'; }
 
-  /* ── VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_TRASLADOS_ANULADOS (v3.13.0) ── */
+  /* ── VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_TRASLADOS_ANULADOS (v3.14.0) ── */
   apiGet({ action: 'verificarAnulacionDuplicada', folderId: folderId, documentoTraslado: trasladoCompletoGuardarC })
     .then(function (v) {
       if (v && v.duplicado) {
