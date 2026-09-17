@@ -2103,7 +2103,7 @@ function logCargarTablaDespacho(registros, soloLectura) {
       })() + '</td>' +
       '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
       '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
-      '<td>' + (reg['Bodega Destino'] || reg['Bodega Destino.'] || '') + '</td>' +
+      '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
       '<td>' + (reg['Cantidad'] || '') + '</td>' +
       '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
       '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
@@ -2635,7 +2635,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
     registrosPlanilla.push({
       'Documento Traslado': reg['Documento Traslado'] || '',
       'Bodega Origen': bodegaOrigenDespacho || reg['Bodega Origen'] || '',
-      'Bodega Destino': reg['Bodega Destino'] || reg['Bodega Destino.'] || '',
+      'Bodega Destino': reg['Bodega Destino'] || '',
       'Ruta': reg['Ruta'] || reg['Zona'] || '',
       'Cantidad': reg['Cantidad'] || '',
       'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
