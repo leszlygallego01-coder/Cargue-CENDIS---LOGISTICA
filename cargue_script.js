@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyzjIudNfyUQqwp06ANCplpqrBrZ_I6ukUFJKAYDDnkX2U2koGH--jha1qPvt435bew/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwZDVwPYUFyPK1Z5A2aAB-VCGHFg2-TZB4Y1Boyp5U4cgB97QOObONEZYQJeHtr63jK/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -316,17 +316,18 @@ var CREDENCIALES = {
   luisa_fernanda: 'Medis2024LuisaF',
   nedi_yojana: 'Medis2024NediY',
   beatriz_eugenia: 'Medis2024BeatrizE',
-  mery_yolanda: 'Medis2024MeryY'
+  mery_yolanda: 'Medis2024MeryY',
+  yeimy_aldana: 'Medis2024YeimyA'
 };
 
-/* Nombres de los 38 auxiliares individuales (32 CEDIS + 6 B09) */
+/* Nombres de los 39 auxiliares individuales (33 CEDIS + 6 B09) */
 var AUXILIARES_INDIVIDUALES = [
   'yuri','julio','hernan','diego','brian','karina','jhony','natalia',
   'manuel','claudia','daniela','juan','luzl','liz','ana','leidy',
   'bivian','vaneza','brayan','nicoll','luis','estefania','angela','camila',
   'angie','mayra','derly','luisa','luzn','andrea','andres','diegoe',
   'jose_santiago','yuliana','luisa_fernanda','nedi_yojana',
-  'beatriz_eugenia','mery_yolanda'
+  'beatriz_eugenia','mery_yolanda','yeimy_aldana'
 ];
 
 var LABELS_PERFIL = {
@@ -341,6 +342,7 @@ var LABELS_PERFIL = {
   nedi_yojana: '&#128119; Nedi Yojana (Auxiliar B09)',
   beatriz_eugenia: '&#128119; Beatriz Eugenia (Auxiliar B09)',
   mery_yolanda: '&#128119; Mery Yolanda (Auxiliar B09)',
+  yeimy_aldana: '&#128119; Yeimy Aldana (Auxiliar CEDIS)',
   auxiliar: '&#128119; AUXILIAR'
 };
 
@@ -357,6 +359,7 @@ var PERFILES = {
   nedi_yojana:             { label: 'Nedi Yojana Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   beatriz_eugenia:         { label: 'Beatriz Eugenia Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   mery_yolanda:            { label: 'Mery Yolanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
+  yeimy_aldana:            { label: 'Yeimy Aldana Auxiliar CEDIS', tarjetas: ['t1','t2','t3'] },
   auxiliar:                { label: 'Auxiliar',                 tarjetas: ['t1','t2','t3'] }
 };
 
@@ -418,7 +421,7 @@ function aplicarPerfil() {
   var perfil = perfilActivo();
   /* B09 users keep their own profile (t1-t4); other auxiliares map to generic 'auxiliar' */
   var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
-  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0) perfil = 'auxiliar';
+  if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) perfil = 'auxiliar';
   var def = PERFILES[perfil] || PERFILES.administrador;
   var visibles = def.tarjetas;
   var todas = ['t1','t2','t3','t4','t5','t6'];
@@ -458,7 +461,7 @@ function pintarPerfiles() {
   if (info) {
     var perfil = perfilActivo();
     var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
-    var real = (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0) ? 'auxiliar' : perfil;
+    var real = (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) ? 'auxiliar' : perfil;
     var def = PERFILES[real] || PERFILES.administrador;
     var h = '<strong>Perfil activo:</strong> ' + (LABELS_PERFIL[real] || perfil) + '<br>';
     h += '<strong>Tarjetas visibles:</strong> ' + def.tarjetas.join(', ') + '<br>';
@@ -904,9 +907,10 @@ function t3CargarRotacion() {
 }
 
 /** Asigna automaticamente el GRUPO ASIGNADO segun Bodega Origen.
- *  Si Bodega Origen contiene "B05 ALTO COSTO" → Grupo Especial Gris con TODOS sus integrantes.
- *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → Grupo de la Apertura del Dia con sus integrantes.
- *  El campo muestra: "Grupo Color (N) — Nombre1, Nombre2, Nombre3"
+ *  Si Bodega Origen contiene "B05 ALTO COSTO" → Grupo 9 con una persona aleatoria.
+ *  Si Bodega Origen contiene "CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL" → Grupo aleatorio de CEDIS (1-8).
+ *  Si Bodega Origen contiene "B09" → Grupo B09 correspondiente.
+ *  El campo muestra: "Grupo N (N) — Nombre1, Nombre2, Nombre3"
  *  Ese mismo texto se persiste en BD_ASIGNACION_DE_TRASLADO.
  */
 function t3AplicarRotacionA() {
@@ -932,88 +936,53 @@ function t3AplicarRotacionA() {
       }
     }
   } else if (esB05AltoCosto) {
-    // ── Grupo Especial Gris (8) — UNA persona aleatoria del grupo ──
-    var grupoGris = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === 'Gris'; })[0];
-    if (grupoGris) {
-      var idx = Math.floor(Math.random() * grupoGris.miembros.length);
-      var personaAleatoria = grupoGris.miembros[idx];
-      var textoGris = 'Grupo Especial Gris (8) — ' + personaAleatoria;
-      // Seleccionar la opcion de Gris en el select y personalizar texto
+    // ── Grupo 9 (B05 ALTO COSTO) — UNA persona aleatoria del grupo ──
+    var grupo9 = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.numero === 9; })[0];
+    if (grupo9) {
+      var idx = Math.floor(Math.random() * grupo9.miembros.length);
+      var personaAleatoria = grupo9.miembros[idx];
+      var textoG9 = 'Grupo 9 (9) \u2014 ' + personaAleatoria;
       if (grupoSelect) {
-        // Buscar la opcion de Gris
         for (var i = 0; i < grupoSelect.options.length; i++) {
-          if (grupoSelect.options[i].value.indexOf('Gris') >= 0) {
-            grupoSelect.options[i].value = textoGris;
-            grupoSelect.options[i].textContent = 'Especial Gris (8) — ' + personaAleatoria;
+          if (grupoSelect.options[i].value.indexOf('Grupo 9') >= 0) {
+            grupoSelect.options[i].value = textoG9;
+            grupoSelect.options[i].textContent = 'Grupo 9 (9) \u2014 ' + personaAleatoria;
             grupoSelect.selectedIndex = i;
-            grupoSelect.style.borderColor = grupoGris.hex;
-            grupoSelect.style.color = grupoGris.hex;
+            grupoSelect.style.borderColor = grupo9.hex;
+            grupoSelect.style.color = grupo9.hex;
             break;
           }
         }
       }
     }
   } else if (esCendis) {
-    // ── Grupo de la Apertura del Dia — preseleccionar grupo automaticamente ──
-    if (t3RotacionHoy && t3RotacionHoy.length) {
-      var gruposNoGris = {};
-      t3RotacionHoy.forEach(function (a) {
-        if (a.grupo !== 'Gris' && a.grupo) {
-          if (!gruposNoGris[a.grupo]) gruposNoGris[a.grupo] = [];
-          gruposNoGris[a.grupo].push(a.nombre);
-        }
-      });
-      var grupoNombre = '';
-      var claves = Object.keys(gruposNoGris);
-      for (var i = 0; i < claves.length; i++) {
-        if (gruposNoGris[claves[i]].length >= 3) {
-          grupoNombre = claves[i];
+    // ── Grupo aleatorio de CEDIS (1-8) ──
+    if (grupoSelect) {
+      var idxCendis = 1 + Math.floor(Math.random() * 8); // 1-8
+      for (var j = 0; j < grupoSelect.options.length; j++) {
+        var optGrupo = grupoSelect.options[j].value || '';
+        var optInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return optGrupo.indexOf(g.nombre) >= 0; })[0];
+        if (optInfo && optInfo.numero === idxCendis) {
+          grupoSelect.selectedIndex = j;
+          grupoSelect.style.borderColor = optInfo.hex;
+          grupoSelect.style.color = optInfo.hex;
+          grupoSelect.style.fontWeight = 'bold';
           break;
-        }
-      }
-      if (grupoNombre) {
-        var grupoInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === grupoNombre; })[0];
-        if (grupoSelect && grupoInfo) {
-          for (var j = 0; j < grupoSelect.options.length; j++) {
-            if (grupoSelect.options[j].value.indexOf(grupoNombre) >= 0) {
-              grupoSelect.selectedIndex = j;
-              grupoSelect.style.borderColor = grupoInfo.hex;
-              grupoSelect.style.color = grupoInfo.hex;
-              break;
-            }
-          }
-        }
-      } else {
-        // Fallback: primer grupo no-Gris
-        var noGris = t3RotacionHoy.filter(function (a) { return a.grupo !== 'Gris'; });
-        if (noGris.length && grupoSelect) {
-          var fbGrupo = noGris[0].grupo;
-          var fbInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return g.nombre === fbGrupo; })[0];
-          if (fbInfo) {
-            for (var k = 0; k < grupoSelect.options.length; k++) {
-              if (grupoSelect.options[k].value.indexOf(fbGrupo) >= 0) {
-                grupoSelect.selectedIndex = k;
-                grupoSelect.style.borderColor = fbInfo.hex;
-                grupoSelect.style.color = fbInfo.hex;
-                break;
-              }
-            }
-          }
         }
       }
     }
   } else {
     // Bodega no reconocida — grupo aleatorio como sugerencia
     if (grupoSelect && bodega) {
-      var idxRand = 1 + Math.floor(Math.random() * 7); // 1-7 (excluye Gris)
+      var idxRand = 1 + Math.floor(Math.random() * 9); // 1-9 (todos los grupos CEDIS)
       var opciones = grupoSelect.options;
-      for (var m = 1; m < opciones.length - 1; m++) { // saltar placeholder y Gris
-        var optGrupo = opciones[m].value;
-        var optInfo = GRUPOS_FIJOS_CARGUE.filter(function (g) { return optGrupo.indexOf(g.nombre) >= 0; })[0];
-        if (optInfo && optInfo.numero === idxRand) {
+      for (var m = 1; m < opciones.length; m++) {
+        var optGrupo2 = opciones[m].value;
+        var optInfo2 = GRUPOS_FIJOS_CARGUE.filter(function (g) { return optGrupo2.indexOf(g.nombre) >= 0; })[0];
+        if (optInfo2 && optInfo2.numero === idxRand) {
           grupoSelect.selectedIndex = m;
-          grupoSelect.style.borderColor = optInfo.hex;
-          grupoSelect.style.color = optInfo.hex;
+          grupoSelect.style.borderColor = optInfo2.hex;
+          grupoSelect.style.color = optInfo2.hex;
           break;
         }
       }
@@ -1029,14 +998,15 @@ function t3AplicarRotacionA() {
    7C. GRUPOS FIJOS CARGUE — Definicion de los 8 grupos con miembros
    ───────────────────────────────────────────────────────────────────────────────── */
 var GRUPOS_FIJOS_CARGUE = [
-  { nombre: 'Rojo',    numero: 1, hex: '#dc3545', miembros: ['Nicoll Trivi\u00f1o', 'Estefania Parra', 'Angie Mar\u00eda Tascon'], lider: 'Angie Mar\u00eda Tascon' },
-  { nombre: 'Naranja', numero: 2, hex: '#FF8C00', miembros: ['Daniela Nore\u00f1a', 'Juan David Moreno', 'Kelly Beltran'] },
-  { nombre: 'Azul',    numero: 3, hex: '#0d6efd', miembros: ['Karina Riascos', 'Ana Lorena Ortiz', 'Vaneza Escobar'] },
-  { nombre: 'Verde',   numero: 4, hex: '#2fb457', miembros: ['Leidy Valencia', 'Bivian Lorena Rivera', 'Brayan Camilo Izquierdo'] },
-  { nombre: 'Morado',  numero: 5, hex: '#6f42c1', miembros: ['Jhony Saenz', 'Natalia Galvez', 'Valentina Cano'] },
-  { nombre: 'Amarillo',numero: 6, hex: '#ffc107', miembros: ['Liz Karime Valencia', 'Angela Vanessa Aguirre', 'Derly Yulieth Mosquera'] },
-  { nombre: 'Fucsia',  numero: 7, hex: '#FF00FF', miembros: ['Manuel David Salazar', 'Luz Nelly Chaves', 'Luis Felipe Marin'], lider: 'Luz Nelly Chaves' },
-  { nombre: 'Gris',    numero: 8, hex: '#6c757d', miembros: ['Claudia Echeverry', 'Camila Posada', 'Angela Vera', 'Mayra Alejandra Franco', 'Andrea Vanegas'], lider: 'Andrea Vanegas' },
+  { nombre: 'Grupo 1', numero: 1, hex: '#dc3545', miembros: ['Angie Mar\u00eda Tascon', 'Estefania Parra', 'Nicoll Trivi\u00f1o'], lider: 'LUISA' },
+  { nombre: 'Grupo 2', numero: 2, hex: '#FF8C00', miembros: ['Juan David Donato Moreno', 'Natalia Galvez', 'Daniela Nore\u00f1a'], lider: 'ADMINISTRATIVO' },
+  { nombre: 'Grupo 3', numero: 3, hex: '#0d6efd', miembros: ['Ana Lorena Ortiz', 'Karina Riascos', 'Vanesa Escobar'], lider: 'LUISA' },
+  { nombre: 'Grupo 4', numero: 4, hex: '#2fb457', miembros: ['Leidy Valencia', 'Bivian Lorena Rivera', 'Brayan Camilo Izquierdo'], lider: 'LUZ' },
+  { nombre: 'Grupo 5', numero: 5, hex: '#6f42c1', miembros: ['Claudia Echeverry', 'Kelly Jhojana Beltran Benjumea', 'Luz Lopez'], lider: 'LUZ' },
+  { nombre: 'Grupo 6', numero: 6, hex: '#ffc107', miembros: ['Derly Yulieth Mosquera', 'Liz Karime Valencia', 'Angela Vanessa Aguirre'], lider: 'LUZ' },
+  { nombre: 'Grupo 7', numero: 7, hex: '#FF00FF', miembros: ['Luis Felipe Marin', 'Manuel David Salazar'], lider: 'ADMINISTRATIVO' },
+  { nombre: 'Grupo 8', numero: 8, hex: '#17a2b8', miembros: ['Mayra Alejandra Franco Muñoz', 'Camila Posada', 'Julieth Cardenas'], lider: 'ANDREA' },
+  { nombre: 'Grupo 9', numero: 9, hex: '#6c757d', miembros: ['Jhony Saenz Sanchez', 'Valentina Cano Peña', 'Yeimy Aldana'], lider: 'LUISA' },
   { nombre: 'B09-1', numero: 9, hex: '#17a2b8', miembros: ['Jose Santiago Ramirez Obando'], lider: 'Jose Santiago Ramirez Obando' },
   { nombre: 'B09-2', numero: 10, hex: '#e83e8c', miembros: ['Yuliana Andrea Quira Manquillo'], lider: 'Yuliana Andrea Quira Manquillo' },
   { nombre: 'B09-3', numero: 11, hex: '#20c997', miembros: ['Luisa Fernanda Garcia Orozco'], lider: 'Luisa Fernanda Garcia Orozco' },
@@ -1067,41 +1037,29 @@ var GRUPOS_FIJOS_CARGUE = [
 function autoAsignarGrupoAleatorio() {
   var gs = $('t3a_grupo_asignado');
   if (!gs) return;
-  // Elegir grupo aleatorio entre 1 y 8 (grupos CEDIS, no B09 individuales por defecto)
-  var numGrupo = 1 + Math.floor(Math.random() * 8);
+  // Elegir grupo aleatorio entre 1 y 9 (grupos CEDIS, no B09 individuales por defecto)
+  var numGrupo = 1 + Math.floor(Math.random() * 9);
   var grupoInfo = null;
   for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
     if (GRUPOS_FIJOS_CARGUE[i].numero === numGrupo) { grupoInfo = GRUPOS_FIJOS_CARGUE[i]; break; }
   }
   if (!grupoInfo) return;
-  // Para Gris: personalizar con una persona aleatoria
-  if (grupoInfo.nombre === 'Gris') {
-    var idx = Math.floor(Math.random() * grupoInfo.miembros.length);
-    var persona = grupoInfo.miembros[idx];
-    var textoGris = 'Grupo Especial Gris (8) \u2014 ' + persona;
-    for (var j = 0; j < gs.options.length; j++) {
-      if (gs.options[j].value.indexOf('Gris') >= 0) {
-        gs.options[j].value = textoGris;
-        gs.options[j].textContent = 'Especial Gris (8) \u2014 ' + persona;
-        gs.selectedIndex = j;
-        gs.style.borderColor = grupoInfo.hex;
-        gs.style.color = grupoInfo.hex;
-        gs.style.fontWeight = 'bold';
-        break;
-      }
+  // Seleccionar la opcion correspondiente en el select
+  for (var k = 0; k < gs.options.length; k++) {
+    if (gs.options[k].value.indexOf(grupoInfo.nombre) >= 0) {
+      gs.selectedIndex = k;
+      gs.style.borderColor = grupoInfo.hex;
+      gs.style.color = grupoInfo.hex;
+      gs.style.fontWeight = 'bold';
+      break;
     }
-  } else {
-    // Para los demas grupos: seleccionar la opcion correspondiente
-    for (var k = 0; k < gs.options.length; k++) {
-      if (gs.options[k].value.indexOf(grupoInfo.nombre) >= 0) {
-        gs.selectedIndex = k;
-        gs.style.borderColor = grupoInfo.hex;
-        gs.style.color = grupoInfo.hex;
+  }
         gs.style.fontWeight = 'bold';
         break;
       }
     }
   }
+}
   // Mostrar toast informativo
   showToast('Grupo asignado autom\u00e1ticamente: <strong>' + grupoInfo.nombre + '</strong> — Puedes cambiarlo si deseas.', 'info');
 }
@@ -1112,21 +1070,15 @@ function normalizarGrupoAsignado(valorRaw) {
   var v = String(valorRaw).trim();
   // Si ya tiene el formato completo (contiene "Grupo"), devolverlo tal cual
   if (v.indexOf('Grupo') >= 0) return v;
-  // Si es solo un numero (1-8), convertir al formato completo
+  // Si es solo un numero (1-9), convertir al formato completo
   var num = parseInt(v, 10);
-  if (isNaN(num) || num < 1 || num > 8) return v;
+  if (isNaN(num) || num < 1 || num > 9) return v;
   var grupo = null;
   for (var i = 0; i < GRUPOS_FIJOS_CARGUE.length; i++) {
     if (GRUPOS_FIJOS_CARGUE[i].numero === num) { grupo = GRUPOS_FIJOS_CARGUE[i]; break; }
   }
   if (!grupo) return v;
-  // Para Gris (8): agregar una persona aleatoria
-  if (grupo.nombre === 'Gris') {
-    var idx = Math.floor(Math.random() * grupo.miembros.length);
-    var persona = grupo.miembros[idx];
-    return 'Grupo Especial Gris (8) \u2014 ' + persona;
-  }
-  // Para los demas: formato completo con miembros
+  // Formato completo con miembros
   return 'Grupo ' + grupo.nombre + ' (' + grupo.numero + ') \u2014 ' + grupo.miembros.join(', ');
 }
 
@@ -2151,6 +2103,7 @@ function logCargarTablaDespacho(registros, soloLectura) {
       })() + '</td>' +
       '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
       '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
+      '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
       '<td>' + (reg['Cantidad'] || '') + '</td>' +
       '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
       '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
@@ -2330,9 +2283,15 @@ function logConsultarDespacho() {
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
-  /* Poblar selects de Conductor y Bodega */
+  /* Poblar selects de Conductor y Bodega (sin resetear seleccion actual) */
   poblarConductores();
   poblarBodegas();
+
+  /* Restaurar la seleccion del filtro bodega despues de poblarBodegas */
+  if (filtroBodegaOrigen && boEl && boEl.tomselect) {
+    var savedBodArr = filtroBodegaOrigen.split(',');
+    boEl.tomselect.setValue(savedBodArr);
+  }
 
   var consultaEstado = $('log_consulta_estado');
   if (consultaEstado) consultaEstado.innerHTML = '<span class="badge bg-warning text-dark">Consultando...</span>';
