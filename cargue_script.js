@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxV2iaqHchAAis9B9JUg8qHvuDB98J1YUqqC7ODlJPyB8OQwDVliEdC_CCfwrdmUlDc/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxJdi1RPTEXVuoAa8wWEGp4vZ1qnSK78pMWIgJob8nZZw4GaJHgwjVTieiRCA-ut8d1/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1054,6 +1054,12 @@ function autoAsignarGrupoAleatorio() {
       break;
     }
   }
+        gs.style.fontWeight = 'bold';
+        break;
+      }
+    }
+  }
+}
   // Mostrar toast informativo
   showToast('Grupo asignado autom\u00e1ticamente: <strong>' + grupoInfo.nombre + '</strong> — Puedes cambiarlo si deseas.', 'info');
 }
@@ -2097,7 +2103,7 @@ function logCargarTablaDespacho(registros, soloLectura) {
       })() + '</td>' +
       '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
       '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
-      '<td>' + (reg['Bodega Destino'] || reg['Bodega Destino.'] || '') + '</td>' +
+      '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
       '<td>' + (reg['Cantidad'] || '') + '</td>' +
       '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
       '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
@@ -2629,7 +2635,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
     registrosPlanilla.push({
       'Documento Traslado': reg['Documento Traslado'] || '',
       'Bodega Origen': bodegaOrigenDespacho || reg['Bodega Origen'] || '',
-      'Bodega Destino': reg['Bodega Destino'] || reg['Bodega Destino.'] || '',
+      'Bodega Destino': reg['Bodega Destino'] || '',
       'Ruta': reg['Ruta'] || reg['Zona'] || '',
       'Cantidad': reg['Cantidad'] || '',
       'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
