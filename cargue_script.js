@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwm3S8Mz_A8quMT7HTJAzgfnWHag2bRHZ3DvrhdYRYgcA5zGwPrOUG2aKCLUV5gpMve/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzHlFnwYX_QJq_ECqUJwhgv3XLEu68a4Iw-4YON1c6sgcG-dEGzGx9u95yeY_bW-1zZ/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1686,7 +1686,7 @@ function t3cGuardarAnulacion() {
   var observacion = $('t3c_observacion') ? $('t3c_observacion').value.trim() : '';
 
   if (!tipo) { showToast('Seleccione el Tipo de Anulación.', 'danger'); return; }
-  if (!observacion) { showToast('Ingrese una Observación para la anulación.', 'danger'); return; }
+  /* Observación ya no es obligatoria — se guarda vacía o "Sin observaciones" */
 
   var folderId = CONFIG.folders.despachos;  /* BD_TRASLADOS_ANULADOS va en la carpeta despachos */
 
@@ -1708,7 +1708,7 @@ function t3cGuardarAnulacion() {
     'Perfil': perfilActivo(),
     'Usuario': nombreUsuario(),
     'Dirección de correo electrónico': '',  /* backend auto-fills _usuario() */
-    'Observación': observacion
+    'Observación': observacion || 'Sin observaciones'
   };
 
   apiPost({ action: 'guardarAnulacionTraslado', folderId: folderId, registro: registro })
