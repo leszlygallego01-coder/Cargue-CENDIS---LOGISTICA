@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzhP06AFhQRXTWYngK_BhmidE14y2Qz6Ech2NbQSC6sLlPInDokgSxfrEsEebRXFVwj/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbyzjIudNfyUQqwp06ANCplpqrBrZ_I6ukUFJKAYDDnkX2U2koGH--jha1qPvt435bew/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -2925,7 +2925,7 @@ function enviarConsolidado() {
     var $btns = $('[id^="btnConsolidado"]');
     $btns.prop('disabled', true).html('&#8987; Enviando...');
   }
-  api('procesarYConsolidarDrive', {}).then(function (resp) {
+  apiPost({ action: 'procesarYConsolidarDrive', folderId: CONFIG.folderId || '' }).then(function (resp) {
     if (typeof $ !== 'undefined') {
       var $btns = $('[id^="btnConsolidado"]');
       $btns.prop('disabled', false).html('&#128228; Enviar datos al Consolidado');
@@ -2957,7 +2957,7 @@ function generarBackup() {
   modulosBackup.forEach(function (m, idx) {
     var key = modulosKeys[idx];
     var folderId = CONFIG.folders[m] || CONFIG.folders[modulosBackup[idx]] || '';
-    api('leerHoja', { folderId: folderId, modulo: key }).then(function (resp) {
+    apiGet({ action: 'leerHoja', folderId: folderId, modulo: key }).then(function (resp) {
       if (resp && resp.ok && resp.datos && resp.datos.length) {
         datosModulos[m] = resp.datos;
       } else {
