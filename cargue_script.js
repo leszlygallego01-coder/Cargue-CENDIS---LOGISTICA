@@ -29,6 +29,24 @@ function showToast(msg, type) {
   setTimeout(function () { if (d.parentNode) d.remove(); }, 6000);
 }
 
+/** alertDuplicado(traslado) — v3.13.0
+ *  Muestra una alerta roja prominente y persistente cuando se detecta un traslado duplicado.
+ *  Toast normal + un banner rojo fijo en la parte superior que desaparece al hacer click.
+ */
+function alertDuplicado(traslado) {
+  /* Toast rojo estandar */
+  showToast('&#9888;&#65039; <strong style="color:#fff">DUPLICADO BLOQUEADO</strong> — El traslado <strong>' + traslado + '</strong> ya fue registrado previamente. No se permiten traslados duplicados.', 'danger');
+  /* Banner rojo persistente en la parte superior */
+  var banner = document.createElement('div');
+  banner.id = 'mfDupBanner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#dc3545;color:#fff;padding:14px 20px;font-size:15px;font-weight:700;cursor:pointer;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+  banner.innerHTML = '&#9888;&#65039; TRASLADO DUPLICADO BLOQUEADO &mdash; <strong>' + traslado + '</strong> ya fue registrado. <small style="font-weight:400">(click para cerrar)</small>';
+  banner.addEventListener('click', function () { if (banner.parentNode) banner.remove(); });
+  /* Auto-remover despues de 15s */
+  setTimeout(function () { if (banner.parentNode) banner.remove(); }, 15000);
+  document.body.appendChild(banner);
+}
+
 function limpiarCampos(prefijo) {
   document.querySelectorAll('[id^="' + prefijo + '"]').forEach(function (el) {
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
@@ -269,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyp19mc4EFwY8QamEz9HedFl2SiJ-li0HGB_MlaSGCq5D6RHWus4RtLoSufmtRvuTBH/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwULcQvmaML1qntJzrHTSU5vRlQmYfbB3gjvLSF6hUcEzJqx50pe70mhz-IJE2KBe3C/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -535,12 +553,12 @@ function pintarPerfiles() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
-   5. API — COMUNICACION CON GOOGLE APPS SCRIPT  (v3.12.2 — timeout + robustez)
+   5. API — COMUNICACION CON GOOGLE APPS SCRIPT  (v3.13.0 — timeout + robustez)
    ═════════════════════════════════════════════════════════════════════════════════ */
 /* Usar POST para TODAS las llamadas (GET causa CORS redirect en GAS ContentService)
  * doPost en Code.gs soporta las mismas acciones que doGet.
  *
- * v3.12.2: Se agrega fetchWithTimeout() con AbortController + Promise.race
+ * v3.13.0: Se agrega fetchWithTimeout() con AbortController + Promise.race
  * como fallback para navegadores antiguos.  Timeout por defecto 30s,
  * ampliable a 120s para operaciones pesadas (procesarYConsolidarDrive).
  */
@@ -1360,7 +1378,7 @@ function t3aGuardarAsignacion() {
   apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: trasladoCompletoGuardar })
     .then(function (rExist) {
       if (rExist && rExist.encontrado) {
-        showToast('&#9888; El traslado <strong>' + trasladoCompletoGuardar + '</strong> ya tiene una Asignaci&oacute;n guardada. No se puede repetir.', 'danger');
+        alertDuplicado(trasladoCompletoGuardar);
         if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Asignaci\u00f3n de Traslado'; }
         return null; // senal para no continuar
       }
@@ -1590,7 +1608,7 @@ function t3bGuardarEntrega() {
   apiGet({ action: 'buscarEntrega', folderId: folderId, traslado: traslado })
     .then(function (rExist) {
       if (rExist && rExist.encontrado) {
-        showToast('&#9888; El traslado <strong>' + traslado + '</strong> ya tiene una Entrega a Log&iacute;stica guardada. No se puede repetir.', 'danger');
+        alertDuplicado(traslado);
         if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar en el Drive Entrega a Log\u00edstica'; }
         return null; // senal para no continuar
       }
@@ -1753,21 +1771,31 @@ function t3cValidarTraslado() {
 
 function t3cGuardarAnulacion() {
   var trasladoInput = $('t3c_traslado') ? $('t3c_traslado').value.trim() : '';
-  if (!trasladoInput) { showToast('Primero consulte un traslado en la Sección C.', 'danger'); return; }
-  if (!t3cTrasladoValidado) { showToast('Valide la asignación del traslado antes de guardar la anulación.', 'danger'); return; }
+  if (!trasladoInput) { showToast('Primero consulte un traslado en la Secci&oacute;n C.', 'danger'); return; }
+  if (!t3cTrasladoValidado) { showToast('Valide la asignaci&oacute;n del traslado antes de guardar la anulaci&oacute;n.', 'danger'); return; }
 
   var trasladoCompletoGuardarC = t3cTrasladoValidado['Traslado'] || t3cTrasladoValidado['Documento'] || t3cTrasladoValidado['Documento Traslado'] || t3cTrasladoValidado['Numero Traslado'] || trasladoInput;
 
   var tipo = $('t3c_tipo') ? $('t3c_tipo').value : '';
   var observacion = $('t3c_observacion') ? $('t3c_observacion').value.trim() : '';
 
-  if (!tipo) { showToast('Seleccione el Tipo de Anulación.', 'danger'); return; }
-  /* Observación ya no es obligatoria — se guarda vacía o "Sin observaciones" */
+  if (!tipo) { showToast('Seleccione el Tipo de Anulaci&oacute;n.', 'danger'); return; }
+  /* Observaci&oacute;n ya no es obligatoria — se guarda vac&iacute;a o "Sin observaciones" */
 
   var folderId = CONFIG.folders.despachos;  /* BD_TRASLADOS_ANULADOS va en la carpeta despachos */
 
   var btnGuardar = $('t3c_btnGuardar');
-  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Verificando...'; }
+
+  /* ── VALIDAR DUPLICADO: verificar que el traslado no exista ya en BD_TRASLADOS_ANULADOS (v3.13.0) ── */
+  apiGet({ action: 'verificarAnulacionDuplicada', folderId: folderId, documentoTraslado: trasladoCompletoGuardarC })
+    .then(function (v) {
+      if (v && v.duplicado) {
+        /* Bloquear guardado si ya existe anulacion */
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Anulaci&oacute;n en el Drive'; }
+        alertDuplicado(trasladoCompletoGuardarC);
+        return null; /* se&ntilde;al para no continuar */
+      }
 
   var asig = t3cTrasladoValidado;
   var consol = asig.__consolidado || {};
@@ -1783,20 +1811,22 @@ function t3cGuardarAnulacion() {
     'Marca temporal': ahora(),
     'Perfil': perfilActivo(),
     'Usuario': nombreUsuario(),
-    'Dirección de correo electrónico': '',  /* backend auto-fills _usuario() */
-    'Observación': observacion || 'Sin observaciones'
+    'Direcci&oacute;n de correo electr&oacute;nico': '',  /* backend auto-fills _usuario() */
+    'Observaci&oacute;n': observacion || 'Sin observaciones'
   };
 
-  apiPost({ action: 'guardarAnulacionTraslado', folderId: folderId, registro: registro })
+  return apiPost({ action: 'guardarAnulacionTraslado', folderId: folderId, registro: registro });
+    })
     .then(function (r) {
+      if (r === null) return; /* duplicado bloqueado */
       if (r && r.ok) {
-        showToast('&#128190; <strong>Anulación</strong> guardada en BD_TRASLADOS_ANULADOS. Grupo: <strong style="color:#dc3545">ANULADO</strong>.', 'success');
+        showToast('&#128190; <strong>Anulaci&oacute;n</strong> guardada en BD_TRASLADOS_ANULADOS. Grupo: <strong style="color:#dc3545">ANULADO</strong>.', 'success');
         t3cTrasladoValidado = null;
         limpiarSeccionC();
       } else {
-        showToast('Error al guardar Anulación: ' + (r.error || ''), 'danger');
+        showToast('Error al guardar Anulaci&oacute;n: ' + (r.error || ''), 'danger');
       }
-      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Anulación en el Drive'; }
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Anulaci&oacute;n en el Drive'; }
     })
     .catch(function (err) {
       showToast('Error de conexión: ' + err.message, 'danger');
@@ -2078,7 +2108,7 @@ function logGuardarRecepcion() {
       if (v && v.duplicado) {
         /* Bloquear guardado si ya existe */
         if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Recepcion en Drive'; }
-        showToast('&#9888;&#65039; <strong>DUPLICADO</strong> — ' + v.mensaje, 'danger');
+        alertDuplicado(trasladoCompletoLog);
         return null; /* señal para no continuar */
       }
       /* No es duplicado — proceder a guardar */
