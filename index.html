@@ -303,7 +303,7 @@
       });
     }
     /* v3.8.7: Tom Select para selects de Bodega Origen */
-    var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_origen'];
+    var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_destino'];
     for(var bi=0;bi<boSelectors.length;bi++){
       var boEl = document.querySelector(boSelectors[bi]);
       if(boEl && typeof TomSelect !== 'undefined' && !boEl.tomselect){
@@ -1343,8 +1343,8 @@
                     <option value="SI">SI</option>
                     <option value="NO">NO</option>
                   </select></div>
-                <div class="col-md-3"><label class="form-label">Bodega Origen <span class="text-info">(multi-select)</span></label>
-                  <select class="form-select" id="log_filtro_bodega_origen" data-bodegas multiple placeholder="Todas las bodegas">
+                <div class="col-md-3"><label class="form-label">Bodega Destino <span class="text-info">(multi-select)</span></label>
+                  <select class="form-select" id="log_filtro_bodega_destino" data-bodegas-destino multiple placeholder="Todas las bodegas">
                   </select></div>
                 <div class="col-md-2"><label class="form-label">Planilla *</label>
                   <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
