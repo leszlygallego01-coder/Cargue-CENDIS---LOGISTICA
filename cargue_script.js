@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwxjSW3DGD3jUmqmWO4O5ANvqa89owjwllrU5QFh6DhAfsgJTTfEb8FFjsGMD4cCyXG/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwPIa7HksLwm1ZYb9e3sCcM7azhe7U8HEGVyM1HQN-estaaPico-IQmS3l_6Z9dE5E/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1054,12 +1054,6 @@ function autoAsignarGrupoAleatorio() {
       break;
     }
   }
-        gs.style.fontWeight = 'bold';
-        break;
-      }
-    }
-  }
-}
   // Mostrar toast informativo
   showToast('Grupo asignado autom\u00e1ticamente: <strong>' + grupoInfo.nombre + '</strong> — Puedes cambiarlo si deseas.', 'info');
 }
@@ -1924,7 +1918,7 @@ function poblarBodegas() {
     bodegas = (typeof CONFIG_DEFAULT !== 'undefined' && CONFIG_DEFAULT.bodegas) ? CONFIG_DEFAULT.bodegas.slice() : [];
   }
   if (!bodegas.length) return;
-  var selects = document.querySelectorAll('select[data-bodegas], #log_bodega_origen_despacho, #log_bodega_origen_trasbordo, #log_filtro_bodega_origen');
+  var selects = document.querySelectorAll('select[data-bodegas], select[data-bodegas-destino], #log_bodega_origen_despacho, #log_bodega_origen_trasbordo, #log_filtro_bodega_destino');
   for (var si = 0; si < selects.length; si++) {
     var sel = selects[si];
     if (!sel) continue;
@@ -1943,7 +1937,7 @@ function poblarBodegas() {
     if (!needsRepopulate) continue;
 
     var placeholderText = 'Seleccione...';
-    if (sel.id === 'log_filtro_bodega_origen') {
+    if (sel.id === 'log_filtro_bodega_destino') {
       placeholderText = 'Todas las bodegas';
     } else if (sel.options.length > 0 && sel.options[0].value === '') {
       placeholderText = sel.options[0].textContent || 'Seleccione...';
@@ -2103,7 +2097,7 @@ function logCargarTablaDespacho(registros, soloLectura) {
       })() + '</td>' +
       '<td>' + (reg['Documento Traslado'] || '') + '</td>' +
       '<td>' + (reg['Bodega Origen'] || '') + '</td>' +
-      '<td>' + (reg['Bodega Destino'] || '') + '</td>' +
+      '<td>' + (reg['Bodega Destino'] || reg['Bodega Destino.'] || '') + '</td>' +
       '<td>' + (reg['Cantidad'] || '') + '</td>' +
       '<td>' + (reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '') + '</td>' +
       '<td>' + (reg['Urgente'] || 'NO') + '</td>' +
@@ -2268,16 +2262,16 @@ function logConsultarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
   var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
-  /* v3.8.7: Multi-select Bodega Origen — read array from Tom Select */
-  var filtroBodegaOrigen = '';
-  var boEl = $('log_filtro_bodega_origen');
+  /* v3.8.8: Multi-select Bodega Destino — read array from Tom Select */
+  var filtroBodegaDestino = '';
+  var boEl = $('log_filtro_bodega_destino');
   if (boEl && boEl.tomselect) {
     var selected = boEl.tomselect.getValue();
     if (Array.isArray(selected) && selected.length > 0) {
-      filtroBodegaOrigen = selected.join(',');
+      filtroBodegaDestino = selected.join(',');
     }
   } else if (boEl) {
-    filtroBodegaOrigen = boEl.value || '';
+    filtroBodegaDestino = boEl.value || '';
   }
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
@@ -2287,9 +2281,9 @@ function logConsultarDespacho() {
   poblarConductores();
   poblarBodegas();
 
-  /* Restaurar la seleccion del filtro bodega despues de poblarBodegas */
-  if (filtroBodegaOrigen && boEl && boEl.tomselect) {
-    var savedBodArr = filtroBodegaOrigen.split(',');
+  /* Restaurar la seleccion del filtro bodega destino despues de poblarBodegas */
+  if (filtroBodegaDestino && boEl && boEl.tomselect) {
+    var savedBodArr = filtroBodegaDestino.split(',');
     boEl.tomselect.setValue(savedBodArr);
   }
 
@@ -2308,7 +2302,7 @@ function logConsultarDespacho() {
     filtroRevisado: filtroRevisado,
     filtroRuta: filtroRuta,
     filtroUrgente: filtroUrgente,
-    filtroBodegaOrigen: filtroBodegaOrigen
+    filtroBodegaDestino: filtroBodegaDestino
   })
     .then(function (r) {
       if (r && r.ok && r.registros && r.registros.length > 0) {
@@ -2635,7 +2629,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
     registrosPlanilla.push({
       'Documento Traslado': reg['Documento Traslado'] || '',
       'Bodega Origen': bodegaOrigenDespacho || reg['Bodega Origen'] || '',
-      'Bodega Destino': reg['Bodega Destino'] || '',
+      'Bodega Destino': reg['Bodega Destino'] || reg['Bodega Destino.'] || '',
       'Ruta': reg['Ruta'] || reg['Zona'] || '',
       'Cantidad': reg['Cantidad'] || '',
       'Tipo': reg['Tipo'] || reg['Tipo Carga'] || reg['Tipo de Carga'] || '',
