@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycby84ym7Tm6VHCUrssD_sKst4abqpULG7ChoGzm7PMVPCUi1bcdTlVeufWmUIEH3J5Ty/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzmzN0LRrv0DmTIBhUVjIRAeVWuicsG9N-whDmJ5M0XnkTEUTgA3iEGsjandXYi3Io6/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -3292,25 +3292,22 @@ function t6Guardar() {
    12b. ENVIAR DATOS AL CONSOLIDADO
    ═════════════════════════════════════════════════════════════════════════════════ */
 function enviarConsolidado() {
-  if (typeof $ !== 'undefined' && typeof $.fn !== 'undefined') {
-    var $btns = $('[id^="btnConsolidado"]');
-    $btns.prop('disabled', true).html('&#8987; Enviando...');
-  }
-  apiPost({ action: 'procesarYConsolidarDrive', folderId: CONFIG.folderId || '' }).then(function (resp) {
-    if (typeof $ !== 'undefined') {
-      var $btns = $('[id^="btnConsolidado"]');
-      $btns.prop('disabled', false).html('&#128228; Enviar datos al Consolidado');
-    }
+  var btnTop   = $('btnConsolidadoTop');
+  var btnFloat = $('btnConsolidadoFloat');
+  var btns = [];
+  if (btnTop)   btns.push(btnTop);
+  if (btnFloat) btns.push(btnFloat);
+  btns.forEach(function (b) { b.disabled = true; b.innerHTML = '&#8987; Enviando...'; });
+
+  apiPost({ action: 'procesarYConsolidarDrive' }).then(function (resp) {
+    btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
     if (resp && resp.ok) {
       showToast('&#9989; Datos enviados al Consolidado exitosamente.', 'success');
     } else {
       showToast('&#10060; Error al enviar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger');
     }
   }).catch(function (err) {
-    if (typeof $ !== 'undefined') {
-      var $btns = $('[id^="btnConsolidado"]');
-      $btns.prop('disabled', false).html('&#128228; Enviar datos al Consolidado');
-    }
+    btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
     showToast('&#10060; Error de conexion al enviar al Consolidado.', 'danger');
   });
 }
@@ -3322,15 +3319,15 @@ function generarBackup() {
   }
   showToast('Preparando backup...', 'info');
   var modulosBackup = ['seguridad','recepcion','asignacion','entrega','despachos','logistica','facturacion','inventario','rotacion'];
-  var modulosKeys   = ['seguridad','recepcion_log','asignacion','entregaLogistica','despacho_log','entregaLogistica','facturacion','inventario','rotacion'];
+  var modulosKeys   = ['seguridad','recepcion','asignacion','entrega','despachos','logistica','facturacion','inventario','rotacion'];
   var pendientes = modulosBackup.length;
   var datosModulos = {};
   modulosBackup.forEach(function (m, idx) {
     var key = modulosKeys[idx];
-    var folderId = CONFIG.folders[m] || CONFIG.folders[modulosBackup[idx]] || '';
+    var folderId = CONFIG.folders[m] || '';
     apiGet({ action: 'leerHoja', folderId: folderId, modulo: key }).then(function (resp) {
-      if (resp && resp.ok && resp.datos && resp.datos.length) {
-        datosModulos[m] = resp.datos;
+      if (resp && resp.ok && resp.rows && resp.rows.length) {
+        datosModulos[m] = resp.rows;
       } else {
         datosModulos[m] = [];
       }
@@ -3344,6 +3341,12 @@ function generarBackup() {
   });
 
   function construirXLSX() {
+    var totalRegistros = 0;
+    modulosBackup.forEach(function (m) { totalRegistros += (datosModulos[m] || []).length; });
+    if (totalRegistros === 0) {
+      showToast('No hay informacion cargada para exportar en el backup.', 'warning');
+      return;
+    }
     var wb = XLSX.utils.book_new();
     modulosBackup.forEach(function (m) {
       var regs = datosModulos[m] || [];
