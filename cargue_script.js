@@ -5,7 +5,7 @@
  * ORDEN TARJETAS (v3):
  *   T1 = Seguridad (Guia, Factura, Proveedor, Unidades, Quien Recibe)
  *   T2 = Recepcion Tecnica
- *   T3 = Planilla Entrega Despachos (enriquecida con rotacion + nuevos campos)
+ *   T3 = Planilla Entrega Despachos (3 secciones: Asignacion + Entrega + Anulacion v3.10.0)
  *   T4 = Logistica y Despachos
  *   T5 = Cargue de Factura (Transporte)
  *   T6 = Verificacion de Inventario
@@ -39,7 +39,7 @@ function limpiarCampos(prefijo) {
 function limpiarTarjeta(num) {
   var prefijos = { 1: 's_', 2: 'b_', 3: 't3a_', 4: 'log_', 5: 'f_', 6: 'i_' };
   limpiarCampos(prefijos[num] || '');
-  if (num === 3) limpiarCampos('t3b_');
+  if (num === 3) { limpiarCampos('t3b_'); limpiarCampos('t3c_'); }
   // Restaurar etiqueta Factura/Traslado segun tipo seleccionado
   if (num === 2) toggleLabelRecepcion();
   showToast('Tarjeta ' + num + ' limpiada.', 'info');
@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwwYlzH6OfqFBBsUup_TimTU476pxrhkFBPmb5gOu_q7k0P9p7Uj4ZmEN4FXutTlhsD/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwm3S8Mz_A8quMT7HTJAzgfnWHag2bRHZ3DvrhdYRYgcA5zGwPrOUG2aKCLUV5gpMve/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -317,7 +317,10 @@ var CREDENCIALES = {
   nedi_yojana: 'Medis2024NediY',
   beatriz_eugenia: 'Medis2024BeatrizE',
   mery_yolanda: 'Medis2024MeryY',
-  yeimy_aldana: 'Medis2024YeimyA'
+  yeimy_aldana: 'Medis2024YeimyA',
+  vig_leidy: 'Medis2024VigLei',
+  vig_james: 'Medis2024VigJam',
+  vig_manuel: 'Medis2024VigMan'
 };
 
 /* Nombres de los 39 auxiliares individuales (33 CEDIS + 6 B09) */
@@ -329,6 +332,9 @@ var AUXILIARES_INDIVIDUALES = [
   'jose_santiago','yuliana','luisa_fernanda','nedi_yojana',
   'beatriz_eugenia','mery_yolanda','yeimy_aldana'
 ];
+
+/* Vigilantes (solo Seguridad) */
+var VIGILANTE_USERS = ['vig_leidy','vig_james','vig_manuel'];
 
 var LABELS_PERFIL = {
   administrador: '&#128081; ADMINISTRADOR',
@@ -343,9 +349,12 @@ var LABELS_PERFIL = {
   beatriz_eugenia: '&#128119; Beatriz Eugenia (Auxiliar B09)',
   mery_yolanda: '&#128119; Mery Yolanda (Auxiliar B09)',
   yeimy_aldana: '&#128119; Yeimy Aldana (Auxiliar CEDIS)',
-  auxiliar: '&#128119; AUXILIAR'
+  auxiliar: '&#128119; AUXILIAR',
+  vig_leidy: '&#128737; Leidy (Vigilante)',
+  vig_james: '&#128737; James (Vigilante)',
+  vig_manuel: '&#128737; Manuel (Vigilante)',
+  vigilante: '&#128737; VIGILANTE'
 };
-
 /* Perfiles y sus tarjetas visibles (reordenadas) */
 var PERFILES = {
   administrador:           { label: 'Administrador',            tarjetas: ['t1','t2','t3','t4','t5','t6'] },
@@ -360,7 +369,8 @@ var PERFILES = {
   beatriz_eugenia:         { label: 'Beatriz Eugenia Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   mery_yolanda:            { label: 'Mery Yolanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   yeimy_aldana:            { label: 'Yeimy Aldana Auxiliar CEDIS', tarjetas: ['t1','t2','t3'] },
-  auxiliar:                { label: 'Auxiliar',                 tarjetas: ['t1','t2','t3'] }
+  auxiliar:                { label: 'Auxiliar',                 tarjetas: ['t1','t2','t3'] },
+  vigilante:               { label: 'Vigilante',                 tarjetas: ['t1'] }
 };
 
 /* Modulos (orden de carpetas/backend) */
@@ -409,6 +419,10 @@ function esAdministrador() {
   return p === 'administrador';
 }
 
+function esVigilante() {
+  return VIGILANTE_USERS.indexOf(perfilActivo()) >= 0;
+}
+
 function nombreUsuario() {
   var p = perfilActivo();
   if (AUXILIARES_INDIVIDUALES.indexOf(p) >= 0) {
@@ -419,6 +433,8 @@ function nombreUsuario() {
 
 function aplicarPerfil() {
   var perfil = perfilActivo();
+  /* Vigilante users map to 'vigilante' profile (only t1 - Seguridad) */
+  if (VIGILANTE_USERS.indexOf(perfil) >= 0) perfil = 'vigilante';
   /* B09 users keep their own profile (t1-t4); other auxiliares map to generic 'auxiliar' */
   var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
   if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) perfil = 'auxiliar';
@@ -446,10 +462,35 @@ function aplicarPerfil() {
       if (tab) { tab.classList.remove('d-none'); tab.style.display = ''; }
     });
   }
+  /* v3.10.0: Seccion C (Anulacion) solo visible para Administradores */
+  var secC = $('t3_seccionC');
+  if (secC) secC.style.display = esAdministrador() ? '' : 'none';
+
+  /* v3.9.0: Restringir UI para Vigilantes — sin config, backup, consolidado, visor, ni cambio de perfil */
+  var esVig = esVigilante();
+  var elCfg = $('btnConfigApi');   if (elCfg) elCfg.style.display = esVig ? 'none' : '';
+  var elPrb = $('btnProbarApi');   if (elPrb) elPrb.style.display = esVig ? 'none' : '';
+  var elBkT = $('btnBackupTop');   if (elBkT) elBkT.style.display = esVig ? 'none' : '';
+  var elBkF = $('btnBackupFloat'); if (elBkF) elBkF.style.display = esVig ? 'none' : '';
+  var elCoT = $('btnConsolidadoTop');   if (elCoT) elCoT.style.display = esVig ? 'none' : '';
+  var elCoF = $('btnConsolidadoFloat'); if (elCoF) elCoF.style.display = esVig ? 'none' : '';
+  var elSp  = $('selPerfil');     if (elSp)  elSp.style.display = esVig ? 'none' : '';
+  var elLSp = elSp ? elSp.closest('.d-flex') : null; if (elLSp) elLSp.style.display = esVig ? 'none' : '';
+  var elVis = document.querySelector('a[href*="Informe-de-Operacional"]'); if (elVis) elVis.style.display = esVig ? 'none' : '';
+  /* Auto-activar tab t1 si es vigilante */
+  if (esVig) {
+    var tabT1 = document.querySelector('[data-bs-target="#t1"]');
+    if (tabT1 && typeof bootstrap !== 'undefined') { new bootstrap.Tab(tabT1).show(); }
+  }
   pintarPerfiles();
 }
 
 function seleccionarPerfil(perfil) {
+  /* v3.9.0: Los Vigilantes no pueden cambiar de perfil */
+  if (esVigilante()) {
+    showToast('Perfil bloqueado — el usuario Vigilante no puede cambiar de perfil.', 'warning');
+    return;
+  }
   localStorage.setItem('MF_LOGIN_OK', perfil);
   localStorage.setItem('MF_PERFIL_ACTIVO', perfil);
   aplicarPerfil();
@@ -461,7 +502,8 @@ function pintarPerfiles() {
   if (info) {
     var perfil = perfilActivo();
     var B09_USERS = ['jose_santiago','yuliana','luisa_fernanda','nedi_yojana','beatriz_eugenia','mery_yolanda'];
-    var real = (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) ? 'auxiliar' : perfil;
+    /* v3.9.0: Vigilantes se mapean a perfil 'vigilante' */
+    var real = VIGILANTE_USERS.indexOf(perfil) >= 0 ? 'vigilante' : ((AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) ? 'auxiliar' : perfil);
     var def = PERFILES[real] || PERFILES.administrador;
     var h = '<strong>Perfil activo:</strong> ' + (LABELS_PERFIL[real] || perfil) + '<br>';
     h += '<strong>Tarjetas visibles:</strong> ' + def.tarjetas.join(', ') + '<br>';
@@ -877,6 +919,7 @@ function t2Guardar() {
    ═════════════════════════════════════════════════════════════════════════════════ */
 var t3aTrasladoValidado = null;  // Seccion A: traslado validado en trasladosConsulta
 var t3bTrasladoValidado = null;  // Seccion B: asignacion validada + datos consolidados
+var t3cTrasladoValidado = null;  // Seccion C (Anulacion): asignacion validada
 var logTrasladoValidado = null;  // Logistica: traslado validado en trasladosConsulta
 var t3RotacionHoy = null;
 
@@ -1014,6 +1057,9 @@ var GRUPOS_FIJOS_CARGUE = [
   { nombre: 'B09-5', numero: 13, hex: '#6f42c1', miembros: ['Beatriz Eugenia Urbano Botina'], lider: 'Beatriz Eugenia Urbano Botina' },
   { nombre: 'B09-6', numero: 14, hex: '#343a40', miembros: ['Mery Yolanda Cadavid Bermudez'], lider: 'Mery Yolanda Cadavid Bermudez' }
 ];
+
+/* Vigilantes (solo Seguridad) */
+var VIGILANTE_USERS = ['vig_leidy','vig_james','vig_manuel'];
 
 /* ── Listener de cambio en Grupo Asignado — colorea el select al cambiar manualmente ── */
 (function initGrupoSelectListener() {
@@ -1528,6 +1574,171 @@ function limpiarSeccionB() {
   showToast('Secci&oacute;n B (Entrega a Log&iacute;stica) limpiada.', 'info');
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+   8c. TARJETA 3 — Seccion C: Anulacion (Casos Especiales) - Solo Administrador v3.10.0
+   ══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+function t3cValidarTraslado() {
+  var traslado = $('t3c_traslado') ? $('t3c_traslado').value.trim() : '';
+  if (!traslado) { showToast('Ingrese el número de traslado asignado.', 'danger'); return; }
+
+  var folderId = $('folder_asignacion') ? $('folder_asignacion').value.trim() : CONFIG.folders.asignacion;
+  if (!folderId) { showToast('Configure la carpeta Drive de Asignación.', 'danger'); return; }
+
+  var estado = $('t3c_estadoTraslado');
+  if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Verificando asignación...</span>';
+
+  /* PASO 1: Verificar que el traslado fue asignado */
+  apiGet({ action: 'buscarAsignacion', folderId: folderId, traslado: traslado })
+    .then(function (rAsig) {
+      if (!rAsig || !rAsig.encontrado || !rAsig.registro) {
+        t3cTrasladoValidado = null;
+        if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Sin asignación</span>';
+        showToast('El traslado <strong>' + traslado + '</strong> no ha completado el paso de Asignación de Traslado.', 'danger');
+        return;
+      }
+
+      /* Asignacion encontrada — autocompletar campos bloqueados de Seccion C */
+      var asig = rAsig.registro;
+      if ($('t3c_bodega_origen')) $('t3c_bodega_origen').value = asig['Bodega Origen'] || asig['Bodega Origen.'] || '';
+      if ($('t3c_destino')) $('t3c_destino').value = asig['Bodega Destino'] || asig['Bodega Destino.'] || '';
+      if ($('t3c_concepto')) $('t3c_concepto').value = asig['Concepto'] || '';
+
+      /* Urgente: auto segun Concepto */
+      var conceptoValC = $('t3c_concepto') ? $('t3c_concepto').value.trim().toUpperCase() : '';
+      var esConceptoUrgenteC = false;
+      var CONCEPTOS_URGENTES_C = ['TUTELAS', 'DESACATO', 'PQRS', 'JORNADAS', 'ORDEN DE ARRESTO', 'SANCION'];
+      for (var ciC = 0; ciC < CONCEPTOS_URGENTES_C.length; ciC++) {
+        if (conceptoValC === CONCEPTOS_URGENTES_C[ciC] || conceptoValC.indexOf(CONCEPTOS_URGENTES_C[ciC]) >= 0) {
+          esConceptoUrgenteC = true; break;
+        }
+      }
+      if (esConceptoUrgenteC) {
+        if ($('t3c_urgente')) $('t3c_urgente').value = 'SI';
+      } else {
+        if ($('t3c_urgente')) $('t3c_urgente').value = asig['Urgente'] || 'NO';
+      }
+
+      /* Grupo Asignado → siempre "ANULADO" en Seccion C */
+      var grupoAsignadoEl = $('t3c_grupo_asignado');
+      if (grupoAsignadoEl) {
+        grupoAsignadoEl.value = 'ANULADO';
+        grupoAsignadoEl.style.borderColor = '#dc3545';
+        grupoAsignadoEl.style.color = '#dc3545';
+        grupoAsignadoEl.style.fontWeight = 'bold';
+      }
+
+      /* Punto de captura */
+      var trasladoCompletoC = asig['Traslado'] || asig['Documento'] || asig['Documento Traslado'] || asig['Numero Traslado'] || traslado;
+      if ($('t3c_traslado')) $('t3c_traslado').value = trasladoCompletoC;
+      if ($('t3c_punto_captura')) $('t3c_punto_captura').value = trasladoCompletoC;
+      if ($('t3c_punto_row')) $('t3c_punto_row').style.display = '';
+
+      /* Mensaje detallado */
+      var tipoMatchC = asig.__tipoCoincidencia || 'exacta';
+      var digitosBuscadosC = asig.__buscadoDigitos || '';
+      var numCoincidenciasC = asig.__coincidencias || 1;
+      var numExactasC = asig.__coincidenciasExactas || 0;
+      var msgMatchC = '';
+      if (tipoMatchC === 'exacta') {
+        msgMatchC = 'Asignación de traslado <strong>' + trasladoCompletoC + '</strong> verificada (coincidencia exacta). Grupo cambiado a <strong style="color:#dc3545">ANULADO</strong>.';
+      } else {
+        var digitosInfoC = digitosBuscadosC ? ' Digitos buscados: <strong>' + digitosBuscadosC + '</strong>.' : '';
+        msgMatchC = 'Coincidencia parcial: traslado <strong>' + trasladoCompletoC + '</strong>.' + digitosInfoC + ' Grupo cambiado a <strong style="color:#dc3545">ANULADO</strong>.';
+      }
+      if (numCoincidenciasC > 1) {
+        msgMatchC += ' <span class="text-warning">(' + numCoincidenciasC + ' coincidencias totales';
+        if (numExactasC > 0) msgMatchC += ', ' + numExactasC + ' exacta(s)';
+        msgMatchC += ')</span>';
+      }
+
+      if (estado) estado.innerHTML = '<span class="badge bg-success">&#9989; Asignación verificada</span>';
+      showToast(msgMatchC, 'success');
+
+      /* Guardar la asignacion como referencia para guardar despues */
+      t3cTrasladoValidado = asig;
+
+      /* PASO 2: Buscar datos adicionales en consolidados (opcional, no bloquea) */
+      var folderConsulta = CONFIG.folders.trasladosConsulta;
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoC })
+        .then(function (rConsol) {
+          if (rConsol && rConsol.encontrado && rConsol.registro) {
+            t3cTrasladoValidado.__consolidado = rConsol.registro;
+          }
+        })
+        .catch(function () { /* no bloquea */ });
+    })
+    .catch(function (err) {
+      t3cTrasladoValidado = null;
+      if (estado) estado.innerHTML = '<span class="badge bg-danger">&#10060; Error</span>';
+      showToast('Error al consultar asignación: ' + err.message, 'danger');
+    });
+}
+
+function t3cGuardarAnulacion() {
+  var trasladoInput = $('t3c_traslado') ? $('t3c_traslado').value.trim() : '';
+  if (!trasladoInput) { showToast('Primero consulte un traslado en la Sección C.', 'danger'); return; }
+  if (!t3cTrasladoValidado) { showToast('Valide la asignación del traslado antes de guardar la anulación.', 'danger'); return; }
+
+  var trasladoCompletoGuardarC = t3cTrasladoValidado['Traslado'] || t3cTrasladoValidado['Documento'] || t3cTrasladoValidado['Documento Traslado'] || t3cTrasladoValidado['Numero Traslado'] || trasladoInput;
+
+  var tipo = $('t3c_tipo') ? $('t3c_tipo').value : '';
+  var observacion = $('t3c_observacion') ? $('t3c_observacion').value.trim() : '';
+
+  if (!tipo) { showToast('Seleccione el Tipo de Anulación.', 'danger'); return; }
+  if (!observacion) { showToast('Ingrese una Observación para la anulación.', 'danger'); return; }
+
+  var folderId = CONFIG.folders.despachos;  /* BD_TRASLADOS_ANULADOS va en la carpeta despachos */
+
+  var btnGuardar = $('t3c_btnGuardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+
+  var asig = t3cTrasladoValidado;
+  var consol = asig.__consolidado || {};
+
+  var registro = {
+    'Documento Traslado': trasladoCompletoGuardarC,
+    'Bodega Origen': $('t3c_bodega_origen') ? $('t3c_bodega_origen').value : '',
+    'Bodega Destino': $('t3c_destino') ? $('t3c_destino').value : '',
+    'Concepto': $('t3c_concepto') ? $('t3c_concepto').value : '',
+    'Urgente': $('t3c_urgente') ? $('t3c_urgente').value : '',
+    'Grupo Asignado': 'ANULADO',
+    'Tipo': tipo,
+    'Marca temporal': ahora(),
+    'Perfil': perfilActivo(),
+    'Usuario': nombreUsuario(),
+    'Dirección de correo electrónico': '',  /* backend auto-fills _usuario() */
+    'Observación': observacion
+  };
+
+  apiPost({ action: 'guardarAnulacionTraslado', folderId: folderId, registro: registro })
+    .then(function (r) {
+      if (r && r.ok) {
+        showToast('&#128190; <strong>Anulación</strong> guardada en BD_TRASLADOS_ANULADOS. Grupo: <strong style="color:#dc3545">ANULADO</strong>.', 'success');
+        t3cTrasladoValidado = null;
+        limpiarSeccionC();
+      } else {
+        showToast('Error al guardar Anulación: ' + (r.error || ''), 'danger');
+      }
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Anulación en el Drive'; }
+    })
+    .catch(function (err) {
+      showToast('Error de conexión: ' + err.message, 'danger');
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Anulación en el Drive'; }
+    });
+}
+
+function limpiarSeccionC() {
+  limpiarCampos('t3c_');
+  var ga = $('t3c_grupo_asignado');
+  if (ga) { ga.style.borderColor = '#dc3545'; ga.style.color = '#dc3545'; ga.style.fontWeight = 'bold'; }
+  if ($('t3c_punto_row')) $('t3c_punto_row').style.display = 'none';
+  if ($('t3c_estadoTraslado')) $('t3c_estadoTraslado').innerHTML = '';
+  t3cTrasladoValidado = null;
+  showToast('Sección C (Anulación) limpiada.', 'info');
+}
+
+
 /* ═════════════════════════════════════════════════════════════════════════════════
    9. TARJETA 4 — LOGISTICA Y DESPACHOS (2 Secciones)
    ═════════════════════════════════════════════════════════════════════════════════
@@ -2012,7 +2223,7 @@ function logBuscarPlanilla() {
         if ($('log_conductor') && reg0['Conductor']) $('log_conductor').value = reg0['Conductor'];
         if ($('log_placa') && reg0['Placa del Vehiculo']) $('log_placa').value = reg0['Placa del Vehiculo'];
         if ($('log_obs_planilla') && reg0['Observaciones Planilla']) $('log_obs_planilla').value = reg0['Observaciones Planilla'];
-        /* v3.8.9: Bodega Origen multi-select — poblar con todas las bodegas origen unicas de los registros */
+        /* v3.9.0: Bodega Origen multi-select — poblar con todas las bodegas origen unicas de los registros */
         var bodegaOrigenValues = [];
         var bodegaOrigenSet = {};
         for (var bori = 0; bori < r.registros.length; bori++) {
@@ -2046,7 +2257,7 @@ function logBuscarPlanilla() {
           var elCB = $(camposBloquear[cb]);
           if (elCB) { elCB.setAttribute('readonly', ''); elCB.classList.add('campo-bloqueado'); elCB.disabled = true; }
         }
-        /* v3.8.9: Bloquear Bodega Origen multi-select via Tom Select lock() */
+        /* v3.9.0: Bloquear Bodega Origen multi-select via Tom Select lock() */
         var selBodOr = $('log_bodega_origen_despacho');
         if (selBodOr) {
           selBodOr.classList.add('campo-bloqueado');
@@ -2291,7 +2502,7 @@ function logConsultarDespacho() {
   } else if (boEl) {
     filtroBodegaDestino = boEl.value || '';
   }
-  /* v3.8.9: Multi-select Bodega Origen — read array from Tom Select */
+  /* v3.9.0: Multi-select Bodega Origen — read array from Tom Select */
   var filtroBodegaOrigen = '';
   var boOrEl = $('log_bodega_origen_despacho');
   if (boOrEl && boOrEl.tomselect) {
@@ -2361,7 +2572,7 @@ function logDiagnosticarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
   var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
-  /* v3.8.9: Incluir filtros de bodegas en diagnostico */
+  /* v3.9.0: Incluir filtros de bodegas en diagnostico */
   var filtroBodegaDestino = '';
   var boDiagEl = $('log_filtro_bodega_destino');
   if (boDiagEl && boDiagEl.tomselect) {
@@ -2433,7 +2644,7 @@ function logRestaurarModoNormal() {
     var elU = $(camposDesbloquear[cb]);
     if (elU) { elU.removeAttribute('readonly'); elU.classList.remove('campo-bloqueado'); elU.disabled = false; }
   }
-  /* v3.8.9: Desbloquear Bodega Origen multi-select via Tom Select unlock() */
+  /* v3.9.0: Desbloquear Bodega Origen multi-select via Tom Select unlock() */
   var selBodOr = $('log_bodega_origen_despacho');
   if (selBodOr) {
     selBodOr.classList.remove('campo-bloqueado');
@@ -2773,7 +2984,7 @@ function logGuardarYDescargar() {
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
   if (!conductor) { showToast('Ingrese el nombre del Conductor.', 'danger'); return; }
-  /* v3.8.9: Bodega Origen multi-select — obtener valores seleccionados */
+  /* v3.9.0: Bodega Origen multi-select — obtener valores seleccionados */
   var bodegaOrigenDespacho = '';
   var bodegaOrigenEl = $('log_bodega_origen_despacho');
   if (bodegaOrigenEl && bodegaOrigenEl.tomselect) {
@@ -3172,6 +3383,8 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('t3a_btnGuardar'); if (btn) btn.addEventListener('click', t3aGuardarAsignacion);
   btn = $('t3b_btnValidar'); if (btn) btn.addEventListener('click', t3bValidarTraslado);
   btn = $('t3b_btnGuardar'); if (btn) btn.addEventListener('click', t3bGuardarEntrega);
+  btn = $('t3c_btnValidar'); if (btn) btn.addEventListener('click', t3cValidarTraslado);
+  btn = $('t3c_btnGuardar'); if (btn) btn.addEventListener('click', t3cGuardarAnulacion);
   /* Mostrar/ocultar campo Temperatura cuando Tipo Carga = NEVERA */
   var selTipoCarga = $('t3b_tipo_carga');
   if (selTipoCarga) selTipoCarga.addEventListener('change', function () {
