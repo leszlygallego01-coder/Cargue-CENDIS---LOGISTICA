@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbxkK8yG0wf26RsNfeXQY7eGCYduzwS2P7z8BAzHRno2E7cOs20ZceLjjSSYbxtxtX8v/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwwYlzH6OfqFBBsUup_TimTU476pxrhkFBPmb5gOu_q7k0P9p7Uj4ZmEN4FXutTlhsD/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1925,9 +1925,10 @@ function poblarBodegas() {
     var isMulti = sel.hasAttribute('multiple');
     // Verificar si necesita repoblado
     var needsRepopulate = false;
+    var expectedCount = isMulti ? bodegas.length : bodegas.length + 1;
     if (sel.options.length <= 1) {
       needsRepopulate = true;
-    } else if (sel.options.length !== bodegas.length + 1) {
+    } else if (sel.options.length !== expectedCount) {
       needsRepopulate = true;
     } else {
       if (String(sel.options[sel.options.length - 1].value || '') !== String(bodegas[bodegas.length - 1] || '')) {
@@ -1937,7 +1938,7 @@ function poblarBodegas() {
     if (!needsRepopulate) continue;
 
     var placeholderText = 'Seleccione...';
-    if (sel.id === 'log_filtro_bodega_destino') {
+    if (sel.id === 'log_filtro_bodega_destino' || sel.id === 'log_bodega_origen_despacho') {
       placeholderText = 'Todas las bodegas';
     } else if (sel.options.length > 0 && sel.options[0].value === '') {
       placeholderText = sel.options[0].textContent || 'Seleccione...';
@@ -1958,9 +1959,9 @@ function poblarBodegas() {
     // Sincronizar Tom Select si existe
     if (sel.tomselect) {
       sel.tomselect.clearOptions();
-      var tsOpts = [{value: '', text: placeholderText}].concat(bodegas.map(function(b){ return {value: b, text: b}; }));
+      var tsOpts = isMulti ? bodegas.map(function(b){ return {value: b, text: b}; }) : [{value: '', text: placeholderText}].concat(bodegas.map(function(b){ return {value: b, text: b}; }));
       sel.tomselect.addOption(tsOpts);
-      sel.tomselect.setValue(isMulti ? [] : '');
+      if (!isMulti) sel.tomselect.setValue('');
     }
   }
 }
@@ -2011,28 +2012,45 @@ function logBuscarPlanilla() {
         if ($('log_conductor') && reg0['Conductor']) $('log_conductor').value = reg0['Conductor'];
         if ($('log_placa') && reg0['Placa del Vehiculo']) $('log_placa').value = reg0['Placa del Vehiculo'];
         if ($('log_obs_planilla') && reg0['Observaciones Planilla']) $('log_obs_planilla').value = reg0['Observaciones Planilla'];
-        /* Bodega Origen: intentar poblar el select */
-        var bodegaVal = reg0['Bodega Origen'] || '';
-        if (bodegaVal && $('log_bodega_origen_despacho')) {
+        /* v3.8.9: Bodega Origen multi-select — poblar con todas las bodegas origen unicas de los registros */
+        var bodegaOrigenValues = [];
+        var bodegaOrigenSet = {};
+        for (var bori = 0; bori < r.registros.length; bori++) {
+          var bodOrVal = (r.registros[bori]['Bodega Origen'] || '').trim().toUpperCase();
+          if (bodOrVal && !bodegaOrigenSet[bodOrVal]) {
+            bodegaOrigenSet[bodOrVal] = true;
+            bodegaOrigenValues.push(r.registros[bori]['Bodega Origen'].trim());
+          }
+        }
+        if (bodegaOrigenValues.length > 0 && $('log_bodega_origen_despacho')) {
           var selBod = $('log_bodega_origen_despacho');
-          var found = false;
-          for (var bo = 0; bo < selBod.options.length; bo++) {
-            if (selBod.options[bo].value.trim().toUpperCase() === bodegaVal.trim().toUpperCase()) {
-              selBod.selectedIndex = bo; found = true; break;
+          /* Agregar opciones que no existan */
+          for (var bvi = 0; bvi < bodegaOrigenValues.length; bvi++) {
+            var bVal = bodegaOrigenValues[bvi];
+            var found = false;
+            if (selBod.tomselect && selBod.tomselect.options) {
+              found = !!selBod.tomselect.options[bVal];
+            }
+            if (!found) {
+              /* Agregar opcion si no existe en el select */
+              if (selBod.tomselect) {
+                selBod.tomselect.addOption({value: bVal, text: bVal});
+              }
             }
           }
-          if (!found) { /* Agregar opcion si no existe */
-            var newOpt = document.createElement('option');
-            newOpt.value = bodegaVal; newOpt.textContent = bodegaVal; newOpt.selected = true;
-            selBod.insertBefore(newOpt, selBod.firstChild);
-          }
-          if (selBod.tomselect) selBod.tomselect.setValue(bodegaVal);
+          if (selBod.tomselect) selBod.tomselect.setValue(bodegaOrigenValues);
         }
         /* Deshabilitar campos editables en modo planilla existente */
-        var camposBloquear = ['log_planilla','log_conductor','log_placa','log_obs_planilla','log_bodega_origen_despacho'];
+        var camposBloquear = ['log_planilla','log_conductor','log_placa','log_obs_planilla'];
         for (var cb = 0; cb < camposBloquear.length; cb++) {
           var elCB = $(camposBloquear[cb]);
           if (elCB) { elCB.setAttribute('readonly', ''); elCB.classList.add('campo-bloqueado'); elCB.disabled = true; }
+        }
+        /* v3.8.9: Bloquear Bodega Origen multi-select via Tom Select lock() */
+        var selBodOr = $('log_bodega_origen_despacho');
+        if (selBodOr) {
+          selBodOr.classList.add('campo-bloqueado');
+          if (selBodOr.tomselect) { selBodOr.tomselect.lock(); } else { selBodOr.disabled = true; }
         }
         /* Cambiar boton combinado a modo "Solo PDF" */
         var btnComb = $('log_btnCombinado');
@@ -2273,6 +2291,17 @@ function logConsultarDespacho() {
   } else if (boEl) {
     filtroBodegaDestino = boEl.value || '';
   }
+  /* v3.8.9: Multi-select Bodega Origen — read array from Tom Select */
+  var filtroBodegaOrigen = '';
+  var boOrEl = $('log_bodega_origen_despacho');
+  if (boOrEl && boOrEl.tomselect) {
+    var selectedOr = boOrEl.tomselect.getValue();
+    if (Array.isArray(selectedOr) && selectedOr.length > 0) {
+      filtroBodegaOrigen = selectedOr.join(',');
+    }
+  } else if (boOrEl) {
+    filtroBodegaOrigen = boOrEl.value || '';
+  }
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
@@ -2285,6 +2314,11 @@ function logConsultarDespacho() {
   if (filtroBodegaDestino && boEl && boEl.tomselect) {
     var savedBodArr = filtroBodegaDestino.split(',');
     boEl.tomselect.setValue(savedBodArr);
+  }
+  /* Restaurar la seleccion del filtro bodega origen despues de poblarBodegas */
+  if (filtroBodegaOrigen && boOrEl && boOrEl.tomselect) {
+    var savedBodOrArr = filtroBodegaOrigen.split(',');
+    boOrEl.tomselect.setValue(savedBodOrArr);
   }
 
   var consultaEstado = $('log_consulta_estado');
@@ -2302,7 +2336,8 @@ function logConsultarDespacho() {
     filtroRevisado: filtroRevisado,
     filtroRuta: filtroRuta,
     filtroUrgente: filtroUrgente,
-    filtroBodegaDestino: filtroBodegaDestino
+    filtroBodegaDestino: filtroBodegaDestino,
+    filtroBodegaOrigen: filtroBodegaOrigen
   })
     .then(function (r) {
       if (r && r.ok && r.registros && r.registros.length > 0) {
@@ -2326,6 +2361,19 @@ function logDiagnosticarDespacho() {
   var filtroRevisado = $('log_filtro_revisado') ? $('log_filtro_revisado').value : '';
   var filtroRuta = $('log_filtro_ruta') ? $('log_filtro_ruta').value : '';
   var filtroUrgente = $('log_filtro_urgente') ? $('log_filtro_urgente').value : '';
+  /* v3.8.9: Incluir filtros de bodegas en diagnostico */
+  var filtroBodegaDestino = '';
+  var boDiagEl = $('log_filtro_bodega_destino');
+  if (boDiagEl && boDiagEl.tomselect) {
+    var selDiag = boDiagEl.tomselect.getValue();
+    if (Array.isArray(selDiag) && selDiag.length > 0) filtroBodegaDestino = selDiag.join(',');
+  }
+  var filtroBodegaOrigen = '';
+  var boOrDiagEl = $('log_bodega_origen_despacho');
+  if (boOrDiagEl && boOrDiagEl.tomselect) {
+    var selOrDiag = boOrDiagEl.tomselect.getValue();
+    if (Array.isArray(selOrDiag) && selOrDiag.length > 0) filtroBodegaOrigen = selOrDiag.join(',');
+  }
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
 
@@ -2335,7 +2383,9 @@ function logDiagnosticarDespacho() {
     folderId: folderId,
     filtroRevisado: filtroRevisado,
     filtroRuta: filtroRuta,
-    filtroUrgente: filtroUrgente
+    filtroUrgente: filtroUrgente,
+    filtroBodegaDestino: filtroBodegaDestino,
+    filtroBodegaOrigen: filtroBodegaOrigen
   })
     .then(function (d) {
       if (!d) { showToast('Sin respuesta del diagnostico.', 'danger'); return; }
@@ -2378,26 +2428,44 @@ function logDiagnosticarDespacho() {
    ═════════════════════════════════════════════════════════════════════════════════ */
 function logRestaurarModoNormal() {
   logModoSoloLectura = false;
-  var camposDesbloquear = ['log_planilla','log_conductor','log_placa','log_obs_planilla','log_bodega_origen_despacho'];
+  var camposDesbloquear = ['log_planilla','log_conductor','log_placa','log_obs_planilla'];
   for (var cb = 0; cb < camposDesbloquear.length; cb++) {
     var elU = $(camposDesbloquear[cb]);
     if (elU) { elU.removeAttribute('readonly'); elU.classList.remove('campo-bloqueado'); elU.disabled = false; }
   }
+  /* v3.8.9: Desbloquear Bodega Origen multi-select via Tom Select unlock() */
+  var selBodOr = $('log_bodega_origen_despacho');
+  if (selBodOr) {
+    selBodOr.classList.remove('campo-bloqueado');
+    if (selBodOr.tomselect) { selBodOr.tomselect.unlock(); } else { selBodOr.disabled = false; }
+  }
   var btnComb = $('log_btnCombinado');
   if (btnComb) btnComb.classList.remove('mf-pdf-only');
 }
-
 /* ═════════════════════════════════════════════════════════════════════════════════
-   logDescargarPDFExistente - Genera PDF client-side de planilla existente y fuerza descarga
-   Estructura: Encabezado (Planilla, Conductor, Bodega Origen, Placa, Observaciones)
-              + Tabla de traslados (Documento, Bodega Origen, Cantidad, Tipo, Urgente, Temperatura)
+   logDescargarPDFExistente - Genera PDF client-side de planilla existente (PLANTILLA AZUL)
+   Replica la misma plantilla azul del backend (generarPDFPlanilla en Code.gs):
+   - Encabezado azul (#1a5276) con MEDISFARMA
+   - Logo si está disponible (img con id mf-logo-img)
+   - Planilla en fuente grande azul, Conductor/Placa en azul
+   - Bodega Destino en verde (#198754), Ruta en azul
+   - Tabla agrupada por Bodega Destino, encabezados azul fondo blanco texto
+   - Columnas: Revisado, Documento Traslado, Cantidad, Tipo, Urgente, Temperatura
+   - Pie: Fecha de Recibido (Día/Mes/Año), Firma de Recibido, Observaciones
    Nombre: Planilla_[NUMERO_PLANILLA].pdf
    ═════════════════════════════════════════════════════════════════════════════════ */
 function logDescargarPDFExistente() {
   if (!logDatosDespacho.length) { showToast('No hay traslados para generar PDF.', 'danger'); return; }
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : 'SIN-PLANILLA';
   var conductor = $('log_conductor') ? $('log_conductor').value.trim() : '';
-  var bodegaOrigen = $('log_bodega_origen_despacho') ? $('log_bodega_origen_despacho').value.trim() : '';
+  var bodegaOrigen = '';
+  var bodegaOrigenEl = $('log_bodega_origen_despacho');
+  if (bodegaOrigenEl && bodegaOrigenEl.tomselect) {
+    var orVals = bodegaOrigenEl.tomselect.getValue();
+    bodegaOrigen = (Array.isArray(orVals) && orVals.length > 0) ? orVals.join(', ') : '';
+  } else if (bodegaOrigenEl) {
+    bodegaOrigen = bodegaOrigenEl.value ? bodegaOrigenEl.value.trim() : '';
+  }
   var placa = $('log_placa') ? $('log_placa').value.trim() : '';
   var observaciones = $('log_obs_planilla') ? $('log_obs_planilla').value.trim() : '';
 
@@ -2415,140 +2483,269 @@ function logDescargarPDFExistente() {
     /* Acceso robusto a jsPDF — funciona con CDN jsdelivr, unpkg o inline */
     var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDF) { throw new Error('Librería jsPDF no disponible. Recargue la página (F5) e intente de nuevo.'); }
+
+    var AZUL = [26, 82, 118];     /* #1a5276 */
+    var VERDE = [25, 135, 84];     /* #198754 */
+    var BLANCO = [255, 255, 255];
+    var NEGRO = [0, 0, 0];
+    var GRIS = [33, 37, 41];
+
+    /* ── Agrupar registros por Bodega Destino ── */
+    var grupos = {};
+    var ordenBodegas = [];
+    for (var i = 0; i < logDatosDespacho.length; i++) {
+      var reg = logDatosDespacho[i];
+      var bodega = String(reg['Bodega Destino'] || reg['Bodega Destino.'] || 'SIN BODEGA DESTINO').trim();
+      if (!grupos[bodega]) {
+        grupos[bodega] = [];
+        ordenBodegas.push(bodega);
+      }
+      grupos[bodega].push(reg);
+    }
+
     var doc = new jsPDF('p', 'mm', 'letter');
     var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
     var margin = 14;
     var contentW = pageW - margin * 2;
 
-    /* ── Encabezado institucional ── */
-    doc.setFillColor(128, 0, 0);
-    doc.rect(0, 0, pageW, 28, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('MEDISFARMA', margin, 12);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Planilla de Despacho', margin, 18);
-    doc.setFontSize(9);
-    doc.text('Fecha: ' + ahora(), pageW - margin, 12, { align: 'right' });
-    doc.text('Generado: ' + new Date().toLocaleString('es-CO'), pageW - margin, 17, { align: 'right' });
-
-    /* ── Linea decorativa ── */
-    doc.setDrawColor(128, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.line(margin, 30, pageW - margin, 30);
-
-    /* ── Datos del encabezado de la planilla ── */
-    var y = 36;
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-
-    var headerFields = [
-      ['PLANILLA', planilla],
-      ['CONDUCTOR', conductor],
-      ['BODEGA ORIGEN', bodegaOrigen],
-      ['PLACA DEL VEHÍCULO', placa],
-      ['OBSERVACIONES', observaciones || '(Sin observaciones)']
+    /* Columnas sin Bodega Origen: Revisado, Documento Traslado, Cantidad, Tipo, Urgente, Temperatura */
+    var cols = ['Revisado', 'Documento\nTraslado', 'Cantidad', 'Tipo', 'Urgente', 'Temperatura'];
+    /* Anchos redistribuidos (sin Bodega Origen) para llenar contentW */
+    var colWidths = [
+      contentW * 0.12,  /* Revisado */
+      contentW * 0.26,  /* Documento Traslado */
+      contentW * 0.12,  /* Cantidad */
+      contentW * 0.17,  /* Tipo */
+      contentW * 0.15,  /* Urgente */
+      contentW * 0.18   /* Temperatura */
     ];
 
-    for (var hf = 0; hf < headerFields.length; hf++) {
+    /* Intentar obtener logo como dataURL */
+    var logoDataUrl = null;
+    try {
+      var logoEl = document.getElementById('mf-logo-img') || document.querySelector('img[alt*="MEDISFARMA"]') || document.querySelector('.navbar-brand img');
+      if (logoEl && logoEl.src) {
+        var canvas = document.createElement('canvas');
+        canvas.width = logoEl.naturalWidth || 200;
+        canvas.height = logoEl.naturalHeight || 60;
+        canvas.getContext('2d').drawImage(logoEl, 0, 0);
+        logoDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      }
+    } catch (eLogo) { /* continuar sin logo */ }
+
+    /* ════════════════════════════════════════════════════════════════
+       GENERAR PÁGINA POR BODEGA DESTINO
+       ════════════════════════════════════════════════════════════════ */
+    for (var g = 0; g < ordenBodegas.length; g++) {
+      var nombreBodega = ordenBodegas[g];
+      var regsGrupo = grupos[nombreBodega];
+      var rutaGrupo = regsGrupo[0]['Ruta'] || regsGrupo[0]['Zona'] || '';
+      var nombreBodegaCorto = nombreBodega.replace(/CENDIS PRINCIPAL TULUA PARQUE INDUSTRIAL/gi, 'CEDIS');
+
+      if (g > 0) {
+        doc.addPage();
+      }
+
+      var y = 10;
+
+      /* ── Encabezado institucional AZUL ── */
+      doc.setFillColor.apply(doc, AZUL);
+      doc.rect(0, 0, pageW, 28, 'F');
+      doc.setTextColor.apply(doc, BLANCO);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MEDISFARMA', margin, 11);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Planilla de Despacho', margin, 17);
+      doc.setFontSize(8);
+      doc.text('Fecha: ' + ahora(), pageW - margin, 11, { align: 'right' });
+      doc.text('Generado: ' + new Date().toLocaleString('es-CO'), pageW - margin, 16, { align: 'right' });
+
+      /* ── Logo si está disponible ── */
+      if (logoDataUrl) {
+        try { doc.addImage(logoDataUrl, 'JPEG', pageW - margin - 25, 3, 22, 10); } catch (eImg) { /* sin logo */ }
+      }
+
+      /* ── Línea decorativa azul ── */
+      doc.setDrawColor.apply(doc, AZUL);
+      doc.setLineWidth(0.5);
+      doc.line(margin, 30, pageW - margin, 30);
+
+      y = 36;
+
+      /* ── Número de Planilla en AZUL grande ── */
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor.apply(doc, AZUL);
+      doc.text('Planilla: ' + planilla, margin, y);
+      y += 8;
+
+      /* ── Conductor y Placa en AZUL ── */
+      if (conductor || placa) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor.apply(doc, AZUL);
+        doc.text('Conductor: ' + (conductor || '-'), margin, y);
+        doc.text('Placa: ' + (placa || '-'), margin + 90, y);
+        y += 6;
+      }
+
+      /* ── Bodega Destino en VERDE ── */
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor.apply(doc, VERDE);
+      doc.text('Bodega Destino: ' + nombreBodegaCorto, margin, y);
+      y += 6;
+
+      /* ── Ruta en AZUL ── */
+      if (rutaGrupo) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor.apply(doc, AZUL);
+        doc.text('Ruta: ' + rutaGrupo, margin, y);
+        y += 6;
+      }
+
+      y += 4;
+
+      /* ══════ TABLA DE TRASLADOS ══════ */
+      var tableBody = [];
+      for (var ti = 0; ti < regsGrupo.length; ti++) {
+        var tr = regsGrupo[ti];
+        var revisado = tr['Revisado'] || 'NO';
+        /* Buscar select de Revisado */
+        var idxTr = -1;
+        for (var fi = 0; fi < logDatosDespacho.length; fi++) {
+          if (logDatosDespacho[fi]['Documento Traslado'] === tr['Documento Traslado']) { idxTr = fi; break; }
+        }
+        if (idxTr >= 0) {
+          var selR = document.querySelector('.log-revisado-select[data-idx="' + idxTr + '"]');
+          if (selR && selR.value) revisado = selR.value;
+          var badgeR = document.querySelector('.log-revisado-fijo[data-idx="' + idxTr + '"]');
+          if (badgeR) revisado = 'SI';
+        }
+        tableBody.push([
+          String(revisado),
+          String(tr['Documento Traslado'] || ''),
+          String(tr['Cantidad'] || ''),
+          String(tr['Tipo'] || tr['Tipo Carga'] || tr['Tipo de Carga'] || ''),
+          String(tr['Urgente'] || 'NO'),
+          String(tr['Temperatura'] || '-')
+        ]);
+      }
+
+      /* Preparar columnStyles con los anchos redistribuidos */
+      var colStyles = {};
+      for (var cs = 0; cs < colWidths.length; cs++) {
+        colStyles[cs] = { cellWidth: colWidths[cs] };
+        if (cs === 2 || cs === 3 || cs === 4 || cs === 5) colStyles[cs].halign = 'center';
+      }
+
+      doc.autoTable({
+        startY: y,
+        head: [cols],
+        body: tableBody,
+        margin: { left: margin, right: margin },
+        headStyles: {
+          fillColor: AZUL,
+          textColor: BLANCO,
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+          valign: 'middle',
+          cellPadding: 3
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: 2,
+          textColor: AZUL
+        },
+        alternateRowStyles: {
+          fillColor: [240, 248, 255]   /* azul muy claro */
+        },
+        columnStyles: colStyles,
+        didDrawCell: function(data) {
+          /* Resaltar filas urgentes */
+          if (data.section === 'body' && data.column.index === 4) {
+            var urgVal = String(data.cell.raw || '').toUpperCase();
+            if (urgVal === 'SI') {
+              doc.setFillColor(255, 193, 7);
+              doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+              doc.setTextColor.apply(doc, NEGRO);
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'bold');
+              doc.text('SI', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+            }
+          }
+        },
+        styles: { overflow: 'linebreak' }
+      });
+
+      /* ══════ PIE DE PÁGINA ══════ */
+      var finalY = doc.lastAutoTable.finalY + 10;
+
+      /* Si no hay espacio suficiente, saltar de página */
+      if (finalY > pageH - 50) {
+        doc.addPage();
+        finalY = 14;
+      }
+
+      /* ── Fecha de Recibido ── */
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      doc.setTextColor(128, 0, 0);
-      doc.text(headerFields[hf][0] + ':', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(33, 37, 41);
-      doc.text(String(headerFields[hf][1]), margin + 48, y);
-      y += 6;
+      doc.setTextColor.apply(doc, AZUL);
+      doc.text('Fecha de Recibido:', margin, finalY);
+      finalY += 5;
+
+      /* Tabla Día / Mes / Año */
+      var fechaColW = (contentW - 4) / 3;
+      /* Encabezados */
+      doc.setFillColor.apply(doc, AZUL);
+      doc.rect(margin, finalY, fechaColW, 6, 'F');
+      doc.rect(margin + fechaColW + 2, finalY, fechaColW, 6, 'F');
+      doc.rect(margin + (fechaColW + 2) * 2, finalY, fechaColW, 6, 'F');
+      doc.setTextColor.apply(doc, BLANCO);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Día', margin + fechaColW / 2, finalY + 4, { align: 'center' });
+      doc.text('Mes', margin + fechaColW + 2 + fechaColW / 2, finalY + 4, { align: 'center' });
+      doc.text('Año', margin + (fechaColW + 2) * 2 + fechaColW / 2, finalY + 4, { align: 'center' });
+      finalY += 6;
+      /* Fila vacía para rellenar */
+      doc.setDrawColor.apply(doc, AZUL);
+      doc.setLineWidth(0.3);
+      doc.rect(margin, finalY, fechaColW, 8);
+      doc.rect(margin + fechaColW + 2, finalY, fechaColW, 8);
+      doc.rect(margin + (fechaColW + 2) * 2, finalY, fechaColW, 8);
+      finalY += 12;
+
+      /* ── Firma de Recibido ── */
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor.apply(doc, AZUL);
+      doc.text('Firma de Recibido:', margin, finalY);
+      /* Línea para firma */
+      doc.setDrawColor.apply(doc, AZUL);
+      doc.setLineWidth(0.4);
+      var firmaLineX = margin + 40;
+      doc.line(firmaLineX, finalY, pageW - margin, finalY);
+      finalY += 10;
+
+      /* ── Observaciones ── */
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor.apply(doc, AZUL);
+      doc.text('Observaciones:', margin, finalY);
+      finalY += 4;
+      doc.setDrawColor.apply(doc, AZUL);
+      doc.setLineWidth(0.3);
+      for (var ol = 0; ol < 2; ol++) {
+        doc.line(margin, finalY, pageW - margin, finalY);
+        finalY += 7;
+      }
     }
-
-    y += 4;
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(margin, y, pageW - margin, y);
-    y += 6;
-
-    /* ── Tabla de traslados ── */
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(128, 0, 0);
-    doc.text('TRASLADOS ASOCIADOS (' + logDatosDespacho.length + ')', margin, y);
-    y += 4;
-
-    var tableHeaders = [
-      ['Documento\nTraslado', 'Bodega\nOrigen', 'Cantidad', 'Tipo', 'Urgente', 'Temperatura']
-    ];
-    var tableBody = [];
-    for (var ti = 0; ti < logDatosDespacho.length; ti++) {
-      var tr = logDatosDespacho[ti];
-      tableBody.push([
-        String(tr['Documento Traslado'] || ''),
-        String(tr['Bodega Origen'] || ''),
-        String(tr['Cantidad'] || ''),
-        String(tr['Tipo'] || tr['Tipo Carga'] || tr['Tipo de Carga'] || ''),
-        String(tr['Urgente'] || 'NO'),
-        String(tr['Temperatura'] || '-')
-      ]);
-    }
-
-    doc.autoTable({
-      startY: y,
-      head: tableHeaders,
-      body: tableBody,
-      margin: { left: margin, right: margin },
-      headStyles: {
-        fillColor: [128, 0, 0],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 8,
-        halign: 'center',
-        valign: 'middle',
-        cellPadding: 3
-      },
-      bodyStyles: {
-        fontSize: 8,
-        cellPadding: 2,
-        textColor: [33, 37, 41]
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      },
-      columnStyles: {
-        0: { cellWidth: 35 },  /* Documento Traslado */
-        1: { cellWidth: 40 },  /* Bodega Origen */
-        2: { halign: 'center', cellWidth: 18 },  /* Cantidad */
-        3: { halign: 'center', cellWidth: 22 },  /* Tipo */
-        4: { halign: 'center', cellWidth: 18 },  /* Urgente */
-        5: { halign: 'center', cellWidth: 22 }   /* Temperatura */
-      },
-      didDrawCell: function(data) {
-        /* Resaltar filas urgentes */
-        if (data.section === 'body' && data.column.index === 4) {
-          var urgVal = String(data.cell.raw || '').toUpperCase();
-          if (urgVal === 'SI') {
-            doc.setFillColor(255, 193, 7);
-            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text('SI', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
-          }
-        }
-      },
-      styles: { overflow: 'linebreak' }
-    });
-
-    /* ── Pie de página ── */
-    var finalY = doc.lastAutoTable.finalY + 10;
-    if (finalY > doc.internal.pageSize.getHeight() - 20) finalY = doc.internal.pageSize.getHeight() - 20;
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Documento generado automáticamente · MEDISFARMA CEDIS · Planilla existente (solo lectura)', margin, finalY);
-    doc.text('Página ' + doc.internal.getNumberOfPages(), pageW - margin, finalY, { align: 'right' });
 
     /* ── Forzar descarga directa ── */
     var filename = 'Planilla_' + planilla.replace(/[^a-zA-Z0-9\-_]/g, '_') + '.pdf';
@@ -2576,8 +2773,18 @@ function logGuardarYDescargar() {
   var planilla = $('log_planilla') ? $('log_planilla').value.trim() : '';
   var conductor = $('log_conductor') ? $('log_conductor').value : '';
   if (!conductor) { showToast('Ingrese el nombre del Conductor.', 'danger'); return; }
-  var bodegaOrigenDespacho = $('log_bodega_origen_despacho') ? $('log_bodega_origen_despacho').value.trim() : '';
-  if (!bodegaOrigenDespacho) { showToast('Seleccione la Bodega Origen.', 'danger'); return; }
+  /* v3.8.9: Bodega Origen multi-select — obtener valores seleccionados */
+  var bodegaOrigenDespacho = '';
+  var bodegaOrigenEl = $('log_bodega_origen_despacho');
+  if (bodegaOrigenEl && bodegaOrigenEl.tomselect) {
+    var origVals = bodegaOrigenEl.tomselect.getValue();
+    bodegaOrigenDespacho = (Array.isArray(origVals) && origVals.length > 0) ? origVals.join(', ') : '';
+  } else if (bodegaOrigenEl) {
+    bodegaOrigenDespacho = bodegaOrigenEl.value ? bodegaOrigenEl.value.trim() : '';
+  }
+  /* Para el guardado en Drive, se usa la primera bodega seleccionada como principal */
+  var bodegaOrigenPrincipal = bodegaOrigenDespacho.split(',')[0].trim();
+  if (!bodegaOrigenPrincipal) { showToast('Seleccione al menos una Bodega Origen.', 'danger'); return; }
   var placa = $('log_placa') ? $('log_placa').value.trim().toUpperCase() : '';
   var folderId = $('folder_logistica') ? $('folder_logistica').value.trim() : CONFIG.folders.logistica;
   if (!folderId) { showToast('Configure la carpeta Drive de Logistica.', 'danger'); return; }
@@ -2592,7 +2799,7 @@ function logGuardarYDescargar() {
       if (cons) {
         logVerificarPlanillaDuplicada(cons, folderId).then(function (verif) {
           if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
-          logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados, bodegaOrigenDespacho);
+          logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados, bodegaOrigenPrincipal);
         });
       }
     });
@@ -2601,7 +2808,7 @@ function logGuardarYDescargar() {
   /* v3.8: Verificar planilla duplicada (despacho + trasbordo) antes de guardar */
   logVerificarPlanillaDuplicada(planilla, folderId).then(function (verif) {
     if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
-    logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados, bodegaOrigenDespacho);
+    logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados, bodegaOrigenPrincipal);
   });
 }
 
@@ -2714,7 +2921,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
             if (btnComb) btnComb.disabled = true;
             if ($('log_planilla')) $('log_planilla').value = '';
             if ($('log_conductor')) $('log_conductor').value = '';
-            if ($('log_bodega_origen_despacho')) { $('log_bodega_origen_despacho').selectedIndex = 0; if ($('log_bodega_origen_despacho').tomselect) $('log_bodega_origen_despacho').tomselect.setValue(''); }
+            if ($('log_bodega_origen_despacho')) { var bOrig = $('log_bodega_origen_despacho'); if (bOrig.tomselect) { bOrig.tomselect.clear(); } else { bOrig.selectedIndex = 0; } }
             if ($('log_placa')) $('log_placa').value = '';
             if ($('log_obs_planilla')) $('log_obs_planilla').value = '';
           })
