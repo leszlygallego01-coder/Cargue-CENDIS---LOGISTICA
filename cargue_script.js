@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbx-Q_BGEAYQJnFkfxmxb9n--SpddyoGybvc1S6zcpPZ8ms71IsFPMNDuIZgYKf2_AS9/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxZuGqJwq_edXT9_8p4W3VXfqjjlHJhQieHXPLmE4pT_RfpQqEBIaxJyJeU4-PUk2Wq/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
