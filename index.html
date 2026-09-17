@@ -302,7 +302,7 @@
         searchField: ['text']
       });
     }
-    /* v3.8.7: Tom Select para selects de Bodega Origen */
+    /* v3.8.9: Tom Select para selects de Bodega Origen / Destino */
     var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_destino'];
     for(var bi=0;bi<boSelectors.length;bi++){
       var boEl = document.querySelector(boSelectors[bi]);
@@ -331,6 +331,21 @@
   } else {
     initTomSelects();
   }
+  /* v3.8.9: helpers globales para Seleccionar todas / Limpiar en multi-selects */
+  window._tsSelectAll = function(selectId){
+    var el = document.getElementById(selectId);
+    if(el && el.tomselect){
+      var allValues = [];
+      el.tomselect.options && Object.keys(el.tomselect.options).forEach(function(k){
+        if(k) allValues.push(k);
+      });
+      el.tomselect.setValue(allValues);
+    }
+  };
+  window._tsClearAll = function(selectId){
+    var el = document.getElementById(selectId);
+    if(el && el.tomselect) el.tomselect.clear();
+  };
 })();
 </script>
 
@@ -1344,16 +1359,25 @@
                     <option value="NO">NO</option>
                   </select></div>
                 <div class="col-md-3"><label class="form-label">Bodega Destino <span class="text-info">(multi-select)</span></label>
-                  <select class="form-select" id="log_filtro_bodega_destino" data-bodegas-destino multiple placeholder="Todas las bodegas">
-                  </select></div>
+                  <div class="d-flex gap-1 align-items-center">
+                    <select class="form-select flex-grow-1" id="log_filtro_bodega_destino" data-bodegas-destino multiple placeholder="Todas las bodegas">
+                    </select>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" onclick="window._tsSelectAll('log_filtro_bodega_destino')" title="Seleccionar todas">Todas</button>
+                    <span class="text-muted mx-1">|</span>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" onclick="window._tsClearAll('log_filtro_bodega_destino')" title="Limpiar selección">Limpiar</button>
+                  </div></div>
                 <div class="col-md-2"><label class="form-label">Planilla *</label>
                   <input type="text" class="form-control" id="log_planilla" placeholder="No. Planilla"></div>
                 <div class="col-md-3"><label class="form-label">Conductor *</label>
                   <input type="text" class="form-control" id="log_conductor" placeholder="Nombre del conductor"></div>
-                <div class="col-md-3"><label class="form-label">Bodega Origen *</label>
-                  <select class="form-select" id="log_bodega_origen_despacho" data-bodegas>
-                    <option value="">Seleccione...</option>
-                  </select></div>
+                <div class="col-md-3"><label class="form-label">Bodega Origen <span class="text-info">(multi-select)</span></label>
+                  <div class="d-flex gap-1 align-items-center">
+                    <select class="form-select flex-grow-1" id="log_bodega_origen_despacho" data-bodegas multiple placeholder="Todas las bodegas">
+                    </select>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" onclick="window._tsSelectAll('log_bodega_origen_despacho')" title="Seleccionar todas">Todas</button>
+                    <span class="text-muted mx-1">|</span>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" onclick="window._tsClearAll('log_bodega_origen_despacho')" title="Limpiar selección">Limpiar</button>
+                  </div></div>
                 <div class="col-md-2"><label class="form-label">Placa del Vehiculo</label>
                   <input type="text" class="form-control" id="log_placa" placeholder="ABC-123" style="text-transform:uppercase"></div>
                 <div class="col-md-4"><label class="form-label">Observaciones Planilla</label>
