@@ -98,6 +98,10 @@
           <option value="nedi_yojana">&#128119; Nedi Yojana Zamora Yandi (Auxiliar B09)</option>
           <option value="beatriz_eugenia">&#128119; Beatriz Eugenia Urbano Botina (Auxiliar B09)</option>
           <option value="mery_yolanda">&#128119; Mery Yolanda Cadavid Bermudez (Auxiliar B09)</option>
+          <option value="" disabled>────── VIGILANTES ──────</option>
+          <option value="vig_leidy">&#128737; Leidy (Vigilante)</option>
+          <option value="vig_james">&#128737; James (Vigilante)</option>
+          <option value="vig_manuel">&#128737; Manuel (Vigilante)</option>
         </select>
       </div>
       <div class="mb-3">
@@ -135,7 +139,8 @@
     yeimy_aldana:'Medis2024YeimyA',
     jose_santiago:'Medis2024JoseS', yuliana:'Medis2024Yuliana',
     luisa_fernanda:'Medis2024LuisaF', nedi_yojana:'Medis2024NediY',
-    beatriz_eugenia:'Medis2024BeatrizE', mery_yolanda:'Medis2024MeryY'
+    beatriz_eugenia:'Medis2024BeatrizE', mery_yolanda:'Medis2024MeryY',
+    vig_leidy:'Medis2024VigLei', vig_james:'Medis2024VigJam', vig_manuel:'Medis2024VigMan'
   };
   var LABELS = {
     administrador:'ADMINISTRADOR',
@@ -154,7 +159,8 @@
     luisa_fernanda:'Luisa Fernanda Garcia Orozco (Auxiliar B09)',
     nedi_yojana:'Nedi Yojana Zamora Yandi (Auxiliar B09)',
     beatriz_eugenia:'Beatriz Eugenia Urbano Botina (Auxiliar B09)',
-    mery_yolanda:'Mery Yolanda Cadavid Bermudez (Auxiliar B09)'
+    mery_yolanda:'Mery Yolanda Cadavid Bermudez (Auxiliar B09)',
+    vig_leidy:'Leidy (Vigilante)', vig_james:'James (Vigilante)', vig_manuel:'Manuel (Vigilante)'
   };
   /* CLAVES UNIFICADAS — CARGUE y VISOR comparten la misma sesion */
   var LS_LOGIN  = 'MF_LOGIN_OK';
@@ -302,7 +308,7 @@
         searchField: ['text']
       });
     }
-    /* v3.8.9: Tom Select para selects de Bodega Origen / Destino */
+    /* v3.9.0: Tom Select para selects de Bodega Origen / Destino */
     var boSelectors = ['#log_bodega_origen_despacho','#log_bodega_origen_trasbordo','#log_filtro_bodega_destino'];
     for(var bi=0;bi<boSelectors.length;bi++){
       var boEl = document.querySelector(boSelectors[bi]);
@@ -331,7 +337,7 @@
   } else {
     initTomSelects();
   }
-  /* v3.8.9: helpers globales para Seleccionar todas / Limpiar en multi-selects */
+  /* v3.9.0: helpers globales para Seleccionar todas / Limpiar en multi-selects */
   window._tsSelectAll = function(selectId){
     var el = document.getElementById(selectId);
     if(el && el.tomselect){
@@ -1181,6 +1187,76 @@
             </div>
           </div>
 
+          <!-- ============================================================ -->
+          <!-- SECCION C: ANULACION (Casos Especiales) - Solo Admin v3.10.0 -->
+          <!-- ============================================================ -->
+          <div class="border border-danger rounded-3 p-3 mb-3" id="t3_seccionC" style="display:none">
+            <h6 class="text-danger fw-bold mb-3">&#9314; ANULACI&Oacute;N &mdash; Casos Especiales (Paso 3 &mdash; Solo Administrador)</h6>
+
+            <!-- Buscador de traslado en Asignacion -->
+            <div class="row g-3 align-items-end mb-3">
+              <div class="col-md-4">
+                <label class="form-label">Documento TRASLADO *</label>
+                <input type="text" class="form-control" id="t3c_traslado" placeholder="Numero completo o ultimos 5 digitos">
+              </div>
+              <div class="col-md-3">
+                <button class="btn btn-mf-azul w-100" id="t3c_btnValidar">&#128269; Consultar asignaci&oacute;n</button>
+              </div>
+              <div class="col-md-5">
+                <div id="t3c_estadoTraslado" class="mf-estado"></div>
+              </div>
+            </div>
+
+            <!-- Punto de captura automatica -->
+            <div class="row g-3 mb-3" id="t3c_punto_row" style="display:none">
+              <div class="col-md-4">
+                <label class="form-label">&#128205; Punto de Captura Autom&aacute;tico</label>
+                <input class="form-control campo-bloqueado" id="t3c_punto_captura" readonly>
+              </div>
+            </div>
+
+            <!-- Datos autocompletados (bloqueados) -->
+            <h6 class="text-danger fw-bold">Datos de la Asignaci&oacute;n (bloqueados)</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4"><label class="form-label">Bodega Origen</label>
+                <input class="form-control campo-bloqueado" id="t3c_bodega_origen" readonly></div>
+              <div class="col-md-4"><label class="form-label">Bodega Destino</label>
+                <input class="form-control campo-bloqueado" id="t3c_destino" readonly></div>
+              <div class="col-md-4"><label class="form-label">Concepto</label>
+                <input class="form-control campo-bloqueado" id="t3c_concepto" readonly></div>
+              <div class="col-md-4"><label class="form-label">Urgente</label>
+                <input class="form-control campo-bloqueado" id="t3c_urgente" readonly></div>
+              <div class="col-md-8"><label class="form-label fw-bold" style="color:#dc3545">Grupo Asignado</label>
+                <input class="form-control campo-bloqueado" id="t3c_grupo_asignado" readonly style="font-weight:bold;font-size:0.95rem;padding:10px 12px;color:#dc3545"></div>
+            </div>
+
+            <!-- Campos editables para Anulacion -->
+            <h6 class="text-danger fw-bold">Datos de la Anulaci&oacute;n</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Tipo de Anulaci&oacute;n *</label>
+                <select class="form-select" id="t3c_tipo">
+                  <option value="">Seleccione...</option>
+                  <option>Vencimiento</option>
+                  <option>Error de Cantidad</option>
+                  <option>Averia</option>
+                  <option>Proximo a Vencer</option>
+                  <option>Solicitud de cuenta</option>
+                  <option>Solicitud de Abastecimiento</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Observaci&oacute;n *</label>
+                <textarea class="form-control" id="t3c_observacion" rows="2" placeholder="Describa el motivo de la anulaci&oacute;n"></textarea>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 no-print">
+              <button class="btn btn-danger" id="t3c_btnGuardar">&#128190; Guardar Anulaci&oacute;n en el Drive</button>
+              <button class="btn btn-outline-secondary" onclick="limpiarSeccionC()">Limpiar</button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1602,6 +1678,10 @@
               <option value="log_lorena">&#128666; Lorena (Logistica CENDIS)</option>
               <option value="log_jenny">&#128666; Jenny (Logistica CENDIS)</option>
               <option value="auxiliar">&#128119; Auxiliar</option>
+              <option value="" disabled>────── VIGILANTES ──────</option>
+              <option value="vig_leidy">&#128737; Leidy (Vigilante)</option>
+              <option value="vig_james">&#128737; James (Vigilante)</option>
+              <option value="vig_manuel">&#128737; Manuel (Vigilante)</option>
             </select>
             <button class="btn btn-sm btn-primary mt-1" onclick="seleccionarPerfil(document.getElementById('modalSelPerfil').value); bootstrap.Modal.getInstance(document.getElementById('modalConfig')).hide();">
               Aplicar perfil
