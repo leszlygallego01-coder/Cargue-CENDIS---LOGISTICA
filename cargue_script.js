@@ -269,7 +269,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyr2pdiQ1v5VFbL4Pbomzu4xBw2ST4gSx7EsPO8RXTgJXsacXU6bRzEj-JMa1D5GpoW/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbyp19mc4EFwY8QamEz9HedFl2SiJ-li0HGB_MlaSGCq5D6RHWus4RtLoSufmtRvuTBH/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -535,53 +535,103 @@ function pintarPerfiles() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
-   5. API — COMUNICACION CON GOOGLE APPS SCRIPT
+   5. API — COMUNICACION CON GOOGLE APPS SCRIPT  (v3.12.2 — timeout + robustez)
    ═════════════════════════════════════════════════════════════════════════════════ */
 /* Usar POST para TODAS las llamadas (GET causa CORS redirect en GAS ContentService)
  * doPost en Code.gs soporta las mismas acciones que doGet.
+ *
+ * v3.12.2: Se agrega fetchWithTimeout() con AbortController + Promise.race
+ * como fallback para navegadores antiguos.  Timeout por defecto 30s,
+ * ampliable a 120s para operaciones pesadas (procesarYConsolidarDrive).
  */
-function apiGet(params) {
-  return apiCall(params);
+
+/** Timeout por defecto para llamadas API (ms) */
+var API_TIMEOUT_DEFAULT = 30000;   // 30s — operaciones normales
+var API_TIMEOUT_HEAVY   = 120000;  // 120s — procesarYConsolidarDrive
+
+function apiGet(params, timeoutMs) {
+  return apiCall(params, timeoutMs);
 }
 
-function apiPost(payload) {
-  return apiCall(payload);
+function apiPost(payload, timeoutMs) {
+  return apiCall(payload, timeoutMs);
 }
 
 /**
- * apiCall — Llamada robusta al backend Apps Script.
+ * fetchWithTimeout — fetch con timeout robusto.
+ * Usa AbortController si esta disponible, si no recurre a Promise.race.
+ */
+function fetchWithTimeout(url, options, timeoutMs) {
+  timeoutMs = timeoutMs || API_TIMEOUT_DEFAULT;
+
+  // Intento 1: AbortController (navegadores modernos)
+  if (typeof AbortController !== 'undefined') {
+    var controller = new AbortController();
+    var signal = controller.signal;
+    var mergedOpts = {};
+    for (var k in options) { if (options.hasOwnProperty(k)) mergedOpts[k] = options[k]; }
+    mergedOpts.signal = signal;
+
+    var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+
+    return fetch(url, mergedOpts).then(function (r) {
+      clearTimeout(timer);
+      return r;
+    }).catch(function (err) {
+      clearTimeout(timer);
+      if (err && err.name === 'AbortError') {
+        throw new Error('TIMEOUT');
+      }
+      throw err;
+    });
+  }
+
+  // Intento 2: Promise.race (fallback para navegadores sin AbortController)
+  var fetchPromise = fetch(url, options);
+  var timeoutPromise = new Promise(function (_, reject) {
+    setTimeout(function () { reject(new Error('TIMEOUT')); }, timeoutMs);
+  });
+  return Promise.race([fetchPromise, timeoutPromise]);
+}
+
+/**
+ * apiCall — Llamada robusta al backend Apps Script con timeout.
  * Estrategia:
  *   1. POST con text/plain (evita preflight CORS)
  *   2. Si falla con "Failed to fetch", reintenta con GET + query params
  *   3. Detecta redireccion a login de Google (HTML response)
  *   4. Mensajes de diagnostico claros para el usuario
+ *   5. Timeout configurable (default 30s, 120s para ops pesadas)
  */
-function apiCall(payload) {
+function apiCall(payload, timeoutMs) {
   var url = CONFIG.api_url;
   if (!url) return Promise.reject(new Error('URL de API no configurada.'));
+  timeoutMs = timeoutMs || API_TIMEOUT_DEFAULT;
 
-  // --- INTENTO 1: POST con text/plain (evita preflight) ---
-  return fetch(url, {
+  // --- INTENTO 1: POST con text/plain + timeout ---
+  return fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     redirect: 'follow',
     body: JSON.stringify(payload)
-  }).then(function (r) {
+  }, timeoutMs).then(function (r) {
     var ct = (r.headers.get('Content-Type') || '').toLowerCase();
-    // Si la respuesta es HTML, significa que Google redirigio a login
     if (ct.indexOf('text/html') !== -1) {
       throw new Error('AUTH_REQUIRED');
     }
     return r.json();
   }).catch(function (err) {
-    // Si el error es de auth, no reintentar con GET
     if (err.message === 'AUTH_REQUIRED') {
       throw new Error('La Web App requiere autenticacion. Desplieguela con acceso "Cualquier usuario" (publico).');
     }
-    // Si es error de red (Failed to fetch), reintentar con GET
+    if (err.message === 'TIMEOUT') {
+      console.warn('[apiCall] POST timeout (' + timeoutMs + 'ms) para action=' + payload.action);
+      // Reintentar con GET y mismo timeout
+      return apiCallGet(payload, timeoutMs);
+    }
     if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1)) {
       console.log('[apiCall] POST fallo, reintentando con GET...');
-      return apiCallGet(payload);
+      return apiCallGet(payload, timeoutMs);
     }
     throw err;
   });
@@ -589,23 +639,23 @@ function apiCall(payload) {
 
 /**
  * apiCallGet — Fallback: usa GET con query params en la URL.
- * Codifica el payload como parametro "payload" en base64 para evitar
- * problemas con caracteres especiales en la URL.
+ * Tambien con timeout configurable.
  */
-function apiCallGet(payload) {
+function apiCallGet(payload, timeoutMs) {
   var url = CONFIG.api_url;
+  timeoutMs = timeoutMs || API_TIMEOUT_DEFAULT;
   var params = [];
   for (var key in payload) {
     if (payload.hasOwnProperty(key)) {
       params.push(encodeURIComponent(key) + '=' + encodeURIComponent(typeof payload[key] === 'object' ? JSON.stringify(payload[key]) : payload[key]));
     }
   }
-  var getUrl = url + (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+  var getUrl = url + (url.indexOf('?') === -1 ? '?' : '&') + params.join('&') + '&_t=' + Date.now();
 
-  return fetch(getUrl, {
+  return fetchWithTimeout(getUrl, {
     method: 'GET',
     redirect: 'follow'
-  }).then(function (r) {
+  }, timeoutMs).then(function (r) {
     var ct = (r.headers.get('Content-Type') || '').toLowerCase();
     if (ct.indexOf('text/html') !== -1) {
       throw new Error('La Web App requiere autenticacion. Desplieguela con acceso "Cualquier usuario" (publico).');
@@ -613,14 +663,13 @@ function apiCallGet(payload) {
     return r.json();
   });
 }
-
 function probarApi() {
   var e = $('estadoApi');
   if (e) { e.textContent = 'Probando...'; e.className = 'badge bg-warning text-dark'; }
 
-  // Primero probar con GET directo (mas confiable para CORS)
+  // Primero probar con GET directo + timeout (mas confiable para CORS)
   var pingUrl = CONFIG.api_url + '?action=ping&_t=' + Date.now();
-  fetch(pingUrl, { method: 'GET', redirect: 'follow' })
+  fetchWithTimeout(pingUrl, { method: 'GET', redirect: 'follow' }, 15000)
     .then(function (r) {
       var ct = (r.headers.get('Content-Type') || '').toLowerCase();
       if (ct.indexOf('text/html') !== -1) {
@@ -638,6 +687,31 @@ function probarApi() {
       }
     })
     .catch(function (err) {
+      // Si es timeout del GET ping
+      if (err.message === 'TIMEOUT') {
+        if (e) { e.textContent = 'TIMEOUT'; e.className = 'badge bg-warning text-dark'; }
+        showToast('&#9203; <strong>Tiempo de espera agotado probando la conexion.</strong><br>El servidor podria estar saturado. Intente de nuevo en unos minutos.', 'warning', 10000);
+        // Reintentar con POST (con timeout extendido)
+        apiCall({ action: 'ping' }, 20000)
+          .then(function (r) {
+            if (r && r.ok) {
+              if (e) { e.textContent = 'API OK'; e.className = 'badge bg-success'; }
+              showToast('Conexion exitosa via POST (lenta). <strong>API activa.</strong>', 'success');
+            } else {
+              if (e) { e.textContent = 'API ERROR'; e.className = 'badge bg-danger'; }
+              showToast('El servidor respondio con error: ' + (r.error || JSON.stringify(r)), 'danger');
+            }
+          })
+          .catch(function (err2) {
+            if (e) { e.textContent = 'SIN CONEXION'; e.className = 'badge bg-danger'; }
+            if (err2.message === 'TIMEOUT') {
+              showToast('&#9203; El servidor no responde. Podria estar procesando otra solicitud. Espere unos minutos e intente de nuevo.', 'warning', 12000);
+            } else {
+              showToast('No se pudo conectar al servidor: ' + (err2.message || ''), 'danger');
+            }
+          });
+        return;
+      }
       // Si GET tampoco funciona, probar POST
       if (err.message === 'AUTH_REQUIRED') {
         if (e) { e.textContent = 'SIN ACCESO'; e.className = 'badge bg-danger'; }
@@ -660,7 +734,9 @@ function probarApi() {
         .catch(function (err2) {
           if (e) { e.textContent = 'SIN CONEXION'; e.className = 'badge bg-danger'; }
           var msg = err2.message || '';
-          if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1) {
+          if (msg === 'TIMEOUT') {
+            showToast('&#9203; <strong>Tiempo de espera agotado.</strong><br>El servidor no responde. Podria estar saturado — espere unos minutos e intente de nuevo.', 'warning', 10000);
+          } else if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1) {
             showToast('<strong>No se pudo conectar al servidor.</strong><br>' +
               'Posibles causas y soluciones:<br>' +
               '1. <strong>Acceso restringido:</strong> Despliegue la Web App con "Quien tiene acceso: Cualquier usuario"<br>' +
@@ -3297,18 +3373,45 @@ function enviarConsolidado() {
   var btns = [];
   if (btnTop)   btns.push(btnTop);
   if (btnFloat) btns.push(btnFloat);
-  btns.forEach(function (b) { b.disabled = true; b.innerHTML = '&#8987; Enviando...'; });
 
-  apiPost({ action: 'procesarYConsolidarDrive' }).then(function (resp) {
+  // Deshabilitar botones y mostrar progreso
+  btns.forEach(function (b) { b.disabled = true; b.innerHTML = '&#8987; Enviando... (puede tardar hasta 2 min)'; });
+
+  // Toast de aviso: operacion pesada
+  showToast('<strong>Enviando datos al Consolidado...</strong><br>Este proceso lee todas las carpetas de Drive y puede tardar <em>1-2 minutos</em>. Por favor espere.', 'info', 8000);
+
+  // Variable para el indicador de progreso
+  var progressInterval = setInterval(function () {
+    btns.forEach(function (b) {
+      if (b.innerHTML.indexOf('...') !== -1) {
+        b.innerHTML = '&#8987; Procesando carpetas Drive...';
+      } else if (b.innerHTML.indexOf('carpetas') !== -1) {
+        b.innerHTML = '&#8987; Consolidando datos...';
+      } else {
+        b.innerHTML = '&#8987; Enviando... (puede tardar hasta 2 min)';
+      }
+    });
+  }, 5000);
+
+  // Usar timeout extendido (120s) para procesarYConsolidarDrive
+  apiPost({ action: 'procesarYConsolidarDrive' }, API_TIMEOUT_HEAVY).then(function (resp) {
+    clearInterval(progressInterval);
     btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
     if (resp && resp.ok) {
-      showToast('&#9989; Datos enviados al Consolidado exitosamente.', 'success');
+      showToast('&#9989; Datos enviados al Consolidado exitosamente. ' + (resp.msg || ''), 'success', 8000);
     } else {
-      showToast('&#10060; Error al enviar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger');
+      showToast('&#10060; Error al enviar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger', 10000);
     }
   }).catch(function (err) {
+    clearInterval(progressInterval);
     btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
-    showToast('&#10060; Error de conexion al enviar al Consolidado.', 'danger');
+    if (err.message === 'TIMEOUT') {
+      showToast('&#9203; <strong>Tiempo de espera agotado (120s).</strong><br>El servidor esta procesando pero la conexion se cerro.<br>Los datos podrian haberse guardado; verifique en el VISOR.', 'warning', 15000);
+    } else if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+      showToast('&#10060; <strong>No se pudo conectar al servidor.</strong><br>Verifique su conexion a internet e intente de nuevo.', 'danger', 10000);
+    } else {
+      showToast('&#10060; Error al enviar al Consolidado: ' + err.message, 'danger', 10000);
+    }
   });
 }
 
