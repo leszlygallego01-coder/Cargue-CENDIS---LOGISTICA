@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwKllviu4och22vUqdABoX5-Qu9DtC4elzt-TiwHOKoUKhxPSexgCcwcSBP1Qt9bKKU/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbyIhBrpDgUbY618CY6yJ7wK3T4zWvCpK1jcC7MW4C04qu60tSjAhlg2xeuB7JWllVdb/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -3426,44 +3426,59 @@ function enviarConsolidado() {
   if (btnFloat) btns.push(btnFloat);
 
   // Deshabilitar botones y mostrar progreso
-  btns.forEach(function (b) { b.disabled = true; b.innerHTML = '&#8987; Enviando... (puede tardar hasta 2 min)'; });
+  btns.forEach(function (b) { b.disabled = true; b.innerHTML = '&#8987; Enviando...'; });
 
-  // Toast de aviso: operacion pesada
-  showToast('<strong>Enviando datos al Consolidado...</strong><br>Este proceso lee todas las carpetas de Drive y puede tardar <em>1-2 minutos</em>. Por favor espere.', 'info', 8000);
+  // v3.17.1: el boton solo DISPARA el proceso (respuesta <5s). El trabajo pesado
+  // (leer Drive + crear BD_CONSOLIDADO_VISOR) corre en segundo plano en el servidor.
+  showToast('<strong>Enviando datos al Consolidado...</strong><br>El proceso se ejecuta en segundo plano. En 1-2 minutos los indicadores estaran listos en el VISOR.', 'info', 7000);
 
-  // Variable para el indicador de progreso
-  var progressInterval = setInterval(function () {
-    btns.forEach(function (b) {
-      if (b.innerHTML.indexOf('...') !== -1) {
-        b.innerHTML = '&#8987; Procesando carpetas Drive...';
-      } else if (b.innerHTML.indexOf('carpetas') !== -1) {
-        b.innerHTML = '&#8987; Consolidando datos...';
-      } else {
-        b.innerHTML = '&#8987; Enviando... (puede tardar hasta 2 min)';
-      }
-    });
-  }, 5000);
-
-  // Usar timeout extendido (120s): regenerarConsolidadoVisor borra+crea el archivo BD_CONSOLIDADO_VISOR
-  apiPost({ action: 'regenerarConsolidadoVisor' }, API_TIMEOUT_HEAVY).then(function (resp) {
-    clearInterval(progressInterval);
-    btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
+  apiPost({ action: 'enviarConsolidadoRapido' }, API_TIMEOUT_DEFAULT).then(function (resp) {
     if (resp && resp.ok) {
-      showToast('&#9989; Datos enviados al Consolidado exitosamente. ' + (resp.msg || ''), 'success', 8000);
+      // Iniciar sondeo del estado del job en segundo plano
+      btns.forEach(function (b) { b.innerHTML = '&#8987; Generando en 2º plano...'; });
+      showToast('&#9989; ' + (resp.msg || 'Consolidado generandose en segundo plano.'), 'success', 7000);
+      _sondearConsolidado(btns, 0);
     } else {
-      showToast('&#10060; Error al enviar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger', 10000);
+      btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
+      showToast('&#10060; Error al iniciar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger', 10000);
     }
   }).catch(function (err) {
-    clearInterval(progressInterval);
     btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
     if (err.message === 'TIMEOUT') {
-      showToast('&#9203; <strong>Tiempo de espera agotado (120s).</strong><br>El servidor esta procesando pero la conexion se cerro.<br>Los datos podrian haberse guardado; verifique en el VISOR.', 'warning', 15000);
+      showToast('&#9203; La solicitud tardo mas de lo esperado. El proceso pudo iniciarse igualmente; verifique en el VISOR en 1-2 minutos.', 'warning', 12000);
     } else if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
       showToast('&#10060; <strong>No se pudo conectar al servidor.</strong><br>Verifique su conexion a internet e intente de nuevo.', 'danger', 10000);
     } else {
       showToast('&#10060; Error al enviar al Consolidado: ' + err.message, 'danger', 10000);
     }
   });
+}
+
+/* _sondearConsolidado — Consulta el estado del job en segundo plano cada 8s
+ * (hasta ~3 min) y avisa cuando termina. No bloquea la UI. */
+function _sondearConsolidado(btns, intento) {
+  var MAX_INTENTOS = 24; // 24 x 8s = ~3 min
+  if (intento >= MAX_INTENTOS) {
+    btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
+    showToast('&#8505;️ El consolidado sigue procesando en el servidor. Revise el VISOR en unos minutos.', 'info', 10000);
+    return;
+  }
+  setTimeout(function () {
+    apiPost({ action: 'estadoConsolidadoJob' }, API_TIMEOUT_DEFAULT).then(function (r) {
+      if (r && r.state === 'DONE') {
+        btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
+        showToast('&#9989; <strong>Consolidado listo.</strong> ' + (r.msg || (r.fuentes + ' fuentes, ' + r.filas + ' filas.')) + '<br>Abra el VISOR y presione "Sincronizar Drive" para ver los indicadores.', 'success', 12000);
+      } else if (r && (r.state === 'ERROR' || r.state === 'TIMEOUT')) {
+        btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
+        showToast('&#10060; El proceso en segundo plano no termino: ' + (r.error || r.msg || 'reintente'), 'danger', 12000);
+      } else {
+        // RUNNING / IDLE — seguir sondeando
+        _sondearConsolidado(btns, intento + 1);
+      }
+    }).catch(function () {
+      _sondearConsolidado(btns, intento + 1);
+    });
+  }, 8000);
 }
 
 function generarBackup() {
