@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyIhBrpDgUbY618CY6yJ7wK3T4zWvCpK1jcC7MW4C04qu60tSjAhlg2xeuB7JWllVdb/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxvG9sDl84CnLwdMPulI13yRqUajD9s5qAkAQFKerT6KMGX3J0QKT4IO2NGkPEAhG-z/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -992,35 +992,71 @@ function t2Guardar() {
   if (!t2Items.length) { showToast('Agregue al menos un item antes de guardar.', 'danger'); return; }
   var folderId = $('folder_recepcion') ? $('folder_recepcion').value.trim() : CONFIG.folders.recepcion;
   if (!folderId) { showToast('Configure la carpeta Drive de Recepcion.', 'danger'); return; }
-  var okCount = 0;
-  var errCount = 0;
-  var erroresDetalle = [];
+
   var total = t2Items.length;
-  t2Items.forEach(function (item, idx) {
-    item['Marca temporal'] = ahora();
-    item['Perfil'] = perfilActivo();
-    item['Usuario'] = nombreUsuario();
-    apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'recepcion', registro: item })
-      .then(function (r) {
-        if (r && r.ok) {
-          okCount++;
-        } else {
-          errCount++;
-          if (r && r.error) erroresDetalle.push('Item ' + (idx + 1) + ': ' + r.error);
-        }
-        if (okCount + errCount === total) {
-          if (errCount === 0) {
-            showToast('&#128190; <strong>' + total + '</strong> registros de Recepcion guardados en Drive.', 'success');
-            t2Items = []; t2PintarTabla();
-          } else {
-            var msg = 'Guardados ' + okCount + '/' + total + '. Errores: ' + errCount;
-            if (erroresDetalle.length > 0) msg += ' — ' + erroresDetalle.join('; ');
-            showToast(msg, 'danger', 10000);
-          }
-        }
-      })
-      .catch(function () { errCount++; });
+  var btn = $('t2_btnGuardar');
+  var textoOriginal = btn ? btn.innerHTML : '';
+
+  // Completar metadatos de CADA item (array COMPLETO, sin truncar)
+  var ahoraTs = ahora();
+  var perfil = perfilActivo();
+  var usuario = nombreUsuario();
+  var registros = t2Items.map(function (item) {
+    item['Marca temporal'] = ahoraTs;
+    item['Perfil'] = perfil;
+    item['Usuario'] = usuario;
+    return item;
   });
+
+  // Spinner de progreso + boton deshabilitado hasta confirmar escritura total
+  mostrarProgresoGuardado('Guardando ' + total + ' de ' + total + ' registros...');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Guardando ' + total + ' de ' + total + '...'; }
+
+  // UN SOLO envio en LOTE (batch insert). Timeout amplio para lotes grandes.
+  apiPost({ action: 'guardarLoteRegistros', folderId: folderId, modulo: 'recepcion', registros: registros }, 120000)
+    .then(function (r) {
+      ocultarProgresoGuardado();
+      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+      if (r && r.ok) {
+        var msg = '&#128190; <strong>' + r.guardados + '</strong> de <strong>' + total + '</strong> registros de Recepcion guardados en Drive.';
+        if (r.duplicados > 0) msg += ' (' + r.duplicados + ' omitidos por duplicado)';
+        showToast(msg, r.duplicados > 0 ? 'warning' : 'success');
+        t2Items = []; t2PintarTabla();
+      } else {
+        showToast('Error al guardar el lote: ' + ((r && r.error) || 'respuesta invalida del servidor'), 'danger');
+      }
+    })
+    .catch(function (err) {
+      ocultarProgresoGuardado();
+      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+      if (err && err.message === 'TIMEOUT') {
+        showToast('&#9203; El guardado tardo demasiado. Verifique en la hoja si los registros quedaron escritos antes de reintentar.', 'danger');
+      } else {
+        showToast('Error de conexion al guardar el lote: ' + (err ? err.message : ''), 'danger');
+      }
+    });
+}
+
+/* Overlay de progreso reutilizable para guardados en lote */
+function mostrarProgresoGuardado(texto) {
+  var ov = $('mfProgresoOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'mfProgresoOverlay';
+    ov.className = 'mf-progreso-overlay';
+    ov.innerHTML = '<div class="mf-progreso-card">' +
+      '<div class="spinner-border text-light mb-3" role="status"></div>' +
+      '<div id="mfProgresoTexto" class="mf-progreso-texto"></div></div>';
+    document.body.appendChild(ov);
+  }
+  var t = $('mfProgresoTexto');
+  if (t) t.innerHTML = texto || 'Guardando...';
+  ov.style.display = 'flex';
+}
+
+function ocultarProgresoGuardado() {
+  var ov = $('mfProgresoOverlay');
+  if (ov) ov.style.display = 'none';
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════════
