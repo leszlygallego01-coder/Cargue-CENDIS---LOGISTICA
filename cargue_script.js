@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbze9oIOXNrAASKO9hqmj9vphLvFYTC_zf_wJnAY4jydtZt_DXZQ25umI3K8JqYYrANO/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwKllviu4och22vUqdABoX5-Qu9DtC4elzt-TiwHOKoUKhxPSexgCcwcSBP1Qt9bKKU/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -3444,8 +3444,8 @@ function enviarConsolidado() {
     });
   }, 5000);
 
-  // Usar timeout extendido (120s) para procesarYConsolidarDrive
-  apiPost({ action: 'procesarYConsolidarDrive' }, API_TIMEOUT_HEAVY).then(function (resp) {
+  // Usar timeout extendido (120s): regenerarConsolidadoVisor borra+crea el archivo BD_CONSOLIDADO_VISOR
+  apiPost({ action: 'regenerarConsolidadoVisor' }, API_TIMEOUT_HEAVY).then(function (resp) {
     clearInterval(progressInterval);
     btns.forEach(function (b) { b.disabled = false; b.innerHTML = '&#128228; Enviar datos al Consolidado'; });
     if (resp && resp.ok) {
