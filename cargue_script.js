@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbysB3xyiUAL3XG-RafvJBfh2q7wLK7fivXljMWde1nAmtB56bJuMW-gsGNNIopuQqkm/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzRFVSHTlNgbHqPobJ9Th9TZaAS36pLXqQu15nwMmARQm6_OQKYHhG0fcJaHhDqMz9M/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1012,17 +1012,70 @@ function t2Guardar() {
   mostrarProgresoGuardado('Guardando ' + total + ' de ' + total + ' registros...');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Guardando ' + total + ' de ' + total + '...'; }
 
+  // Finalizador comun: restaura UI, muestra resultado y limpia la lista si OK.
+  function t2Finalizar(guardados, duplicados, okTotal) {
+    ocultarProgresoGuardado();
+    if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+    if (okTotal) {
+      var msg = '&#128190; <strong>' + guardados + '</strong> de <strong>' + total + '</strong> registros de Recepcion guardados en Drive.';
+      if (duplicados > 0) msg += ' (' + duplicados + ' omitidos por duplicado)';
+      showToast(msg, duplicados > 0 ? 'warning' : 'success');
+      t2Items = []; t2PintarTabla();
+    }
+  }
+
+  // FALLBACK: si el backend publicado no conoce 'guardarLoteRegistros'
+  // (deployment antiguo), guarda registro por registro con 'guardarRegistro'.
+  function t2GuardarUnoPorUno() {
+    var guardados = 0, duplicados = 0, i = 0;
+    function siguiente() {
+      if (i >= registros.length) {
+        t2Finalizar(guardados, duplicados, true);
+        return;
+      }
+      var n = i + 1;
+      mostrarProgresoGuardado('Guardando ' + n + ' de ' + total + ' registros...');
+      if (btn) { btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Guardando ' + n + ' de ' + total + '...'; }
+      apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'recepcion', registro: registros[i] }, 60000)
+        .then(function (r) {
+          if (r && r.ok) {
+            if (r.duplicado) { duplicados++; } else { guardados++; }
+          } else if (r && typeof r.error === 'string' && /duplicad/i.test(r.error)) {
+            // El backend rechaza duplicados con ok:false; se cuenta como omitido y se continua.
+            duplicados++;
+          } else {
+            ocultarProgresoGuardado();
+            if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+            showToast('Error al guardar el registro ' + (i + 1) + ' de ' + total + ': ' + ((r && r.error) || 'respuesta invalida') + '. Se guardaron ' + guardados + ' antes de fallar.', 'danger');
+            return;
+          }
+          i++;
+          siguiente();
+        })
+        .catch(function (err) {
+          ocultarProgresoGuardado();
+          if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+          showToast('Error de conexion al guardar el registro ' + (i + 1) + ' de ' + total + ': ' + (err ? err.message : '') + '. Se guardaron ' + guardados + ' antes de fallar.', 'danger');
+        });
+    }
+    siguiente();
+  }
+
+  function _esAccionNoReconocida(r) {
+    return r && !r.ok && typeof r.error === 'string' && /no reconocida/i.test(r.error);
+  }
+
   // UN SOLO envio en LOTE (batch insert). Timeout amplio para lotes grandes.
   apiPost({ action: 'guardarLoteRegistros', folderId: folderId, modulo: 'recepcion', registros: registros }, 120000)
     .then(function (r) {
-      ocultarProgresoGuardado();
-      if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
       if (r && r.ok) {
-        var msg = '&#128190; <strong>' + r.guardados + '</strong> de <strong>' + total + '</strong> registros de Recepcion guardados en Drive.';
-        if (r.duplicados > 0) msg += ' (' + r.duplicados + ' omitidos por duplicado)';
-        showToast(msg, r.duplicados > 0 ? 'warning' : 'success');
-        t2Items = []; t2PintarTabla();
+        t2Finalizar(r.guardados, r.duplicados || 0, true);
+      } else if (_esAccionNoReconocida(r)) {
+        // Backend antiguo sin soporte de lote: reintenta uno por uno.
+        t2GuardarUnoPorUno();
       } else {
+        ocultarProgresoGuardado();
+        if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
         showToast('Error al guardar el lote: ' + ((r && r.error) || 'respuesta invalida del servidor'), 'danger');
       }
     })
