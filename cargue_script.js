@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwNR-R1S-WFU_m2jpHojmSIiyLoOn82Xh1LJ5ZAT7VdfBIpPxrktf2PENVH7mQAC0iu/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbwmggnVs9q4qKUVDPRWYi-yVB2f4HuaUZ43r2ieyRLK7boFDJSxuSP6hTo7on9VYYm3/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1510,12 +1510,16 @@ function t3aGuardarAsignacion() {
         'Usuario': nombreUsuario()
       };
 
-      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'asignacion', registro: registro });
+      return apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'asignacion', registro: registro }, 60000);
     })
     .then(function (r) {
       if (r === null) return; // duplicado, ya se mostro error
       if (r && r.ok) {
-        showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.', 'success');
+        if (r.idempotente) {
+          showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> ya estaba guardada (no se duplic&oacute;).', 'success');
+        } else {
+          showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.', 'success');
+        }
         t3aTrasladoValidado = null;
         limpiarSeccionA();
       } else {
