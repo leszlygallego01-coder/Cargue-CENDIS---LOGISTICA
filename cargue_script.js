@@ -3528,6 +3528,44 @@ function t6Guardar() {
 /* ═════════════════════════════════════════════════════════════════════════════════
    12b. ENVIAR DATOS AL CONSOLIDADO
    ═════════════════════════════════════════════════════════════════════════════════ */
+/* ---------------------------------------------------------------------------
+ * v3.21.0 — GENERAR CONSOLIDADO JSON
+ * Dispara la accion 'generarConsolidadoJSON' del backend. El servidor compila
+ * el 100% de las fuentes (general = asignacion+despachos+logistica con marcas
+ * de tiempo, recepcion, novedades, inventario y el cruce de logistica) y
+ * SOBRESCRIBE consolidado_operacion.json en la carpeta del VISOR. El VISOR lo
+ * lee de inmediato con obtenerConsolidadoJSON.
+ * ------------------------------------------------------------------------- */
+function generarConsolidadoJSONCargue() {
+  var btn = $('btnConsolidadoJSON');
+  var htmlOrig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Generando...'; }
+
+  showToast('<strong>Generando el Consolidado JSON...</strong><br>El servidor esta compilando todas las fuentes. Puede tardar 1-2 minutos.', 'info', 8000);
+
+  apiPost({ action: 'generarConsolidadoJSON' }, API_TIMEOUT_HEAVY).then(function (resp) {
+    if (btn) { btn.disabled = false; btn.innerHTML = htmlOrig; }
+    if (resp && resp.ok) {
+      var k = resp.kpis || {};
+      var detalle = (k.general !== undefined)
+        ? (k.general + ' generales, ' + k.recepcion + ' recepcion, ' + k.novedades + ' novedades, ' + k.inventario + ' inventario, ' + k.logistica + ' logistica.')
+        : (resp.msg || '');
+      showToast('&#9989; <strong>Consolidado JSON generado.</strong> ' + detalle + '<br>Abra el VISOR (o presione Ctrl+Shift+R) para ver los indicadores actualizados.', 'success', 12000);
+    } else {
+      showToast('&#10060; No se pudo generar el consolidado: ' + (resp && resp.error ? resp.error : 'error desconocido'), 'danger', 12000);
+    }
+  }).catch(function (err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = htmlOrig; }
+    if (err.message === 'TIMEOUT') {
+      showToast('&#9203; La generacion tardo mas de lo esperado. El proceso pudo completarse igualmente; abra el VISOR en 1-2 minutos para verificar.', 'warning', 12000);
+    } else if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+      showToast('&#10060; <strong>No se pudo conectar al servidor.</strong> Verifique su conexion a internet e intente de nuevo.', 'danger', 10000);
+    } else {
+      showToast('&#10060; Error al generar el consolidado: ' + err.message, 'danger', 10000);
+    }
+  });
+}
+
 function enviarConsolidado() {
   var btnTop   = $('btnConsolidadoTop');
   var btnFloat = $('btnConsolidadoFloat');
@@ -3727,6 +3765,8 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('btnBackupTop'); if (btn) btn.addEventListener('click', generarBackup);
   btn = $('btnBackupFloat'); if (btn) btn.addEventListener('click', generarBackup);
   /* v3.19.0: bindings de "Enviar datos al Consolidado" eliminados (boton retirado). */
+  /* v3.21.0: Generar Consolidado JSON — compila las fuentes y publica el JSON del VISOR. */
+  btn = $('btnConsolidadoJSON'); if (btn) btn.addEventListener('click', generarConsolidadoJSONCargue);
 
   // Perfil selector
   var sel = $('selPerfil');
