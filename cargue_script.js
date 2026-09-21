@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzYMSD2N9f05EbTQaf33zlnvcoN3XruqVsI4qTf7-iKAMeBtmLX1agcf_RaNJMVFy4/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzUjY--Nk-a30fN0CXhqpCKxrx22DI6vJwzuE8M568ghQs8p1Cu8BupWrHWLJzgrdYG/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -3537,20 +3537,33 @@ function t6Guardar() {
  * lee de inmediato con obtenerConsolidadoJSON.
  * ------------------------------------------------------------------------- */
 function generarConsolidadoJSONCargue() {
-  var btn = $('btnConsolidadoJSON');
+  // v4.1.0: el boton principal genera TODOS los modulos (multi-JSON).
+  _generarModulosMultiJSON('todos', $('btnConsolidadoJSON'));
+}
+
+/**
+ * _generarModulosMultiJSON — Genera los JSON por modulo en el backend.
+ * @param {(string|string[])} modulos  'todos' o lista ['general','recepcion',...]
+ * @param {HTMLElement} btn             boton a deshabilitar/animar durante el proceso.
+ */
+function _generarModulosMultiJSON(modulos, btn) {
   var htmlOrig = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Generando...'; }
 
-  showToast('<strong>Generando el Consolidado JSON...</strong><br>El servidor esta compilando todas las fuentes. Puede tardar 1-2 minutos.', 'info', 8000);
+  var esTodos = (modulos === 'todos' || (Array.isArray(modulos) && modulos.length >= 5));
+  var etiqueta = esTodos ? 'todos los modulos' : (Array.isArray(modulos) ? modulos.join(', ') : String(modulos));
 
-  apiPost({ action: 'generarConsolidadoJSON' }, API_TIMEOUT_HEAVY).then(function (resp) {
+  showToast('<strong>Generando el Consolidado JSON...</strong><br>El servidor esta compilando ' + etiqueta + '. Puede tardar 1-2 minutos.', 'info', 8000);
+
+  apiPost({ action: 'generarConsolidadosMultiJSON', modulos: modulos }, API_TIMEOUT_HEAVY).then(function (resp) {
     if (btn) { btn.disabled = false; btn.innerHTML = htmlOrig; }
     if (resp && resp.ok) {
       var k = resp.kpis || {};
+      var gen = (resp.modulosGenerados || []).join(', ');
       var detalle = (k.general !== undefined)
         ? (k.general + ' generales, ' + k.recepcion + ' recepcion, ' + k.novedades + ' novedades, ' + k.inventario + ' inventario, ' + k.logistica + ' logistica.')
         : (resp.msg || '');
-      showToast('&#9989; <strong>Consolidado JSON generado.</strong> ' + detalle + '<br>Abra el VISOR (o presione Ctrl+Shift+R) para ver los indicadores actualizados.', 'success', 12000);
+      showToast('&#9989; <strong>JSON generado</strong> (' + gen + '). ' + detalle + '<br>Abra el VISOR, marque los modulos y presione "Cargar/Consultar".', 'success', 12000);
     } else {
       showToast('&#10060; No se pudo generar el consolidado: ' + (resp && resp.error ? resp.error : 'error desconocido'), 'danger', 12000);
     }
@@ -3564,6 +3577,26 @@ function generarConsolidadoJSONCargue() {
       showToast('&#10060; Error al generar el consolidado: ' + err.message, 'danger', 10000);
     }
   });
+}
+
+/** _actualizarModulosSeleccionados — Lee los checkboxes del menu y genera solo esos modulos. */
+function _actualizarModulosSeleccionados() {
+  var chkTodos = $('chkMod_todos');
+  var btn = $('btnActualizarModulos');
+  if (chkTodos && chkTodos.checked) {
+    _generarModulosMultiJSON('todos', btn);
+    return;
+  }
+  var seleccion = [];
+  var chks = document.querySelectorAll('.chkMod');
+  for (var i = 0; i < chks.length; i++) {
+    if (chks[i].checked) seleccion.push(chks[i].value);
+  }
+  if (!seleccion.length) {
+    showToast('&#9888;&#65039; Seleccione al menos un modulo (o marque "Todos").', 'warning', 6000);
+    return;
+  }
+  _generarModulosMultiJSON(seleccion, btn);
 }
 
 function enviarConsolidado() {
@@ -3767,6 +3800,15 @@ document.addEventListener('DOMContentLoaded', function () {
   /* v3.19.0: bindings de "Enviar datos al Consolidado" eliminados (boton retirado). */
   /* v3.21.0: Generar Consolidado JSON — compila las fuentes y publica el JSON del VISOR. */
   btn = $('btnConsolidadoJSON'); if (btn) btn.addEventListener('click', generarConsolidadoJSONCargue);
+  /* v4.1.0: Multi-JSON — menu de modulos + boton "Actualizar seleccionados". */
+  var btnActMod = $('btnActualizarModulos'); if (btnActMod) btnActMod.addEventListener('click', _actualizarModulosSeleccionados);
+  var chkTodosMod = $('chkMod_todos');
+  if (chkTodosMod) {
+    chkTodosMod.addEventListener('change', function () {
+      var chks = document.querySelectorAll('.chkMod');
+      for (var i = 0; i < chks.length; i++) { chks[i].checked = chkTodosMod.checked; chks[i].disabled = chkTodosMod.checked; }
+    });
+  }
 
   // Perfil selector
   var sel = $('selPerfil');
