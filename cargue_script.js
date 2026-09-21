@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzJKrk6OSczPfYLqTjij-EIr-fn904mQNA3JJ5KSk09ji-3Oou3VMz_9B1vxYk9DZyS/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxO0qu_hqGOZ4cR65Xq9Ra3XnXTltykXW7gobPT-ZagEfNYRknCg4F1CbbcQzYt35qh/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1346,7 +1346,7 @@ function t3aValidarTraslado() {
   var estado = $('t3a_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
-  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'asignacion', traslado: traslado })
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'asignacion', traslado: traslado }, API_TIMEOUT_HEAVY)
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
         t3aTrasladoValidado = r.registro;
@@ -1675,7 +1675,7 @@ function t3bValidarTraslado() {
       // PASO 2: Buscar datos adicionales en la hoja consolidada de despachos
       // (para traer Codigo, Descripcion, Unidades, Lote, Fecha Venc, etc.)
       var folderConsulta = CONFIG.folders.trasladosConsulta;
-      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoB })
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoB }, API_TIMEOUT_HEAVY)
         .then(function (rConsol) {
           if (rConsol && rConsol.encontrado && rConsol.registro) {
             var reg = rConsol.registro;
@@ -1876,7 +1876,7 @@ function t3cValidarTraslado() {
 
       /* PASO 2: Buscar datos adicionales en consolidados (opcional, no bloquea) */
       var folderConsulta = CONFIG.folders.trasladosConsulta;
-      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoC })
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoC }, API_TIMEOUT_HEAVY)
         .then(function (rConsol) {
           if (rConsol && rConsol.encontrado && rConsol.registro) {
             t3cTrasladoValidado.__consolidado = rConsol.registro;
@@ -3592,11 +3592,49 @@ function generarConsolidadoJSON() {
   var btn = $('btnGenerarJSON');
   if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Generando JSON...'; }
 
-  showToast('<strong>Generando Consolidado JSON...</strong><br>Se escanean todas las carpetas y se guarda el archivo <code>consolidado_operacion.json</code> en Drive. Esto corre en segundo plano (1-2 min).', 'info', 7000);
+  showToast('<strong>Generando Consolidado JSON...</strong><br>Se escanean todas las carpetas y se guarda el archivo <code>consolidado_operacion.json</code> en Drive. Esto puede tardar hasta 2 minutos.', 'info', 7000);
 
+  // v3.23.0 — VIA DIRECTA Y CONFIABLE:
+  // Se llama a la accion sincronica 'generarConsolidadoJSON' del backend, que
+  // lee las fuentes, ESCRIBE el archivo consolidado_operacion.json en la
+  // carpeta del VISOR y devuelve la confirmacion (fileId + bytes) en la misma
+  // respuesta. Asi el letrero de "listo" aparece con certeza. Si la solicitud
+  // excede el tiempo maximo (operacion muy pesada), se cae al modo asincrono
+  // por trigger como respaldo.
+  apiPost({ action: 'generarConsolidadoJSON' }, API_TIMEOUT_HEAVY).then(function (resp) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+    if (resp && resp.ok && resp.fileId) {
+      _mostrarLetreroJSON('ok',
+        'Consolidado JSON listo &#9989;',
+        'El archivo <code>consolidado_operacion.json</code> ya esta guardado en la carpeta de Drive del VISOR' +
+        (resp.bytes ? ' (' + resp.bytes + ' bytes).' : '.') +
+        ' ' + (resp.msg || ''));
+    } else {
+      _mostrarLetreroJSON('error',
+        'No se pudo generar el Consolidado JSON.',
+        'Motivo: ' + (resp && resp.error ? resp.error : 'respuesta inesperada del servidor.'));
+    }
+  }).catch(function (err) {
+    if (err.message === 'TIMEOUT') {
+      // Respaldo: iniciar el modo asincrono por trigger y sondear el estado.
+      showToast('&#9203; La generacion directa tardo demasiado. Reintentando en segundo plano...', 'warning', 8000);
+      _generarConsolidadoJSONAsync(btn);
+    } else if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+      showToast('&#10060; <strong>No se pudo conectar al servidor.</strong><br>Verifique su conexion a internet e intente de nuevo.', 'danger', 10000);
+    } else {
+      if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+      showToast('&#10060; Error al generar el JSON: ' + err.message, 'danger', 10000);
+    }
+  });
+}
+
+/* _generarConsolidadoJSONAsync — RESPALDO asincrono (via trigger) usado solo si
+ * la generacion directa supera el tiempo maximo de la solicitud HTTP. */
+function _generarConsolidadoJSONAsync(btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Generando en 2º plano...'; }
   apiPost({ action: 'enviarConsolidadoRapido' }, API_TIMEOUT_DEFAULT).then(function (resp) {
     if (resp && resp.ok) {
-      if (btn) btn.innerHTML = '&#8987; Generando en 2º plano...';
       showToast('&#9989; ' + (resp.msg || 'Consolidado JSON generandose en segundo plano.'), 'success', 7000);
       _sondearJSON(btn, 0);
     } else {
@@ -3607,8 +3645,6 @@ function generarConsolidadoJSON() {
     if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
     if (err.message === 'TIMEOUT') {
       showToast('&#9203; La solicitud tardo mas de lo esperado. El proceso pudo iniciarse igualmente; verifique en el VISOR en 1-2 minutos.', 'warning', 12000);
-    } else if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
-      showToast('&#10060; <strong>No se pudo conectar al servidor.</strong><br>Verifique su conexion a internet e intente de nuevo.', 'danger', 10000);
     } else {
       showToast('&#10060; Error al generar el JSON: ' + err.message, 'danger', 10000);
     }
