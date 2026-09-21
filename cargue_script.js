@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbwmggnVs9q4qKUVDPRWYi-yVB2f4HuaUZ43r2ieyRLK7boFDJSxuSP6hTo7on9VYYm3/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzuA2bC59brsYHx3dReWsbjiW0UXwCMR_xM6OoJ61H8gZZn0DlId6koo1BpeDnGk27R/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -3570,6 +3570,65 @@ function _sondearConsolidado(btns, intento) {
       }
     }).catch(function () {
       _sondearConsolidado(btns, intento + 1);
+    });
+  }, 8000);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════
+   12c. GENERAR CONSOLIDADO JSON (v3.22.0)
+   Dispara la lectura completa de las carpetas y guarda consolidado_operacion.json
+   en la carpeta del VISOR. Reusa el job asincrono (enviarConsolidadoRapido), que
+   ademas de la BD_CONSOLIDADO_VISOR emite el archivo JSON real.
+   ═════════════════════════════════════════════════════════════════════════════════ */
+function generarConsolidadoJSON() {
+  var btn = $('btnGenerarJSON');
+  if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Generando JSON...'; }
+
+  showToast('<strong>Generando Consolidado JSON...</strong><br>Se escanean todas las carpetas y se guarda el archivo <code>consolidado_operacion.json</code> en Drive. Esto corre en segundo plano (1-2 min).', 'info', 7000);
+
+  apiPost({ action: 'enviarConsolidadoRapido' }, API_TIMEOUT_DEFAULT).then(function (resp) {
+    if (resp && resp.ok) {
+      if (btn) btn.innerHTML = '&#8987; Generando en 2º plano...';
+      showToast('&#9989; ' + (resp.msg || 'Consolidado JSON generandose en segundo plano.'), 'success', 7000);
+      _sondearJSON(btn, 0);
+    } else {
+      if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+      showToast('&#10060; Error al iniciar: ' + (resp && resp.error ? resp.error : 'Error desconocido'), 'danger', 10000);
+    }
+  }).catch(function (err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+    if (err.message === 'TIMEOUT') {
+      showToast('&#9203; La solicitud tardo mas de lo esperado. El proceso pudo iniciarse igualmente; verifique en el VISOR en 1-2 minutos.', 'warning', 12000);
+    } else if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+      showToast('&#10060; <strong>No se pudo conectar al servidor.</strong><br>Verifique su conexion a internet e intente de nuevo.', 'danger', 10000);
+    } else {
+      showToast('&#10060; Error al generar el JSON: ' + err.message, 'danger', 10000);
+    }
+  });
+}
+
+/* _sondearJSON — sondea el estado del job (cada 8s, hasta ~3 min) y avisa cuando
+ * el consolidado (incluido el archivo JSON) queda listo. */
+function _sondearJSON(btn, intento) {
+  var MAX_INTENTOS = 24;
+  if (intento >= MAX_INTENTOS) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+    showToast('&#8505;️ El consolidado sigue procesando en el servidor. Revise el VISOR en unos minutos.', 'info', 10000);
+    return;
+  }
+  setTimeout(function () {
+    apiPost({ action: 'estadoConsolidadoJob' }, API_TIMEOUT_DEFAULT).then(function (r) {
+      if (r && r.state === 'DONE') {
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+        showToast('&#9989; <strong>Consolidado JSON listo.</strong> ' + (r.msg || (r.fuentes + ' fuentes, ' + r.filas + ' filas.')) + '<br>El VISOR ya puede leer <code>consolidado_operacion.json</code>.', 'success', 12000);
+      } else if (r && (r.state === 'ERROR' || r.state === 'TIMEOUT')) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
+        showToast('&#10060; El proceso en segundo plano no termino: ' + (r.error || r.msg || 'reintente'), 'danger', 12000);
+      } else {
+        _sondearJSON(btn, intento + 1);
+      }
+    }).catch(function () {
+      _sondearJSON(btn, intento + 1);
     });
   }, 8000);
 }
