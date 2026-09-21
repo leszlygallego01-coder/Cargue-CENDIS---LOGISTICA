@@ -1338,7 +1338,7 @@ function t3aValidarTraslado() {
   var estado = $('t3a_estadoTraslado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
 
-  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'asignacion', traslado: traslado })
+  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'asignacion', traslado: traslado }, API_TIMEOUT_HEAVY)
     .then(function (r) {
       if (r && r.encontrado && r.registro) {
         t3aTrasladoValidado = r.registro;
@@ -1667,7 +1667,7 @@ function t3bValidarTraslado() {
       // PASO 2: Buscar datos adicionales en la hoja consolidada de despachos
       // (para traer Codigo, Descripcion, Unidades, Lote, Fecha Venc, etc.)
       var folderConsulta = CONFIG.folders.trasladosConsulta;
-      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoB })
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoB }, API_TIMEOUT_HEAVY)
         .then(function (rConsol) {
           if (rConsol && rConsol.encontrado && rConsol.registro) {
             var reg = rConsol.registro;
@@ -1868,7 +1868,7 @@ function t3cValidarTraslado() {
 
       /* PASO 2: Buscar datos adicionales en consolidados (opcional, no bloquea) */
       var folderConsulta = CONFIG.folders.trasladosConsulta;
-      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoC })
+      apiGet({ action: 'buscarTraslado', folderId: folderConsulta, modulo: 'trasladosConsulta', traslado: trasladoCompletoC }, API_TIMEOUT_HEAVY)
         .then(function (rConsol) {
           if (rConsol && rConsol.encontrado && rConsol.registro) {
             t3cTrasladoValidado.__consolidado = rConsol.registro;
