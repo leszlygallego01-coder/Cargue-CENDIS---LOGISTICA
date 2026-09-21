@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzuA2bC59brsYHx3dReWsbjiW0UXwCMR_xM6OoJ61H8gZZn0DlId6koo1BpeDnGk27R/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbysB3xyiUAL3XG-RafvJBfh2q7wLK7fivXljMWde1nAmtB56bJuMW-gsGNNIopuQqkm/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -395,6 +395,10 @@ var PERFILES = {
   nedi_yojana:             { label: 'Nedi Yojana Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   beatriz_eugenia:         { label: 'Beatriz Eugenia Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   mery_yolanda:            { label: 'Mery Yolanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
+  ayde_carmenza:           { label: 'Ayde Carmenza Bacca Casanova (B10 Bogota)', tarjetas: ['t1','t2','t3','t4'] },
+  elkin_alirio:            { label: 'Elkin Alirio Sierra Parra (B10 Bogota)', tarjetas: ['t1','t2','t3','t4'] },
+  yesenia_labrador:        { label: 'Yesenia Labrador (N40 Bogota)', tarjetas: ['t1','t2','t3','t4'] },
+  sharon_dahiana:          { label: 'Sharon Dahiana Nino Tavera (B10 Bogota)', tarjetas: ['t1','t2','t3','t4'] },
   yeimy_aldana:            { label: 'Yeimy Aldana Auxiliar CEDIS', tarjetas: ['t1','t2','t3'] },
   luzn:                   { label: 'Luzn Lider de Grupo',     tarjetas: ['t1','t2','t3'] },
   luisa:                  { label: 'Luisa Lider de Grupo',     tarjetas: ['t1','t2','t3'] },
@@ -1256,7 +1260,11 @@ var GRUPOS_FIJOS_CARGUE = [
   { nombre: 'B09-3', numero: 11, hex: '#20c997', miembros: ['Luisa Fernanda Garcia Orozco'], lider: 'Luisa Fernanda Garcia Orozco' },
   { nombre: 'B09-4', numero: 12, hex: '#fd7e14', miembros: ['Nedi Yojana Zamora Yandi'], lider: 'Nedi Yojana Zamora Yandi' },
   { nombre: 'B09-5', numero: 13, hex: '#6f42c1', miembros: ['Beatriz Eugenia Urbano Botina'], lider: 'Beatriz Eugenia Urbano Botina' },
-  { nombre: 'B09-6', numero: 14, hex: '#343a40', miembros: ['Mery Yolanda Cadavid Bermudez'], lider: 'Mery Yolanda Cadavid Bermudez' }
+  { nombre: 'B09-6', numero: 14, hex: '#343a40', miembros: ['Mery Yolanda Cadavid Bermudez'], lider: 'Mery Yolanda Cadavid Bermudez' },
+  { nombre: 'B10-1', numero: 15, hex: '#0dcaf0', miembros: ['Ayde Carmenza Bacca Casanova'], bodega: 'B10 BODEGA BOGOTA', lider: 'Ayde Carmenza Bacca Casanova' },
+  { nombre: 'B10-2', numero: 16, hex: '#198754', miembros: ['Elkin Alirio Sierra Parra'], bodega: 'B10 BODEGA BOGOTA', lider: 'Elkin Alirio Sierra Parra' },
+  { nombre: 'N40-1', numero: 17, hex: '#d63384', miembros: ['Yesenia Labrador'], bodega: 'BOD. N40 BOGOTA MEDISFARMA SURTIDROGAS CUNDINAMARCA', lider: 'Yesenia Labrador' },
+  { nombre: 'B10-3', numero: 18, hex: '#6610f2', miembros: ['Sharon Dahiana Nino Tavera'], bodega: 'B10 BODEGA BOGOTA', lider: 'Sharon Dahiana Nino Tavera' }
 ];
 
 /* Vigilantes (solo Seguridad) */
@@ -3620,10 +3628,23 @@ function _sondearJSON(btn, intento) {
     apiPost({ action: 'estadoConsolidadoJob' }, API_TIMEOUT_DEFAULT).then(function (r) {
       if (r && r.state === 'DONE') {
         if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
-        showToast('&#9989; <strong>Consolidado JSON listo.</strong> ' + (r.msg || (r.fuentes + ' fuentes, ' + r.filas + ' filas.')) + '<br>El VISOR ya puede leer <code>consolidado_operacion.json</code>.', 'success', 12000);
+        if (r.jsonOk === false) {
+          // El consolidado se genero pero el archivo JSON fallo: explicar el motivo
+          _mostrarLetreroJSON('error',
+            'No se pudo generar el Consolidado JSON.',
+            'Motivo: ' + (r.jsonError || 'error desconocido al escribir el archivo en la carpeta de Drive.'));
+        } else {
+          _mostrarLetreroJSON('ok',
+            'Consolidado JSON listo &#9989;',
+            'El archivo <code>consolidado_operacion.json</code> ya esta guardado en la carpeta de Drive del VISOR' +
+            (r.jsonBytes ? ' (' + r.jsonBytes + ' bytes).' : '.') +
+            ' ' + (r.msg || ''));
+        }
       } else if (r && (r.state === 'ERROR' || r.state === 'TIMEOUT')) {
         if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Generar Consolidado JSON'; }
-        showToast('&#10060; El proceso en segundo plano no termino: ' + (r.error || r.msg || 'reintente'), 'danger', 12000);
+        _mostrarLetreroJSON('error',
+          'No se pudo generar el Consolidado JSON.',
+          'Motivo: ' + (r.error || r.msg || 'el proceso en segundo plano no finalizo correctamente. Intente nuevamente.'));
       } else {
         _sondearJSON(btn, intento + 1);
       }
@@ -3631,6 +3652,40 @@ function _sondearJSON(btn, intento) {
       _sondearJSON(btn, intento + 1);
     });
   }, 8000);
+}
+
+/* _mostrarLetreroJSON — muestra un letrero/modal claro con el resultado de la
+ * generacion del Consolidado JSON: verde si quedo listo, rojo con el motivo si
+ * fallo. Usa el modal de Bootstrap si esta disponible; si no, cae a un alert. */
+function _mostrarLetreroJSON(tipo, titulo, detalle) {
+  var esOk = (tipo === 'ok');
+  // Toast persistente ademas del letrero
+  try {
+    showToast((esOk ? '&#9989; ' : '&#10060; ') + '<strong>' + titulo + '</strong><br>' + detalle,
+              esOk ? 'success' : 'danger', esOk ? 12000 : 15000);
+  } catch (e) {}
+
+  // Letrero fijo (banner) dentro de la pagina
+  var host = document.getElementById('mfLetreroJSON');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'mfLetreroJSON';
+    host.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:20000;max-width:560px;width:92%;box-shadow:0 8px 30px rgba(0,0,0,.25);border-radius:10px;';
+    document.body.appendChild(host);
+  }
+  host.innerHTML =
+    '<div class="alert ' + (esOk ? 'alert-success' : 'alert-danger') + ' d-flex align-items-start gap-2 mb-0" role="alert" style="border-radius:10px">' +
+      '<span style="font-size:1.5rem;line-height:1">' + (esOk ? '&#9989;' : '&#10060;') + '</span>' +
+      '<div class="flex-grow-1">' +
+        '<div class="fw-bold mb-1">' + titulo + '</div>' +
+        '<div class="small">' + detalle + '</div>' +
+      '</div>' +
+      '<button type="button" class="btn-close" aria-label="Cerrar" onclick="var e=document.getElementById(\'mfLetreroJSON\'); if(e) e.remove();"></button>' +
+    '</div>';
+  // Autocierre solo en caso de exito
+  if (esOk) {
+    setTimeout(function () { var e = document.getElementById('mfLetreroJSON'); if (e) e.remove(); }, 12000);
+  }
 }
 
 function generarBackup() {
