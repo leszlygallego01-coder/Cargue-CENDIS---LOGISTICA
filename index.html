@@ -100,11 +100,6 @@
           <option value="nedi_yojana">&#128119; Nedi Yojana Zamora Yandi (Auxiliar B09)</option>
           <option value="beatriz_eugenia">&#128119; Beatriz Eugenia Urbano Botina (Auxiliar B09)</option>
           <option value="mery_yolanda">&#128119; Mery Yolanda Cadavid Bermudez (Auxiliar B09)</option>
-          <option disabled>────── AUXILIARES BOGOTA ──────</option>
-          <option value="ayde_carmenza">&#128119; Ayde Carmenza Bacca Casanova (B10 Bodega Bogota)</option>
-          <option value="elkin_alirio">&#128119; Elkin Alirio Sierra Parra (B10 Bodega Bogota)</option>
-          <option value="yesenia_labrador">&#128119; Yesenia Labrador (N40 Bogota Cundinamarca)</option>
-          <option value="sharon_dahiana">&#128119; Sharon Dahiana Niño Tavera (B10 Bodega Bogota)</option>
           <option value="" disabled>────── VIGILANTES ──────</option>
           <option value="vig_leidy">&#128737; Leidy (Vigilante)</option>
           <option value="vig_james">&#128737; James (Vigilante)</option>
@@ -147,8 +142,6 @@
     jose_santiago:'Medis2024JoseS', yuliana:'Medis2024Yuliana',
     luisa_fernanda:'Medis2024LuisaF', nedi_yojana:'Medis2024NediY',
     beatriz_eugenia:'Medis2024BeatrizE', mery_yolanda:'Medis2024MeryY',
-    ayde_carmenza:'Medis2024AydeC', elkin_alirio:'Medis2024ElkinA',
-    yesenia_labrador:'Medis2024YeseniaL', sharon_dahiana:'Medis2024SharonD',
     vig_leidy:'Medis2024VigLei', vig_james:'Medis2024VigJam', vig_manuel:'Medis2024VigMan'
   };
   var LABELS = {
@@ -169,10 +162,6 @@
     nedi_yojana:'Nedi Yojana Zamora Yandi (Auxiliar B09)',
     beatriz_eugenia:'Beatriz Eugenia Urbano Botina (Auxiliar B09)',
     mery_yolanda:'Mery Yolanda Cadavid Bermudez (Auxiliar B09)',
-    ayde_carmenza:'Ayde Carmenza Bacca Casanova (B10 Bodega Bogota)',
-    elkin_alirio:'Elkin Alirio Sierra Parra (B10 Bodega Bogota)',
-    yesenia_labrador:'Yesenia Labrador (N40 Bogota Cundinamarca)',
-    sharon_dahiana:'Sharon Dahiana Nino Tavera (B10 Bodega Bogota)',
     vig_leidy:'Leidy (Vigilante)', vig_james:'James (Vigilante)', vig_manuel:'Manuel (Vigilante)'
   };
   /* CLAVES UNIFICADAS — CARGUE y VISOR comparten la misma sesion */
@@ -395,11 +384,6 @@
     </button>
     <!-- v3.19.0: Boton "Enviar datos al Consolidado" ELIMINADO. Las operaciones
          se guardan directamente en Drive y el VISOR las lee de forma automatica. -->
-    <!-- v3.22.0: Boton para generar el consolidado en formato JSON real
-         (consolidado_operacion.json) que el VISOR lee directo para los KPIs. -->
-    <button class="btn btn-mf-azul btn-sm" id="btnGenerarJSON" onclick="generarConsolidadoJSON()">
-      &#128190; Generar Consolidado JSON
-    </button>
     <button class="btn btn-outline-light btn-sm" id="btnCerrarSesion">&#128274; Cerrar Sesion</button>
     <a class="btn btn-outline-light btn-sm" href="https://leszlygallego01-coder.github.io/Informe-de-Operacional-de-CEDIS---LOGISTICO/">Ir al VISOR &rarr;</a>
   </div>
@@ -1091,10 +1075,6 @@
                   <option value="Grupo B09-4 (12) — Nedi Yojana Zamora Yandi" data-color="#fd7e14">B09-4 (12) — Nedi Yojana Zamora Yandi</option>
                   <option value="Grupo B09-5 (13) — Beatriz Eugenia Urbano Botina" data-color="#6f42c1">B09-5 (13) — Beatriz Eugenia Urbano Botina</option>
                   <option value="Grupo B09-6 (14) — Mery Yolanda Cadavid Bermudez" data-color="#343a40">B09-6 (14) — Mery Yolanda Cadavid Bermudez</option>
-                  <option value="Grupo B10-1 (15) — Ayde Carmenza Bacca Casanova (B10 BODEGA BOGOTA)" data-color="#0dcaf0">B10-1 (15) — Ayde Carmenza Bacca Casanova &middot; B10 BODEGA BOGOTA</option>
-                  <option value="Grupo B10-2 (16) — Elkin Alirio Sierra Parra (B10 BODEGA BOGOTA)" data-color="#198754">B10-2 (16) — Elkin Alirio Sierra Parra &middot; B10 BODEGA BOGOTA</option>
-                  <option value="Grupo N40-1 (17) — Yesenia Labrador (BOD. N40 BOGOTA MEDISFARMA SURTIDROGAS CUNDINAMARCA)" data-color="#d63384">N40-1 (17) — Yesenia Labrador &middot; BOD. N40 BOGOTA CUNDINAMARCA</option>
-                  <option value="Grupo B10-3 (18) — Sharon Dahiana Nino Tavera (B10 BODEGA BOGOTA)" data-color="#6610f2">B10-3 (18) — Sharon Dahiana Niño Tavera &middot; B10 BODEGA BOGOTA</option>
                 </select>
               </div>
             </div>
@@ -1179,11 +1159,6 @@
                   <option>Nedi Yojana Zamora Yandi (B09-4)</option>
                   <option>Beatriz Eugenia Urbano Botina (B09-5)</option>
                   <option>Mery Yolanda Cadavid Bermudez (B09-6)</option>
-                  <option disabled>────── BOGOTA ──────</option>
-                  <option>Ayde Carmenza Bacca Casanova (B10)</option>
-                  <option>Elkin Alirio Sierra Parra (B10)</option>
-                  <option>Yesenia Labrador (N40)</option>
-                  <option>Sharon Dahiana Nino Tavera (B10)</option>
                 </select></div>
               <div class="col-md-2"><label class="form-label">Cantidad *</label>
                 <input type="number" class="form-control" id="t3b_cantidad" min="1" step="1" placeholder="0"></div>
@@ -1380,11 +1355,6 @@
                     <option value="Nedi Yojana Zamora Yandi">Nedi Yojana Zamora Yandi (B09)</option>
                     <option value="Beatriz Eugenia Urbano Botina">Beatriz Eugenia Urbano Botina (B09)</option>
                     <option value="Mery Yolanda Cadavid Bermudez">Mery Yolanda Cadavid Bermudez (B09)</option>
-                    <option disabled>──── BOGOTA ────</option>
-                    <option value="Ayde Carmenza Bacca Casanova">Ayde Carmenza Bacca Casanova (B10)</option>
-                    <option value="Elkin Alirio Sierra Parra">Elkin Alirio Sierra Parra (B10)</option>
-                    <option value="Yesenia Labrador">Yesenia Labrador (N40)</option>
-                    <option value="Sharon Dahiana Nino Tavera">Sharon Dahiana Nino Tavera (B10)</option>
                   </select></div>
                 <div class="col-md-2"><label class="form-label">Reviso *</label>
                   <select class="form-select" id="log_revisado">
