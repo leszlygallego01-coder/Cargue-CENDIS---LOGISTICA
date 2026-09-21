@@ -397,9 +397,47 @@
          se guardan directamente en Drive y el VISOR las lee de forma automatica. -->
     <!-- v3.21.0: Genera el JSON consolidado (5 secciones) que el VISOR lee de
          forma inmediata. El backend compila el 100% de las fuentes. -->
-    <button class="btn btn-warning btn-sm fw-bold" id="btnConsolidadoJSON" title="Compila todas las fuentes y genera el consolidado que lee el VISOR">
-      &#128260; Generar Consolidado JSON
-    </button>
+    <!-- v4.1.0: Multi-JSON. Boton principal genera TODOS los modulos; el menu
+         desplegable permite regenerar solo los modulos seleccionados. -->
+    <div class="btn-group" role="group">
+      <button class="btn btn-warning btn-sm fw-bold" id="btnConsolidadoJSON" title="Genera TODOS los JSON por modulo (general, recepcion, novedades, inventario, logistica) que lee el VISOR">
+        &#128260; Generar Consolidado JSON
+      </button>
+      <button type="button" class="btn btn-warning btn-sm fw-bold dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Elegir modulos a actualizar">
+        <span class="visually-hidden">Elegir modulos</span>
+      </button>
+      <div class="dropdown-menu dropdown-menu-end p-3" style="min-width:280px;">
+        <h6 class="dropdown-header px-0">Actualizar modulos seleccionados</h6>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="chkMod_todos">
+          <label class="form-check-label fw-bold" for="chkMod_todos">Todos</label>
+        </div>
+        <hr class="my-2">
+        <div class="form-check">
+          <input class="form-check-input chkMod" type="checkbox" id="chkMod_general" value="general">
+          <label class="form-check-label" for="chkMod_general">General</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input chkMod" type="checkbox" id="chkMod_recepcion" value="recepcion">
+          <label class="form-check-label" for="chkMod_recepcion">Recepci&oacute;n</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input chkMod" type="checkbox" id="chkMod_novedades" value="novedades">
+          <label class="form-check-label" for="chkMod_novedades">Novedades</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input chkMod" type="checkbox" id="chkMod_inventario" value="inventario">
+          <label class="form-check-label" for="chkMod_inventario">Inventario</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input chkMod" type="checkbox" id="chkMod_logistica" value="logistica">
+          <label class="form-check-label" for="chkMod_logistica">Log&iacute;stica</label>
+        </div>
+        <div class="d-grid mt-3">
+          <button type="button" class="btn btn-primary btn-sm fw-bold" id="btnActualizarModulos">&#128260; Actualizar seleccionados</button>
+        </div>
+      </div>
+    </div>
     <button class="btn btn-outline-light btn-sm" id="btnCerrarSesion">&#128274; Cerrar Sesion</button>
     <a class="btn btn-outline-light btn-sm" href="https://leszlygallego01-coder.github.io/Informe-de-Operacional-de-CEDIS---LOGISTICO/">Ir al VISOR &rarr;</a>
   </div>
