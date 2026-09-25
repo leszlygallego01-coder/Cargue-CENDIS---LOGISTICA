@@ -1624,6 +1624,22 @@
                   <div class="col-md-4"><label class="form-label">Observaciones</label>
                     <input type="text" class="form-control" id="log_obs_trasbordo" placeholder="Observaciones (opcional)"></div>
                 </div>
+                <!-- Agregar varios items a la misma planilla -->
+                <div class="d-flex gap-2 align-items-center flex-wrap mb-2 no-print">
+                  <button class="btn btn-outline-secondary btn-sm" type="button" id="log_btnAgregarItemTrasbordo">&#10133; Agregar Item a la Planilla</button>
+                  <span class="text-muted small">Puede agregar varios items (dispensaciones) a la misma planilla; luego guarde toda la planilla.</span>
+                </div>
+                <div class="table-responsive mb-2" id="log_items_trasbordo_wrap" style="display:none">
+                  <table class="table table-sm table-bordered table-hover align-middle" id="log_tabla_items_trasbordo">
+                    <thead class="table-light">
+                      <tr>
+                        <th>#</th><th>Dispensacion</th><th>Direccion</th><th>Telefono</th><th>Ciudad</th>
+                        <th>Unidades</th><th>Tipo Carga</th><th>Temp.</th><th>Observaciones</th><th class="no-print">Quitar</th>
+                      </tr>
+                    </thead>
+                    <tbody id="log_items_trasbordo_body"></tbody>
+                  </table>
+                </div>
                 <div class="d-flex gap-2 mt-3 no-print">
                   <button class="btn btn-purple" id="log_btnGuardarTrasbordo">&#128190; Guardar Trasbordo en Drive</button>
                   <button class="btn btn-outline-secondary" id="log_btnLimpiarTrasbordo">&#129532; Limpiar</button>
