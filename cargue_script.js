@@ -293,15 +293,15 @@ var CONFIG_DEFAULT = {
   },
   folders: {
     trasladosConsulta: '1u30YFhTsocLuUoFrVUnb6Fk9zwVsT_E_',
-    seguridad:        '1I8XfW5vjt5qFkhnd5m6anaUA9ETVHf_N',
-    despachos:         '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
-    asignacion:        '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
-    logistica:         '1_e8ycbznm0jA4kOBwkJuXM4EVdcwXzYe',
-    recepcion:         '1u5aQURkwKw4CqxejzOSxYgeF6dvcj-T0',
-    facturacion:       '1hpRjykdlFyU_nsdXb0ttqOJdHNoXcTG-',
-    inventario:        '11Iml2ggmvAK8aHeUbDGeWbyhLxCtrPoY',
+    seguridad:        '1d9P8I9NPmOLNcahi90S8TorFvRG_ilxs',
+    despachos:         '1HEQjboKit-XZtNgjSj6UCfmCfVH6kRWf',
+    asignacion:        '1HEQjboKit-XZtNgjSj6UCfmCfVH6kRWf',
+    logistica:         '1ponOxmfq4cjYyyDTw72qtoKOFEl7sD1B',
+    recepcion:         '1pVyAXSz6qxCLwuUpQFub-pkoiRYmbe8y',
+    facturacion:       '1IiWdD8dTbQtcZ0MuiOKAMXaNLTROanE4',
+    inventario:        '1eEHhfm5m6NE8hh-58qfhM1xHr0jitOEE',
     rotacion:          '106BTSHLA8giLcW8qkvbJWiqA_7KiDpBi',
-    entrega:           '1tUXm2FVVFWBnyeBrzTlRpobYTKxk7OH8',
+    entrega:           '1HEQjboKit-XZtNgjSj6UCfmCfVH6kRWf',
     backup:            '1HVTZyLasrbZArTN34kmc0lCKaQa2qQ_5'
   },
   perfiles: {
