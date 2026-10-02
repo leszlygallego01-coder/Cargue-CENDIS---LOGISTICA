@@ -3512,14 +3512,19 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
   var btnHtmlOrig = btnComb ? btnComb.innerHTML : '';
   if (btnComb) { btnComb.disabled = true; btnComb.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...'; }
 
-  /* --- PASO 1: Guardar en Drive (POST-only + text/plain, SIN fallback GET que causa "Failed to fetch") --- */
+  /* --- PASO 1: Guardar datos de la planilla (ligero). Devuelve idPlanilla de
+     inmediato; NO genera el PDF aqui, para evitar el timeout/302/CORS que
+     producia el "Failed to fetch". Arquitectura asincrona en 2 pasos v3.30.0. --- */
   apiPostOnly({
-    action: 'guardarDespacho',
+    action: 'guardarPlanillaSeccion2',
     folderId: folderId,
+    folderDestino: folderId,
     modulo: 'logistica',
     planilla: planilla,
-    registros: registrosPlanilla
-  }, API_TIMEOUT_HEAVY)
+    numPlanilla: planilla,
+    registros: registrosPlanilla,
+    registrosPDF: regsPDF
+  }, API_TIMEOUT_DEFAULT)
     .then(function (r) {
       if (r && r.ok) {
         /* Mostrar mensaje de exito de guardado (incluye aviso de duplicados omitidos) */
@@ -3537,21 +3542,25 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
         }
         showToast(msg, (r.omitidos && r.omitidos > 0) ? 'warning' : 'success');
 
-        /* --- PASO 2: Generar PDF (POST-only + timeout extendido para evitar "Failed to fetch") --- */
+        /* --- PASO 2: Solicitar la URL del PDF usando SOLO el idPlanilla (peticion
+           ligera: el backend crea un Google Doc y devuelve el enlace de
+           exportacion directa .../export?format=pdf, sin conversion pesada). --- */
+        var idPlanilla = r.idPlanilla || r.planilla || planilla || 'SIN-PLANILLA';
         apiPostOnly({
-          action: 'generarPDFPlanilla',
+          action: 'generarPdfPlanillaAsincrono',
+          idRegistro: idPlanilla,
           folderId: folderId,
-          modulo: 'logistica',
-          planilla: planilla || 'SIN-PLANILLA',
-          registros: JSON.stringify(regsPDF)
-        }, API_TIMEOUT_HEAVY)
+          folderDestino: folderId,
+          modulo: 'logistica'
+        }, API_TIMEOUT_DEFAULT)
           .then(function (r2) {
             if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
-            if (r2 && r2.ok && r2.url) {
-              window.open(r2.url, '_blank');
+            var pdfLink = r2 && (r2.pdfUrl || r2.url);
+            if (r2 && r2.ok && pdfLink) {
+              window.open(pdfLink, '_blank');
               showToast('&#128196; PDF generado correctamente (' + regsPDF.length + ' traslados).', 'success');
             } else {
-              showToast('Error al generar PDF: ' + (r2.error || 'Respuesta invalida'), 'danger');
+              showToast('Planilla guardada, pero ocurrio un detalle con el PDF: ' + (r2.error || 'Revisar carpeta de Drive.'), 'danger');
             }
             /* Limpiar tabla y campos tras ambas operaciones */
             logDatosDespacho = [];
