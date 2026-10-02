@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyywyc_unVqmRwpu5a53vKX42H8IIMNScojNVIrQj2ZD76Hi6hSQoMi440RL_rzd746/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbzO8a3n5owsoAoenYv2Y1k9bMPiaSikOPBkoYp4sxt_Zoh9Zqyb7ro5szi2ctUbQXQn5Q/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -445,16 +445,14 @@ function cargarConfig() {
   if (!CONFIG.fileIds) CONFIG.fileIds = JSON.parse(JSON.stringify(CONFIG_DEFAULT.fileIds));
   if (!CONFIG.fileIds.trasladosEntrega) CONFIG.fileIds.trasladosEntrega = CONFIG_DEFAULT.fileIds.trasladosEntrega;
   /* URL fija — siempre sobreescribir con el valor por defecto */
-  if (!CONFIG.api_url) CONFIG.api_url = CONFIG_DEFAULT.api_url;
-  var el = $('cfg_api_url'); if (el) { el.value = CONFIG.api_url; el.readOnly = false; el.style.opacity = ''; el.title = 'URL de la Web App (debe terminar en /exec). Pegue la URL de su implementacion ACTIVA y pulse Guardar.'; }
+  CONFIG.api_url = CONFIG_DEFAULT.api_url;
+  var el = $('cfg_api_url'); if (el) { el.value = CONFIG.api_url; el.readOnly = true; el.style.opacity = '0.65'; el.title = 'URL fija — no editable'; }
   var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
   var cc = $('cfg_conductores'); if (cc) cc.value = (CONFIG.conductores || []).join('\n');
 }
 function guardarConfig() {
-  /* URL editable: usar lo que el usuario pegue; si esta vacio, caer al default */
-  var au = $('cfg_api_url');
-  var auVal = au ? au.value.trim() : '';
-  CONFIG.api_url = auVal || CONFIG_DEFAULT.api_url;
+  /* URL fija — ignorar lo que diga el campo, siempre usar default */
+  CONFIG.api_url = CONFIG_DEFAULT.api_url;
   var fb = $('cfg_folder_backup'); if (fb) CONFIG.folders.backup = fb.value.trim();
   var cc = $('cfg_conductores'); if (cc) CONFIG.conductores = cc.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
   localStorage.setItem('MF_CARGUE_CONFIG', JSON.stringify(CONFIG));
@@ -651,7 +649,6 @@ function apiPostOnly(payload, timeoutMs) {
   timeoutMs = timeoutMs || API_TIMEOUT_HEAVY;
   return fetchWithTimeout(url, {
     method: 'POST',
-    mode: 'cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     redirect: 'follow',
     body: JSON.stringify(payload)
@@ -743,7 +740,6 @@ function apiCall(payload, timeoutMs) {
   // --- INTENTO 1: POST con text/plain + timeout ---
   return fetchWithTimeout(url, {
     method: 'POST',
-    mode: 'cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     redirect: 'follow',
     body: JSON.stringify(payload)
@@ -787,7 +783,6 @@ function apiCallGet(payload, timeoutMs) {
 
   return fetchWithTimeout(getUrl, {
     method: 'GET',
-    mode: 'cors',
     redirect: 'follow'
   }, timeoutMs).then(function (r) {
     var ct = (r.headers.get('Content-Type') || '').toLowerCase();
@@ -3922,7 +3917,6 @@ function generarBackup() {
    13. INICIALIZACION
    ═════════════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
-  console.log('[Cargue] build v3.30 — PDF via POST text/plain (sin preflight) + redirect:follow + mode:cors. Si ve este mensaje, el codigo nuevo esta cargado.');
   cargarConfig();
   poblarConductores();
   poblarBodegas();
