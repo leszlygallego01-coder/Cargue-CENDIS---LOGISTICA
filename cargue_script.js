@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbzMeLUJfCXOxbTviXxNR-qc9gTG443X9cO8KF9kfha0v2R_L8W-IdHjFxEQE0GrhOxTMg/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxbdNklwpBz9bXCbgaoKSIUWL0fXdNqU00tGsZGHRL_7_y65aj5lmoII_CZ-2eczJTHFQ/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -1617,9 +1617,9 @@ function t3aGuardarAsignacion() {
       if (r === null) return; // duplicado, ya se mostro error
       if (r && r.ok) {
         if (r.idempotente) {
-          showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> ya estaba guardada (no se duplic&oacute;).', 'success');
+          showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> ya estaba guardada (no se duplic&oacute;).' + _notaConsolidado(r), 'success');
         } else {
-          showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.', 'success');
+          showToast('&#128190; <strong>Asignaci&oacute;n de Traslado</strong> guardada en Drive.' + _notaConsolidado(r), 'success');
         }
         t3aTrasladoValidado = null;
         limpiarSeccionA();
@@ -1858,7 +1858,7 @@ function t3bGuardarEntrega() {
     .then(function (r) {
       if (r === null) return; // duplicado, ya se mostro error
       if (r && r.ok) {
-        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en BD_ENTREGA_A_LOGISTICA.', 'success');
+        showToast('&#128190; <strong>Entrega a Log&iacute;stica</strong> guardada en BD_ENTREGA_A_LOGISTICA.' + _notaConsolidado(r), 'success');
         t3bTrasladoValidado = null;
         limpiarSeccionB();
       } else {
@@ -2364,7 +2364,7 @@ function logGuardarRecepcion() {
       if (r === null) return; /* duplicado bloqueado */
       if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerHTML = '&#128190; Guardar Recepcion en Drive'; }
       if (r && r.ok) {
-        showToast('&#128190; <strong>Recepcion</strong> guardada en Drive.', 'success');
+        showToast('&#128190; <strong>Recepcion</strong> guardada en Drive.' + _notaConsolidado(r), 'success');
         logLimpiar();
       } else {
         showToast('Error al guardar Recepcion: ' + (r.error || ''), 'danger');
@@ -3540,6 +3540,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
         if (r.archivoUrl) {
           msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">&#128279; Abrir archivo en Drive</a>';
         }
+        msg += _notaConsolidado(r);
         showToast(msg, (r.omitidos && r.omitidos > 0) ? 'warning' : 'success');
 
         /* --- PASO 2: Solicitar la URL del PDF usando SOLO el idPlanilla (peticion
@@ -3933,6 +3934,15 @@ function _ctrlEsc(s) {
   return String(s === undefined || s === null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** _notaConsolidado — devuelve un sufijo HTML de confirmacion cuando el backend
+ *  reporta que el CONSOLIDADO_GENERAL_INFORMACION se actualizo correctamente. */
+function _notaConsolidado(r) {
+  if (r && r.consolidadoActualizado) {
+    return ' <span class="badge bg-info text-dark">&#128202; Consolidado General actualizado</span>';
+  }
+  return '';
 }
 
 /** ctrlBuscarPlanillas — consulta el estado de las planillas aplicando filtros. */
