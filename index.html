@@ -467,6 +467,8 @@
       <span class="dot" style="background:#ffc107"></span>5. Cargue de Factura (Transporte)</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t6" type="button">
       <span class="dot" style="background:#8e44ad"></span>6. Verificacion de Inventario</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t7" type="button">
+      <span class="dot" style="background:#fd7e14"></span>7. Control de Conductores</button></li>
   </ul>
 
   <div class="tab-content">
@@ -1770,6 +1772,104 @@
               <thead><tr id="t6_tablaHead"></tr></thead>
               <tbody id="t6_tablaBody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TARJETA 7: CONTROL DE CONDUCTORES / ESTADO DE PLANILLAS            -->
+    <!-- ==================================================================== -->
+    <div class="tab-pane fade" id="t7">
+      <div class="card shadow-sm">
+        <div class="card-header text-white" style="background:#fd7e14">
+          <strong>&#128667; Control de Conductores &mdash; Estado de Planillas</strong>
+        </div>
+        <div class="card-body">
+
+          <!-- Buscador -->
+          <div class="border border-warning rounded-3 p-3 mb-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-4">
+                <label class="form-label">N&deg; Planilla</label>
+                <input type="text" class="form-control" id="t7_fPlanilla" placeholder="Ej: 1024">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Conductor</label>
+                <input type="text" class="form-control" id="t7_fConductor" placeholder="Nombre del conductor">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Placa</label>
+                <input type="text" class="form-control" id="t7_fPlaca" placeholder="Ej: ABC123">
+              </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+              <button class="btn btn-mf-azul" id="t7_btnBuscar">&#128269; Buscar planillas</button>
+              <button class="btn btn-outline-secondary" id="t7_btnLimpiar">Limpiar filtros</button>
+            </div>
+            <div id="t7_estado" class="mf-estado mt-2"></div>
+          </div>
+
+          <!-- Resumen -->
+          <div class="row g-2 mb-3" id="t7_resumen" style="display:none">
+            <div class="col-auto"><span class="badge bg-secondary" id="t7_badgeTotal">Total: 0</span></div>
+            <div class="col-auto"><span class="badge" style="background:#fd7e14" id="t7_badgeTransito">En tr&aacute;nsito: 0</span></div>
+            <div class="col-auto"><span class="badge bg-success" id="t7_badgeEntregado">Entregados: 0</span></div>
+          </div>
+
+          <!-- Tabla de resultados -->
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Planilla</th>
+                  <th>Documento</th>
+                  <th>Conductor</th>
+                  <th>Placa</th>
+                  <th>Destino</th>
+                  <th>Ruta</th>
+                  <th>Estado</th>
+                  <th>Fecha Entrega</th>
+                  <th class="no-print">Acci&oacute;n</th>
+                </tr>
+              </thead>
+              <tbody id="t7_tablaBody">
+                <tr><td colspan="9" class="text-center text-muted">Use el buscador para listar las planillas.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MODAL CONFIRMAR ENTREGA (CONDUCTOR) ==================== -->
+    <div class="modal fade" id="modalEntregaConductor" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header text-white" style="background:#198754">
+            <h5 class="modal-title">&#9989; Confirmar entrega</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="t7m_planilla">
+            <input type="hidden" id="t7m_documento">
+            <input type="hidden" id="t7m_conductor">
+            <input type="hidden" id="t7m_placa">
+            <input type="hidden" id="t7m_bodega">
+            <input type="hidden" id="t7m_ruta">
+            <p class="mb-2">Vas a marcar como <strong class="text-success">ENTREGADO</strong> el siguiente traslado:</p>
+            <ul class="small">
+              <li>Planilla: <strong id="t7m_lblPlanilla">—</strong></li>
+              <li>Documento: <strong id="t7m_lblDocumento">—</strong></li>
+              <li>Conductor: <strong id="t7m_lblConductor">—</strong></li>
+              <li>Placa: <strong id="t7m_lblPlaca">—</strong></li>
+            </ul>
+            <label class="form-label">Observaciones del conductor</label>
+            <textarea class="form-control" id="t7m_observaciones" rows="3" placeholder="Opcional: novedades de la entrega"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" id="t7m_btnConfirmar">&#9989; Confirmar entrega</button>
           </div>
         </div>
       </div>
