@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbz5aWBreFMTvqpzLslbu5A4TRbF2VMKysSmnBcbiL0nxlS6QY6c2I96brAIRSORUnxmBQ/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbyywyc_unVqmRwpu5a53vKX42H8IIMNScojNVIrQj2ZD76Hi6hSQoMi440RL_rzd746/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -649,6 +649,7 @@ function apiPostOnly(payload, timeoutMs) {
   timeoutMs = timeoutMs || API_TIMEOUT_HEAVY;
   return fetchWithTimeout(url, {
     method: 'POST',
+    mode: 'cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     redirect: 'follow',
     body: JSON.stringify(payload)
@@ -740,6 +741,7 @@ function apiCall(payload, timeoutMs) {
   // --- INTENTO 1: POST con text/plain + timeout ---
   return fetchWithTimeout(url, {
     method: 'POST',
+    mode: 'cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     redirect: 'follow',
     body: JSON.stringify(payload)
@@ -783,6 +785,7 @@ function apiCallGet(payload, timeoutMs) {
 
   return fetchWithTimeout(getUrl, {
     method: 'GET',
+    mode: 'cors',
     redirect: 'follow'
   }, timeoutMs).then(function (r) {
     var ct = (r.headers.get('Content-Type') || '').toLowerCase();
@@ -3917,6 +3920,7 @@ function generarBackup() {
    13. INICIALIZACION
    ═════════════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
+  console.log('[Cargue] build v3.30 — PDF via POST text/plain (sin preflight) + redirect:follow + mode:cors. Si ve este mensaje, el codigo nuevo esta cargado.');
   cargarConfig();
   poblarConductores();
   poblarBodegas();
