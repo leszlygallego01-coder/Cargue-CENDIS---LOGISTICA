@@ -668,6 +668,25 @@ function apiPostOnly(payload, timeoutMs) {
 }
 
 /**
+ * _msgErrorConexion — convierte un error de red crudo en un mensaje de
+ * diagnostico claro. "Failed to fetch" en un POST text/plain (que NO dispara
+ * preflight) significa que el navegador no pudo contactar la Web App: casi
+ * siempre es un problema de DESPLIEGUE, no del codigo.
+ */
+function _msgErrorConexion(err) {
+  var m = (err && err.message) ? err.message : String(err || '');
+  if (m.indexOf('Failed to fetch') !== -1 || m.indexOf('NetworkError') !== -1 || m.indexOf('Load failed') !== -1) {
+    return 'No se pudo contactar la Web App (Failed to fetch). El codigo envia un POST correcto; '
+      + 'el fallo es del despliegue. Verifique: (1) publico una implementacion NUEVA (Implementar \u2192 Nueva implementacion), '
+      + '(2) acceso "Cualquier usuario", (3) la URL termina en /exec. Recargue con Ctrl+Shift+R y revise F12 \u2192 Network.';
+  }
+  if (m === 'TIMEOUT') {
+    return 'El servidor tardo demasiado. Intente de nuevo; si persiste, reduzca la cantidad de traslados de la planilla.';
+  }
+  return 'Error de conexion: ' + m;
+}
+
+/**
  * fetchWithTimeout — fetch con timeout robusto.
  * Usa AbortController si esta disponible, si no recurre a Promise.race.
  */
@@ -2849,7 +2868,12 @@ function logGuardarTrasbordo() {
           if (r2 && r2.ok && r2.url) {
             window.open(r2.url, '_blank');
             showToast('&#128196; PDF de trasbordo generado.', 'success');
+          } else {
+            showToast('Error al generar PDF de trasbordo: ' + ((r2 && r2.error) || 'Respuesta invalida'), 'danger');
           }
+        })
+        .catch(function (errPdf) {
+          showToast(_msgErrorConexion(errPdf), 'danger');
         });
       trasbordoItems = [];
       logRenderItemsTrasbordo();
@@ -2858,7 +2882,7 @@ function logGuardarTrasbordo() {
     }
   })
   .catch(function (err) {
-    showToast('Error de conexion: ' + err.message, 'danger');
+    showToast(_msgErrorConexion(err), 'danger');
   });
 }
 
@@ -3542,7 +3566,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
           })
           .catch(function (err2) {
             if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
-            showToast('Error de conexion al generar PDF: ' + err2.message, 'danger');
+            showToast(_msgErrorConexion(err2), 'danger');
           });
       } else {
         /* Error al guardar en Drive */
@@ -3556,7 +3580,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
     })
     .catch(function (err) {
       if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
-      showToast('Error de conexion: ' + err.message, 'danger');
+      showToast(_msgErrorConexion(err), 'danger');
     });
 }
 
