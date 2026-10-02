@@ -399,14 +399,14 @@ var LABELS_PERFIL = {
 };
 /* Perfiles y sus tarjetas visibles (reordenadas) */
 var PERFILES = {
-  administrador:           { label: 'Administrador',            tarjetas: ['t1','t2','t3','t4','t5','t6'] },
-  log_diego:               { label: 'Diego Logistica CENDIS',   tarjetas: ['t4'] },
-  log_angelica:            { label: 'Angelica Logistica CENDIS', tarjetas: ['t4'] },
-  log_lorena:              { label: 'Lorena Logistica CENDIS', tarjetas: ['t4'] },
-  log_jenny:               { label: 'Jenny Logistica CENDIS',  tarjetas: ['t4'] },
-  log_mario:               { label: 'Mario Hernan Lozada Parra Logistica B10', tarjetas: ['t4'] },
-  log_willian:             { label: 'Willian David Pertuz Logistica B10', tarjetas: ['t4'] },
-  log_arley:               { label: 'Arley Rojas Sandoval Logistica B10', tarjetas: ['t4'] },
+  administrador:           { label: 'Administrador',            tarjetas: ['t1','t2','t3','t4','t5','t6','t7'] },
+  log_diego:               { label: 'Diego Logistica CENDIS',   tarjetas: ['t4','t7'] },
+  log_angelica:            { label: 'Angelica Logistica CENDIS', tarjetas: ['t4','t7'] },
+  log_lorena:              { label: 'Lorena Logistica CENDIS', tarjetas: ['t4','t7'] },
+  log_jenny:               { label: 'Jenny Logistica CENDIS',  tarjetas: ['t4','t7'] },
+  log_mario:               { label: 'Mario Hernan Lozada Parra Logistica B10', tarjetas: ['t4','t7'] },
+  log_willian:             { label: 'Willian David Pertuz Logistica B10', tarjetas: ['t4','t7'] },
+  log_arley:               { label: 'Arley Rojas Sandoval Logistica B10', tarjetas: ['t4','t7'] },
   jose_santiago:           { label: 'Jose Santiago Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
   yuliana:                 { label: 'Yuliana Auxiliar B09',     tarjetas: ['t1','t2','t3','t4'] },
   luisa_fernanda:          { label: 'Luisa Fernanda Auxiliar B09', tarjetas: ['t1','t2','t3','t4'] },
@@ -498,7 +498,7 @@ function aplicarPerfil() {
   else if (AUXILIARES_INDIVIDUALES.indexOf(perfil) >= 0 && B09_USERS.indexOf(perfil) < 0 && !PERFILES[perfil]) perfil = 'auxiliar';
   var def = PERFILES[perfil] || PERFILES.administrador;
   var visibles = def.tarjetas;
-  var todas = ['t1','t2','t3','t4','t5','t6'];
+  var todas = ['t1','t2','t3','t4','t5','t6','t7'];
   todas.forEach(function (tid) {
     var pane = $(tid);
     var tab = document.querySelector('[data-bs-target="#' + tid + '"]');
@@ -3925,6 +3925,182 @@ function generarBackup() {
 /* ═════════════════════════════════════════════════════════════════════════════════
    13. INICIALIZACION
    ═════════════════════════════════════════════════════════════════════════════════ */
+/* Cache de los items consultados para resolver datos al confirmar la entrega. */
+var ctrlItemsCache = [];
+
+/** _ctrlEsc — escapa texto para insertarlo de forma segura en HTML. */
+function _ctrlEsc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** ctrlBuscarPlanillas — consulta el estado de las planillas aplicando filtros. */
+function ctrlBuscarPlanillas() {
+  var estado = $('t7_estado');
+  var tbody = $('t7_tablaBody');
+  var filtro = {
+    planilla:  ($('t7_fPlanilla')  ? $('t7_fPlanilla').value  : '').trim(),
+    conductor: ($('t7_fConductor') ? $('t7_fConductor').value : '').trim(),
+    placa:     ($('t7_fPlaca')     ? $('t7_fPlaca').value     : '').trim()
+  };
+
+  if (estado) { estado.className = 'mf-estado mt-2 text-primary'; estado.innerHTML = '&#8987; Consultando estado de planillas...'; }
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Consultando...</td></tr>';
+
+  apiPost({ action: 'consultarEstadoPlanillas', planilla: filtro.planilla, conductor: filtro.conductor, placa: filtro.placa })
+    .then(function (resp) {
+      if (!resp || !resp.ok) {
+        var msg = (resp && resp.error) ? resp.error : 'No se pudo consultar el estado de las planillas.';
+        if (estado) { estado.className = 'mf-estado mt-2 text-danger'; estado.innerHTML = '&#10060; ' + _ctrlEsc(msg); }
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">' + _ctrlEsc(msg) + '</td></tr>';
+        showToast('&#10060; ' + msg, 'error');
+        return;
+      }
+      ctrlItemsCache = resp.items || [];
+      ctrlRenderTabla(ctrlItemsCache);
+      var res = $('t7_resumen');
+      if (res) res.style.display = '';
+      if ($('t7_badgeTotal'))     $('t7_badgeTotal').textContent     = 'Total: ' + (resp.total || 0);
+      if ($('t7_badgeTransito'))  $('t7_badgeTransito').textContent  = 'En transito: ' + (resp.enTransito || 0);
+      if ($('t7_badgeEntregado')) $('t7_badgeEntregado').textContent = 'Entregados: ' + (resp.entregados || 0);
+      if (estado) {
+        if ((resp.total || 0) === 0) {
+          estado.className = 'mf-estado mt-2 text-warning';
+          estado.innerHTML = '&#9888;&#65039; No se encontraron planillas con esos criterios.';
+        } else {
+          estado.className = 'mf-estado mt-2 text-success';
+          estado.innerHTML = '&#9989; Se encontraron ' + resp.total + ' traslado(s).';
+        }
+      }
+    })
+    .catch(function (err) {
+      var msg = _msgErrorConexion(err);
+      if (estado) { estado.className = 'mf-estado mt-2 text-danger'; estado.innerHTML = '&#10060; ' + _ctrlEsc(msg); }
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">' + _ctrlEsc(msg) + '</td></tr>';
+      showToast('&#10060; ' + msg, 'error');
+    });
+}
+
+/** ctrlRenderTabla — pinta la tabla con badges de estado y boton de entrega. */
+function ctrlRenderTabla(items) {
+  var tbody = $('t7_tablaBody');
+  if (!tbody) return;
+  if (!items || !items.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Sin resultados.</td></tr>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var entregado = String(it.estado || '').toUpperCase().indexOf('ENTREG') >= 0;
+    var badge = entregado
+      ? '<span class="badge bg-success">&#9989; ENTREGADO</span>'
+      : '<span class="badge" style="background:#fd7e14;color:#fff">&#128666; EN TRANSITO</span>';
+    var accion = entregado
+      ? '<span class="text-success small">Confirmado</span>'
+      : '<button class="btn btn-sm btn-success ctrl-btn-entregar" data-idx="' + i + '">&#9989; Confirmar</button>';
+    html += '<tr>'
+      + '<td>' + _ctrlEsc(it.planilla) + '</td>'
+      + '<td>' + _ctrlEsc(it.documento) + '</td>'
+      + '<td>' + _ctrlEsc(it.conductor) + '</td>'
+      + '<td>' + _ctrlEsc(it.placa) + '</td>'
+      + '<td>' + _ctrlEsc(it.bodegaDestino) + '</td>'
+      + '<td>' + _ctrlEsc(it.ruta) + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td>' + _ctrlEsc(it.fechaEntrega) + '</td>'
+      + '<td class="no-print">' + accion + '</td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+  var btns = tbody.querySelectorAll('.ctrl-btn-entregar');
+  for (var b = 0; b < btns.length; b++) {
+    btns[b].addEventListener('click', function () {
+      var ix = parseInt(this.getAttribute('data-idx'), 10);
+      ctrlAbrirModalEntrega(ix);
+    });
+  }
+}
+
+/** ctrlLimpiarFiltros — limpia campos y resultados. */
+function ctrlLimpiarFiltros() {
+  if ($('t7_fPlanilla'))  $('t7_fPlanilla').value = '';
+  if ($('t7_fConductor')) $('t7_fConductor').value = '';
+  if ($('t7_fPlaca'))     $('t7_fPlaca').value = '';
+  if ($('t7_estado'))     $('t7_estado').innerHTML = '';
+  if ($('t7_resumen'))    $('t7_resumen').style.display = 'none';
+  ctrlItemsCache = [];
+  var tbody = $('t7_tablaBody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Use el buscador para listar las planillas.</td></tr>';
+}
+
+/** ctrlAbrirModalEntrega — abre el modal de confirmacion con los datos del item. */
+function ctrlAbrirModalEntrega(ix) {
+  var it = ctrlItemsCache[ix];
+  if (!it) return;
+  if ($('t7m_planilla'))  $('t7m_planilla').value  = it.planilla || '';
+  if ($('t7m_documento')) $('t7m_documento').value = it.documento || '';
+  if ($('t7m_conductor')) $('t7m_conductor').value = it.conductor || '';
+  if ($('t7m_placa'))     $('t7m_placa').value     = it.placa || '';
+  if ($('t7m_bodega'))    $('t7m_bodega').value    = it.bodegaDestino || '';
+  if ($('t7m_ruta'))      $('t7m_ruta').value      = it.ruta || '';
+  if ($('t7m_lblPlanilla'))  $('t7m_lblPlanilla').textContent  = it.planilla || '\u2014';
+  if ($('t7m_lblDocumento')) $('t7m_lblDocumento').textContent = it.documento || '\u2014';
+  if ($('t7m_lblConductor')) $('t7m_lblConductor').textContent = it.conductor || '\u2014';
+  if ($('t7m_lblPlaca'))     $('t7m_lblPlaca').textContent     = it.placa || '\u2014';
+  if ($('t7m_observaciones')) $('t7m_observaciones').value = '';
+  var modalEl = document.getElementById('modalEntregaConductor');
+  if (modalEl && typeof bootstrap !== 'undefined') {
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+}
+
+/** ctrlConfirmarEntrega — envia la confirmacion al backend y refresca la tabla. */
+function ctrlConfirmarEntrega() {
+  var btn = $('t7m_btnConfirmar');
+  var payload = {
+    action: 'confirmarEntregaConductor',
+    planilla:  ($('t7m_planilla')  ? $('t7m_planilla').value  : '').trim(),
+    documento: ($('t7m_documento') ? $('t7m_documento').value : '').trim(),
+    conductor: ($('t7m_conductor') ? $('t7m_conductor').value : '').trim(),
+    placa:     ($('t7m_placa')     ? $('t7m_placa').value     : '').trim(),
+    bodegaDestino: ($('t7m_bodega') ? $('t7m_bodega').value : '').trim(),
+    ruta:      ($('t7m_ruta')      ? $('t7m_ruta').value      : '').trim(),
+    observaciones: ($('t7m_observaciones') ? $('t7m_observaciones').value : '').trim(),
+    usuario:   (typeof nombreUsuario === 'function' ? nombreUsuario() : '')
+  };
+  if (!payload.planilla && !payload.documento) {
+    showToast('&#10060; Falta la planilla o el documento de traslado.', 'error');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Registrando...'; }
+
+  apiPost(payload)
+    .then(function (resp) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '&#9989; Confirmar entrega'; }
+      if (!resp || !resp.ok) {
+        var msg = (resp && resp.error) ? resp.error : 'No se pudo registrar la entrega.';
+        showToast('&#10060; ' + msg, 'error');
+        return;
+      }
+      var modalEl = document.getElementById('modalEntregaConductor');
+      if (modalEl && typeof bootstrap !== 'undefined') {
+        var inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+      }
+      var okMsg = resp.mensaje || 'Entrega registrada exitosamente.';
+      if (resp.consolidado && resp.consolidado.ok) {
+        okMsg += ' ' + (resp.consolidado.mensaje || '');
+      }
+      showToast('&#9989; ' + okMsg, 'success');
+      ctrlBuscarPlanillas();
+    })
+    .catch(function (err) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '&#9989; Confirmar entrega'; }
+      showToast('&#10060; ' + _msgErrorConexion(err), 'error');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   cargarConfig();
   poblarConductores();
@@ -3996,6 +4172,15 @@ document.addEventListener('DOMContentLoaded', function () {
   btn = $('t5_btnGuardar'); if (btn) btn.addEventListener('click', t5Guardar);
   btn = $('t6_btnAgregar'); if (btn) btn.addEventListener('click', t6AgregarItem);
   btn = $('t6_btnGuardar'); if (btn) btn.addEventListener('click', t6Guardar);
+
+  // Tarjeta 7: Control de Conductores / Estado de Planillas
+  btn = $('t7_btnBuscar');  if (btn) btn.addEventListener('click', ctrlBuscarPlanillas);
+  btn = $('t7_btnLimpiar'); if (btn) btn.addEventListener('click', ctrlLimpiarFiltros);
+  btn = $('t7m_btnConfirmar'); if (btn) btn.addEventListener('click', ctrlConfirmarEntrega);
+  ['t7_fPlanilla','t7_fConductor','t7_fPlaca'].forEach(function (id) {
+    var inp = $(id);
+    if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ctrlBuscarPlanillas(); });
+  });
 
   // API / config
   btn = $('btnProbarApi'); if (btn) btn.addEventListener('click', probarApi);
