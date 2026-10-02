@@ -287,7 +287,7 @@ function autocompletarRuta(inputDestinoId, inputRutaId) {
    1. CONFIGURACION POR DEFECTO
    ═════════════════════════════════════════════════════════════════════════════════ */
 var CONFIG_DEFAULT = {
-  api_url: 'https://script.google.com/macros/s/AKfycbyZehCkdsOOSh9gfJHrJttHDZbNlutdFC7QkXGFsb01apd0z6mpdsZQHIVFz5h1vbyvwg/exec',
+  api_url: 'https://script.google.com/macros/s/AKfycbxagJKSrC8F9F9qV10bV8l8zxldIDPDqkO_0vrl4BI2ZMM0wYkBnleKlUM7zd2W9j7-mQ/exec',
   fileIds: {
     trasladosEntrega: '1tkV0zSCigfxxukJ_Khdl-BYkw3Ex3tcGpiCS8gnGe_o'
   },
@@ -611,6 +611,26 @@ function apiGet(params, timeoutMs) {
   return apiCall(params, timeoutMs);
 }
 
+/**
+ * apiReadGetFirst — Para acciones de SOLO LECTURA (buscar/consultar).
+ * v3.27.0: Invierte el orden habitual: intenta GET primero (el metodo mas
+ * fiable para CORS con Apps Script Web Apps, el mismo que usa "Probar API"),
+ * y solo si GET falla por red reintenta con POST. Esto resuelve el caso en
+ * que el POST con redireccion 302 de Apps Script es rechazado por el
+ * navegador con "Failed to fetch" aunque la Web App este bien desplegada.
+ */
+function apiReadGetFirst(params, timeoutMs) {
+  return apiCallGet(params, timeoutMs).catch(function (err) {
+    var m = (err && err.message) ? err.message : '';
+    // Si GET fallo por red/CORS/timeout, intentar POST como respaldo.
+    if (m.indexOf('Failed to fetch') !== -1 || m.indexOf('NetworkError') !== -1 ||
+        m.indexOf('Load failed') !== -1 || m === 'TIMEOUT') {
+      return apiCall(params, timeoutMs);
+    }
+    throw err;
+  });
+}
+
 function apiPost(payload, timeoutMs) {
   return apiCall(payload, timeoutMs);
 }
@@ -687,7 +707,7 @@ function apiCall(payload, timeoutMs) {
       // Reintentar con GET y mismo timeout
       return apiCallGet(payload, timeoutMs);
     }
-    if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1)) {
+    if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1 || err.message.indexOf('Load failed') !== -1)) {
       console.log('[apiCall] POST fallo, reintentando con GET...');
       return apiCallGet(payload, timeoutMs);
     }
@@ -2049,16 +2069,28 @@ function logActualizarSeleccion() {
 function logBuscar() {
   var traslado = $('log_traslado') ? $('log_traslado').value.trim() : '';
   if (!traslado) { showToast('Ingrese el numero de traslado (completo o ultimos 5 digitos).', 'danger'); return; }
-  /* Seccion 1 busca en BD_ENTREGA_A_LOGISTICA (archivo consolidado de entrega) */
-  var fileId = '1xC5Nj2VMNgh6N5XIfMTN-aJ2i8nQExANAEhgthWRNpU';
-  var sheetGid = '1372653954';
+  /* Seccion 1 busca en BD_ENTREGA_A_LOGISTICA (Spreadsheet de entrega).
+     v3.25.0: se apunta al Spreadsheet correcto por ID y a la pestana por
+     NOMBRE (no por gid, que estaba stale). Carpeta de respaldo (fallback)
+     para que el backend resuelva por carpeta si el ID no estuviera disponible.
+     Esto evita el escaneo multi-archivo que agotaba el tiempo (Failed to fetch). */
+  var fileId = '1HsmE7zK5zoWZjyDGAxUyNMr4dLsRb6zwLim-Uil-f-o';
+  var sheetName = 'BD_ENTREGA_A_LOGISTICA';
+  var folderFallback = '1HEQjboKit-XZtNgjSj6UCfmCfVH6kRWf';
   var folderId = $('folder_despachos_t4') ? $('folder_despachos_t4').value.trim() : CONFIG.folders.despachos;
   var estado = $('log_estadoTraslado');
   var despachoEstado = $('log_despacho_estado');
   if (estado) estado.innerHTML = '<span class="badge bg-warning text-dark">Buscando...</span>';
   if (despachoEstado) despachoEstado.textContent = '';
 
-  apiGet({ action: 'buscarTraslado', folderId: folderId, modulo: 'entrega', traslado: traslado, fileId: fileId, sheetGid: sheetGid })
+  /* v3.30.0: Se iguala al MISMO mecanismo de envio de las secciones que ya
+     funcionan (asignacion / consulta): apiPost = POST con text/plain primero
+     (sin headers extra que disparen preflight CORS), con GET como respaldo
+     automatico. Antes esta seccion usaba apiReadGetFirst (GET-primero), que
+     era la unica que fallaba con "Failed to fetch". Se mantiene action
+     'buscarTraslado' + modulo 'entrega' y la forma de respuesta {encontrado,
+     registro} que el backend ya devuelve y que logLlenarCamposTraslado espera. */
+  apiPost({ action: 'buscarTraslado', folderId: folderId, modulo: 'entrega', traslado: traslado, fileId: fileId, sheetName: sheetName, folderFallback: folderFallback })
     .then(function (r) {
       if (r && r.encontrado) {
         /* --- Multiples coincidencias: mostrar selector --- */
