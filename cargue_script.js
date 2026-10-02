@@ -3369,16 +3369,16 @@ function logGuardarYDescargar() {
     logGenerarConsecutivo().then(function (cons) {
       if (cons) {
         logVerificarPlanillaDuplicada(cons, folderId).then(function (verif) {
-          if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
+          if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Se continuara y se generara el PDF igualmente.', 'warning'); }
           logGuardarYDescargarEjecutar(cons, conductor, placa, folderId, seleccionados, bodegaOrigenPrincipal);
         });
       }
     });
     return;
   }
-  /* v3.8: Verificar planilla duplicada (despacho + trasbordo) antes de guardar */
+  /* v3.16: Verificar planilla duplicada solo como aviso — NO bloquear la generacion del PDF */
   logVerificarPlanillaDuplicada(planilla, folderId).then(function (verif) {
-    if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Cambie la planilla antes de guardar.', 'danger'); return; }
+    if (verif.duplicado) { showToast('\u26a0 ' + verif.mensaje + ' Se continuara y se generara el PDF igualmente.', 'warning'); }
     logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, seleccionados, bodegaOrigenPrincipal);
   });
 }
@@ -3462,12 +3462,20 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
   })
     .then(function (r) {
       if (r && r.ok) {
-        /* Mostrar mensaje de exito de guardado */
-        var msg = '&#128190; <strong>Despacho</strong> con Planilla ' + planilla + ' guardado (' + registrosPlanilla.length + ' traslados).';
+        /* Mostrar mensaje de exito de guardado (incluye aviso de duplicados omitidos) */
+        var msg;
+        if (r.omitidos && r.omitidos > 0) {
+          msg = '&#128190; <strong>Despacho</strong> Planilla ' + planilla + ': ' + (r.guardados || 0) + ' traslado(s) guardado(s), ' + r.omitidos + ' omitido(s) por duplicado. Se generara el PDF igualmente.';
+          if (r.duplicados && r.duplicados.length > 0) {
+            msg += '<br><small>Duplicados: ' + r.duplicados.join(', ') + '</small>';
+          }
+        } else {
+          msg = '&#128190; <strong>Despacho</strong> con Planilla ' + planilla + ' guardado (' + (r.guardados || registrosPlanilla.length) + ' traslados).';
+        }
         if (r.archivoUrl) {
           msg += '<br><a href="' + r.archivoUrl + '" target="_blank" class="alert-link">&#128279; Abrir archivo en Drive</a>';
         }
-        showToast(msg, 'success');
+        showToast(msg, (r.omitidos && r.omitidos > 0) ? 'warning' : 'success');
 
         /* --- PASO 2: Generar PDF --- */
         apiGet({
