@@ -3558,8 +3558,19 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
             if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
             var pdfLink = r2 && (r2.pdfUrl || r2.url);
             if (r2 && r2.ok && pdfLink) {
-              window.open(pdfLink, '_blank');
-              showToast('&#128196; PDF generado correctamente (' + regsPDF.length + ' traslados).', 'success');
+              /* v3.33.0: window.open dentro de un callback asincrono suele ser
+                 bloqueado por el navegador (no es un gesto directo del usuario),
+                 por eso el PDF "no se abria". Intentamos abrir y SIEMPRE dejamos
+                 un enlace visible como respaldo para que el usuario lo descargue. */
+              var win = null;
+              try { win = window.open(pdfLink, '_blank'); } catch (eOpen) { win = null; }
+              var bloqueado = (!win || win.closed || typeof win.closed === 'undefined');
+              var msgPdf = '&#128196; <strong>PDF generado</strong> (' + regsPDF.length + ' traslados).' +
+                           '<br><a href="' + pdfLink + '" target="_blank" class="alert-link">&#11015;&#65039; Descargar / abrir el PDF de la planilla</a>';
+              if (bloqueado) {
+                msgPdf += '<br><small>Si no se abrio solo, toque el enlace de arriba (el navegador bloqueo la ventana emergente).</small>';
+              }
+              showToast(msgPdf, 'success');
             } else {
               showToast('Planilla guardada, pero ocurrio un detalle con el PDF: ' + (r2.error || 'Revisar carpeta de Drive.'), 'danger');
             }
