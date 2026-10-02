@@ -445,14 +445,16 @@ function cargarConfig() {
   if (!CONFIG.fileIds) CONFIG.fileIds = JSON.parse(JSON.stringify(CONFIG_DEFAULT.fileIds));
   if (!CONFIG.fileIds.trasladosEntrega) CONFIG.fileIds.trasladosEntrega = CONFIG_DEFAULT.fileIds.trasladosEntrega;
   /* URL fija — siempre sobreescribir con el valor por defecto */
-  CONFIG.api_url = CONFIG_DEFAULT.api_url;
-  var el = $('cfg_api_url'); if (el) { el.value = CONFIG.api_url; el.readOnly = true; el.style.opacity = '0.65'; el.title = 'URL fija — no editable'; }
+  if (!CONFIG.api_url) CONFIG.api_url = CONFIG_DEFAULT.api_url;
+  var el = $('cfg_api_url'); if (el) { el.value = CONFIG.api_url; el.readOnly = false; el.style.opacity = ''; el.title = 'URL de la Web App (debe terminar en /exec). Pegue la URL de su implementacion ACTIVA y pulse Guardar.'; }
   var fb = $('cfg_folder_backup'); if (fb) fb.value = CONFIG.folders.backup || '';
   var cc = $('cfg_conductores'); if (cc) cc.value = (CONFIG.conductores || []).join('\n');
 }
 function guardarConfig() {
-  /* URL fija — ignorar lo que diga el campo, siempre usar default */
-  CONFIG.api_url = CONFIG_DEFAULT.api_url;
+  /* URL editable: usar lo que el usuario pegue; si esta vacio, caer al default */
+  var au = $('cfg_api_url');
+  var auVal = au ? au.value.trim() : '';
+  CONFIG.api_url = auVal || CONFIG_DEFAULT.api_url;
   var fb = $('cfg_folder_backup'); if (fb) CONFIG.folders.backup = fb.value.trim();
   var cc = $('cfg_conductores'); if (cc) CONFIG.conductores = cc.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
   localStorage.setItem('MF_CARGUE_CONFIG', JSON.stringify(CONFIG));
