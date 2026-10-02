@@ -636,6 +636,38 @@ function apiPost(payload, timeoutMs) {
 }
 
 /**
+ * apiPostOnly — POST con timeout, SIN fallback a GET.
+ * v3.16: Imprescindible para acciones con payload grande (generarPDFPlanilla /
+ * generarPDFTrasbordo): el fallback GET arma una URL con todos los registros
+ * serializados y supera el limite de longitud de URL de Apps Script, lo que el
+ * navegador reporta como "Failed to fetch". Al forzar POST-only ese fallback
+ * nunca se dispara. Usa timeout extendido por defecto (operacion pesada).
+ */
+function apiPostOnly(payload, timeoutMs) {
+  var url = CONFIG.api_url;
+  if (!url) return Promise.reject(new Error('URL de API no configurada.'));
+  timeoutMs = timeoutMs || API_TIMEOUT_HEAVY;
+  return fetchWithTimeout(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    redirect: 'follow',
+    body: JSON.stringify(payload)
+  }, timeoutMs).then(function (r) {
+    var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+    if (ct.indexOf('text/html') !== -1) {
+      throw new Error('La Web App requiere autenticacion. Desplieguela con acceso "Cualquier usuario" (publico).');
+    }
+    return r.json();
+  }).catch(function (err) {
+    var m = (err && err.message) ? err.message : '';
+    if (m === 'TIMEOUT') {
+      throw new Error('El servidor tardo demasiado en generar el PDF. Intente de nuevo; si persiste, reduzca la cantidad de traslados de la planilla.');
+    }
+    throw err;
+  });
+}
+
+/**
  * fetchWithTimeout — fetch con timeout robusto.
  * Usa AbortController si esta disponible, si no recurre a Promise.race.
  */
@@ -885,7 +917,11 @@ function t1Guardar() {
   apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'seguridad', registro: registro })
     .then(function (r) {
       if (r && r.ok) {
-        showToast('&#128190; Registro de <strong>Seguridad</strong> guardado correctamente en Drive.', 'success');
+        if (r.duplicado) {
+          showToast('\u26a0 Este registro de <strong>Seguridad</strong> ya existia (Guia/Factura/Proveedor); no se duplico.', 'warning');
+        } else {
+          showToast('&#128190; Registro de <strong>Seguridad</strong> guardado correctamente en Drive.', 'success');
+        }
         limpiarCampos('s_');
       } else {
         showToast('Error al guardar Seguridad: ' + (r.error || ''), 'danger');
@@ -2776,7 +2812,7 @@ function logGuardarTrasbordo() {
       if (idx >= items.length) return Promise.resolve({ ok: true, guardados: items.length });
       var reg = _regTrasbordo(items[idx]);
       idx++;
-      return apiPost({ action: 'guardarTrasbordo', folderId: folderId, planilla: pl, registro: reg })
+      return apiPostOnly({ action: 'guardarTrasbordo', folderId: folderId, planilla: pl, registro: reg }, API_TIMEOUT_HEAVY)
         .then(function (r) {
           if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'Error al guardar item ' + idx };
           return paso();
@@ -2808,7 +2844,7 @@ function logGuardarTrasbordo() {
       showToast('&#128190; <strong>Trasbordo</strong> guardado con Planilla ' + planilla + ' (' + items.length + ' item(s)).', 'success');
       /* Generar PDF de trasbordo con todos los items */
       var regsPDF = items.map(function (it) { return _regTrasbordo(it); });
-      apiPost({ action: 'generarPDFTrasbordo', folderId: folderId, planilla: planilla, registro: JSON.stringify(regsPDF[0]), items: JSON.stringify(regsPDF) })
+      apiPostOnly({ action: 'generarPDFTrasbordo', folderId: folderId, planilla: planilla, registro: JSON.stringify(regsPDF[0]), items: JSON.stringify(regsPDF) }, API_TIMEOUT_HEAVY)
         .then(function (r2) {
           if (r2 && r2.ok && r2.url) {
             window.open(r2.url, '_blank');
@@ -3452,14 +3488,14 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
   var btnHtmlOrig = btnComb ? btnComb.innerHTML : '';
   if (btnComb) { btnComb.disabled = true; btnComb.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...'; }
 
-  /* --- PASO 1: Guardar en Drive (archivo consolidado) --- */
-  apiPost({
+  /* --- PASO 1: Guardar en Drive (POST-only + text/plain, SIN fallback GET que causa "Failed to fetch") --- */
+  apiPostOnly({
     action: 'guardarDespacho',
     folderId: folderId,
     modulo: 'logistica',
     planilla: planilla,
     registros: registrosPlanilla
-  })
+  }, API_TIMEOUT_HEAVY)
     .then(function (r) {
       if (r && r.ok) {
         /* Mostrar mensaje de exito de guardado (incluye aviso de duplicados omitidos) */
@@ -3477,14 +3513,14 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
         }
         showToast(msg, (r.omitidos && r.omitidos > 0) ? 'warning' : 'success');
 
-        /* --- PASO 2: Generar PDF --- */
-        apiGet({
+        /* --- PASO 2: Generar PDF (POST-only + timeout extendido para evitar "Failed to fetch") --- */
+        apiPostOnly({
           action: 'generarPDFPlanilla',
           folderId: folderId,
           modulo: 'logistica',
           planilla: planilla || 'SIN-PLANILLA',
           registros: JSON.stringify(regsPDF)
-        })
+        }, API_TIMEOUT_HEAVY)
           .then(function (r2) {
             if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
             if (r2 && r2.ok && r2.url) {
@@ -3553,7 +3589,11 @@ function t5Guardar() {
   apiPost({ action: 'guardarRegistro', folderId: folderId, modulo: 'facturacion', registro: registro })
     .then(function (r) {
       if (r && r.ok) {
-        showToast('&#128190; <strong>Factura</strong> guardada en Drive.', 'success');
+        if (r.duplicado) {
+          showToast('\u26a0 Esta <strong>Factura</strong> ya existia (Factura/Proveedor/Guia); no se duplico.', 'warning');
+        } else {
+          showToast('&#128190; <strong>Factura</strong> guardada en Drive.', 'success');
+        }
         limpiarCampos('f_');
       } else {
         showToast('Error al guardar Factura: ' + (r.error || ''), 'danger');
