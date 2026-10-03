@@ -4285,18 +4285,9 @@ function ctrlConfirmarEntrega() {
       }
       showToast('&#9989; ' + okMsg, 'success');
 
-      // Resultado del PDF de la planilla (se genera y guarda en Drive al confirmar).
-      if (resp.pdf) {
-        if (resp.pdf.ok) {
-          var pdfMsg = '&#128196; ' + (resp.pdf.mensaje || 'PDF de la planilla generado y guardado en Drive.');
-          if (resp.pdf.url) {
-            pdfMsg += ' <a href="' + resp.pdf.url + '" target="_blank" rel="noopener">Abrir PDF</a>';
-          }
-          showToast(pdfMsg, 'success');
-        } else {
-          showToast('&#10060; No se pudo generar el PDF de la planilla: ' + (resp.pdf.mensaje || 'motivo desconocido.'), 'error');
-        }
-      }
+      // El PDF ya NO se genera ni se guarda en Drive al confirmar la entrega
+      // (eliminado a peticion del usuario). La descarga del PDF en el PC sigue
+      // disponible desde el flujo de la Seccion 2.
       ctrlBuscarPlanillas();
     })
     .catch(function (err) {
