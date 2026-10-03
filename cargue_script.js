@@ -4085,9 +4085,10 @@ function ctrlAbrirModalEntrega(ix) {
   if (modalEl && typeof bootstrap !== 'undefined') {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
-  // Preparar el lienzo de firma una vez visible (medidas correctas).
+  // Preparar el lienzo de firma. El evento shown.bs.modal lo ajusta con las
+  // medidas reales; el timeout es un respaldo por si el evento no dispara.
   _mfFirmaRegistrarEventos();
-  setTimeout(function () { _mfFirmaPrepararCanvas(); }, 250);
+  setTimeout(function () { _mfFirmaPrepararCanvas(false); }, 400);
 }
 
 /* ===================== FIRMA DIGITAL (modal confirmar entrega) ===================== */
@@ -4096,24 +4097,44 @@ var _mfFirmaDibujando = false;
 var _mfFirmaConContenido = false;
 var _mfFirmaInit = false;
 
-/** _mfFirmaPrepararCanvas — ajusta la resolucion del canvas a su tamano real y limpia. */
-function _mfFirmaPrepararCanvas() {
+/** _mfFirmaPrepararCanvas — ajusta la resolucion del canvas a su tamano real y limpia.
+ *  Si preservar=true, conserva el trazo actual (reescalado) al cambiar de tamano. */
+function _mfFirmaPrepararCanvas(preservar) {
   var canvas = $('t7m_firmaCanvas');
   if (!canvas) return;
+  // Guardar el trazo actual si hay que preservarlo (p. ej. al rotar el celular).
+  var prev = null;
+  if (preservar && _mfFirmaConContenido) {
+    try { prev = canvas.toDataURL('image/png'); } catch (e) { prev = null; }
+  }
   var ratio = window.devicePixelRatio || 1;
   var rect = canvas.getBoundingClientRect();
-  var w = rect.width || 500;
-  var h = rect.height || 180;
+  // Ancho/alto REALES en pantalla; si aun no hay layout, usar el contenedor.
+  var w = rect.width;
+  if (!w || w < 2) {
+    var cont = canvas.parentNode;
+    w = (cont && cont.clientWidth) ? cont.clientWidth - 8 : 300;
+  }
+  var h = rect.height || 200;
   canvas.width = Math.round(w * ratio);
   canvas.height = Math.round(h * ratio);
   _mfFirmaCtx = canvas.getContext('2d');
+  _mfFirmaCtx.setTransform(1, 0, 0, 1, 0, 0);
   _mfFirmaCtx.scale(ratio, ratio);
-  _mfFirmaCtx.lineWidth = 2.2;
+  _mfFirmaCtx.lineWidth = 2.4;
   _mfFirmaCtx.lineCap = 'round';
   _mfFirmaCtx.lineJoin = 'round';
   _mfFirmaCtx.strokeStyle = '#1a1a1a';
-  _mfFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _mfFirmaCtx.clearRect(0, 0, w, h);
   _mfFirmaConContenido = false;
+  // Restaurar el trazo previo ajustado al nuevo tamano.
+  if (prev) {
+    var img = new Image();
+    img.onload = function () {
+      try { _mfFirmaCtx.drawImage(img, 0, 0, w, h); _mfFirmaConContenido = true; } catch (e) {}
+    };
+    img.src = prev;
+  }
 }
 
 /** _mfFirmaCoord — obtiene las coordenadas (x,y) relativas al canvas desde mouse o touch. */
@@ -4154,9 +4175,12 @@ function _mfFirmaEnd(ev) {
 
 /** _mfFirmaLimpiar — borra el trazo de la firma. */
 function _mfFirmaLimpiar() {
-  if (!_mfFirmaCtx) { _mfFirmaPrepararCanvas(); return; }
   var canvas = $('t7m_firmaCanvas');
+  if (!canvas || !_mfFirmaCtx) { _mfFirmaPrepararCanvas(); return; }
+  _mfFirmaCtx.save();
+  _mfFirmaCtx.setTransform(1, 0, 0, 1, 0, 0);
   _mfFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _mfFirmaCtx.restore();
   _mfFirmaConContenido = false;
 }
 
@@ -4179,8 +4203,25 @@ function _mfFirmaRegistrarEventos() {
   canvas.addEventListener('touchstart', _mfFirmaStart, { passive: false });
   canvas.addEventListener('touchmove', _mfFirmaMove, { passive: false });
   canvas.addEventListener('touchend', _mfFirmaEnd);
+  canvas.addEventListener('touchcancel', _mfFirmaEnd);
   var btnLimpiar = $('t7m_btnLimpiarFirma');
   if (btnLimpiar) btnLimpiar.addEventListener('click', _mfFirmaLimpiar);
+  // Preparar el lienzo cuando el modal YA esta visible (medidas correctas).
+  var modalEl = document.getElementById('modalEntregaConductor');
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function () { _mfFirmaPrepararCanvas(false); });
+  }
+  // Reajustar al rotar / cambiar tamano el celular, preservando la firma.
+  window.addEventListener('resize', function () {
+    var mEl = document.getElementById('modalEntregaConductor');
+    if (mEl && mEl.classList.contains('show')) _mfFirmaPrepararCanvas(true);
+  });
+  window.addEventListener('orientationchange', function () {
+    var mEl = document.getElementById('modalEntregaConductor');
+    if (mEl && mEl.classList.contains('show')) {
+      setTimeout(function () { _mfFirmaPrepararCanvas(true); }, 300);
+    }
+  });
   _mfFirmaInit = true;
 }
 
