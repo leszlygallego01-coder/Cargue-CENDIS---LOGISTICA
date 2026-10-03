@@ -4097,10 +4097,10 @@ var _mfFirmaDibujando = false;
 var _mfFirmaConContenido = false;
 var _mfFirmaInit = false;
 
-/** _mfFirmaPrepararCanvas — ajusta la resolucion interna del canvas a su tamano
- *  real en pantalla. NO usa ctx.scale: el mapeo de coordenadas se hace de forma
- *  explicita en _mfFirmaCoord, lo que evita que el trazo quede confinado a una
- *  zona si la medida llega mal. Si preservar=true conserva el trazo al redimensionar. */
+/** _mfFirmaPrepararCanvas — fija de forma EXPLICITA el tamano visible del canvas
+ *  (canvas.style) y su resolucion interna (canvas.width/height). No depende de la
+ *  hoja de estilos: asi se evita que el canvas se desborde del modal y solo quede
+ *  usable el tercio izquierdo. Si preservar=true conserva el trazo al redimensionar. */
 function _mfFirmaPrepararCanvas(preservar) {
   var canvas = $('t7m_firmaCanvas');
   if (!canvas) return;
@@ -4109,15 +4109,18 @@ function _mfFirmaPrepararCanvas(preservar) {
     try { prev = canvas.toDataURL('image/png'); } catch (e) { prev = null; }
   }
   var ratio = window.devicePixelRatio || 1;
-  var rect = canvas.getBoundingClientRect();
-  var w = rect.width;
-  if (!w || w < 2) {
-    var cont = canvas.parentNode;
-    w = (cont && cont.clientWidth) ? cont.clientWidth - 8 : 300;
-  }
-  var h = rect.height || 220;
-  canvas.width = Math.round(w * ratio);
-  canvas.height = Math.round(h * ratio);
+  // Ancho visible objetivo: el del contenedor (recuadro) menos su padding.
+  var cont = canvas.parentNode;
+  var contW = (cont && cont.clientWidth) ? cont.clientWidth : 0;
+  var cssW = contW ? (contW - 8) : (canvas.getBoundingClientRect().width || 300);
+  if (cssW < 40) cssW = 300;
+  var cssH = (window.innerWidth && window.innerWidth <= 576) ? 260 : 220;
+  // 1) Forzar el tamano VISIBLE (display) del canvas.
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  // 2) Fijar la resolucion INTERNA proporcional a la densidad de pantalla.
+  canvas.width  = Math.round(cssW * ratio);
+  canvas.height = Math.round(cssH * ratio);
   _mfFirmaCtx = canvas.getContext('2d');
   _mfFirmaCtx.setTransform(1, 0, 0, 1, 0, 0);
   _mfFirmaCtx.lineWidth = 2.4 * ratio;
@@ -4215,6 +4218,17 @@ function _mfFirmaRegistrarEventos() {
   if (modalEl) {
     modalEl.addEventListener('shown.bs.modal', function () { _mfFirmaPrepararCanvas(false); });
   }
+  // ResizeObserver: ajustar el lienzo en cuanto el recuadro tenga tamano real
+  // o cambie (rotar el celular, cambiar el ancho del modal), preservando la firma.
+  if (typeof ResizeObserver !== 'undefined') {
+    try {
+      var ro = new ResizeObserver(function () {
+        var mEl = document.getElementById('modalEntregaConductor');
+        if (mEl && mEl.classList.contains('show')) _mfFirmaPrepararCanvas(true);
+      });
+      ro.observe(canvas.parentNode);
+    } catch (e) {}
+  }
   // Reajustar al rotar / cambiar tamano el celular, preservando la firma.
   window.addEventListener('resize', function () {
     var mEl = document.getElementById('modalEntregaConductor');
@@ -4270,6 +4284,19 @@ function ctrlConfirmarEntrega() {
         okMsg += ' ' + (resp.consolidado.mensaje || '');
       }
       showToast('&#9989; ' + okMsg, 'success');
+
+      // Resultado del PDF de la planilla (se genera y guarda en Drive al confirmar).
+      if (resp.pdf) {
+        if (resp.pdf.ok) {
+          var pdfMsg = '&#128196; ' + (resp.pdf.mensaje || 'PDF de la planilla generado y guardado en Drive.');
+          if (resp.pdf.url) {
+            pdfMsg += ' <a href="' + resp.pdf.url + '" target="_blank" rel="noopener">Abrir PDF</a>';
+          }
+          showToast(pdfMsg, 'success');
+        } else {
+          showToast('&#10060; No se pudo generar el PDF de la planilla: ' + (resp.pdf.mensaje || 'motivo desconocido.'), 'error');
+        }
+      }
       ctrlBuscarPlanillas();
     })
     .catch(function (err) {
