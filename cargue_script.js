@@ -4097,57 +4097,61 @@ var _mfFirmaDibujando = false;
 var _mfFirmaConContenido = false;
 var _mfFirmaInit = false;
 
-/** _mfFirmaPrepararCanvas — ajusta la resolucion del canvas a su tamano real y limpia.
- *  Si preservar=true, conserva el trazo actual (reescalado) al cambiar de tamano. */
+/** _mfFirmaPrepararCanvas — ajusta la resolucion interna del canvas a su tamano
+ *  real en pantalla. NO usa ctx.scale: el mapeo de coordenadas se hace de forma
+ *  explicita en _mfFirmaCoord, lo que evita que el trazo quede confinado a una
+ *  zona si la medida llega mal. Si preservar=true conserva el trazo al redimensionar. */
 function _mfFirmaPrepararCanvas(preservar) {
   var canvas = $('t7m_firmaCanvas');
   if (!canvas) return;
-  // Guardar el trazo actual si hay que preservarlo (p. ej. al rotar el celular).
   var prev = null;
   if (preservar && _mfFirmaConContenido) {
     try { prev = canvas.toDataURL('image/png'); } catch (e) { prev = null; }
   }
   var ratio = window.devicePixelRatio || 1;
   var rect = canvas.getBoundingClientRect();
-  // Ancho/alto REALES en pantalla; si aun no hay layout, usar el contenedor.
   var w = rect.width;
   if (!w || w < 2) {
     var cont = canvas.parentNode;
     w = (cont && cont.clientWidth) ? cont.clientWidth - 8 : 300;
   }
-  var h = rect.height || 200;
+  var h = rect.height || 220;
   canvas.width = Math.round(w * ratio);
   canvas.height = Math.round(h * ratio);
   _mfFirmaCtx = canvas.getContext('2d');
   _mfFirmaCtx.setTransform(1, 0, 0, 1, 0, 0);
-  _mfFirmaCtx.scale(ratio, ratio);
-  _mfFirmaCtx.lineWidth = 2.4;
+  _mfFirmaCtx.lineWidth = 2.4 * ratio;
   _mfFirmaCtx.lineCap = 'round';
   _mfFirmaCtx.lineJoin = 'round';
   _mfFirmaCtx.strokeStyle = '#1a1a1a';
-  _mfFirmaCtx.clearRect(0, 0, w, h);
+  _mfFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
   _mfFirmaConContenido = false;
-  // Restaurar el trazo previo ajustado al nuevo tamano.
   if (prev) {
     var img = new Image();
     img.onload = function () {
-      try { _mfFirmaCtx.drawImage(img, 0, 0, w, h); _mfFirmaConContenido = true; } catch (e) {}
+      try { _mfFirmaCtx.drawImage(img, 0, 0, canvas.width, canvas.height); _mfFirmaConContenido = true; } catch (e) {}
     };
     img.src = prev;
   }
 }
 
-/** _mfFirmaCoord — obtiene las coordenadas (x,y) relativas al canvas desde mouse o touch. */
+/** _mfFirmaCoord — convierte coordenadas de pantalla (mouse/touch) a coordenadas
+ *  INTERNAS del canvas usando el factor real buffer/pantalla. Este mapeo explicito
+ *  garantiza que el trazo abarque todo el ancho, sin importar el tamano del buffer. */
 function _mfFirmaCoord(ev) {
   var canvas = $('t7m_firmaCanvas');
   var rect = canvas.getBoundingClientRect();
   var cx, cy;
   if (ev.touches && ev.touches.length) {
     cx = ev.touches[0].clientX; cy = ev.touches[0].clientY;
+  } else if (ev.changedTouches && ev.changedTouches.length) {
+    cx = ev.changedTouches[0].clientX; cy = ev.changedTouches[0].clientY;
   } else {
     cx = ev.clientX; cy = ev.clientY;
   }
-  return { x: cx - rect.left, y: cy - rect.top };
+  var sx = rect.width  ? (canvas.width  / rect.width)  : 1;
+  var sy = rect.height ? (canvas.height / rect.height) : 1;
+  return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
 }
 
 function _mfFirmaStart(ev) {
