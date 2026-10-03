@@ -1866,6 +1866,26 @@
               <li>Conductor: <strong id="t7m_lblConductor">—</strong></li>
               <li>Placa: <strong id="t7m_lblPlaca">—</strong></li>
             </ul>
+            <div class="row g-2 mb-2">
+              <div class="col-md-7">
+                <label class="form-label">Nombre del Regente</label>
+                <input type="text" class="form-control" id="t7m_regente" placeholder="Nombre completo del regente">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label">C&eacute;dula de Ciudadan&iacute;a</label>
+                <input type="text" class="form-control" id="t7m_cedula" inputmode="numeric" placeholder="N&uacute;mero de c&eacute;dula">
+              </div>
+            </div>
+            <div class="mb-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label mb-1">Firma Digital</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="t7m_btnLimpiarFirma">&#128465; Limpiar firma</button>
+              </div>
+              <div class="mf-firma-wrap">
+                <canvas id="t7m_firmaCanvas" class="mf-firma-canvas"></canvas>
+              </div>
+              <small class="text-muted">Dibuje la firma dentro del recuadro con el mouse o el dedo.</small>
+            </div>
             <label class="form-label">Observaciones del conductor</label>
             <textarea class="form-control" id="t7m_observaciones" rows="3" placeholder="Opcional: novedades de la entrega"></textarea>
           </div>
