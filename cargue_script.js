@@ -606,6 +606,7 @@ function pintarPerfiles() {
 /** Timeout por defecto para llamadas API (ms) */
 var API_TIMEOUT_DEFAULT = 30000;   // 30s — operaciones normales
 var API_TIMEOUT_HEAVY   = 120000;  // 120s — procesarYConsolidarDrive
+var API_TIMEOUT_PDF     = 60000;   // 60s — generacion/conversion de PDF (Apps Script tarda en convertir la plantilla)
 
 function apiGet(params, timeoutMs) {
   return apiCall(params, timeoutMs);
@@ -689,21 +690,29 @@ function _msgErrorConexion(err) {
 /**
  * fetchWithTimeout — fetch con timeout robusto.
  * Usa AbortController si esta disponible, si no recurre a Promise.race.
+ * v3.34.0:
+ *   - 'redirect: follow' GARANTIZADO en ambas ramas (OBLIGATORIO para procesar
+ *     el 302 que Google Apps Script emite al devolver el resultado; sin esto el
+ *     navegador reporta un falso "CORS error").
+ *   - El timeout se puede ampliar por operacion (p.ej. API_TIMEOUT_PDF = 60s)
+ *     para que el navegador NO cancele la conexion mientras GAS convierte el PDF.
  */
 function fetchWithTimeout(url, options, timeoutMs) {
   timeoutMs = timeoutMs || API_TIMEOUT_DEFAULT;
 
+  // Clonar opciones y forzar redirect:'follow' si el llamador no lo definio.
+  var baseOpts = {};
+  if (options) { for (var ko in options) { if (options.hasOwnProperty(ko)) baseOpts[ko] = options[ko]; } }
+  if (!baseOpts.redirect) baseOpts.redirect = 'follow';
+
   // Intento 1: AbortController (navegadores modernos)
   if (typeof AbortController !== 'undefined') {
     var controller = new AbortController();
-    var signal = controller.signal;
-    var mergedOpts = {};
-    for (var k in options) { if (options.hasOwnProperty(k)) mergedOpts[k] = options[k]; }
-    mergedOpts.signal = signal;
+    baseOpts.signal = controller.signal;
 
     var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
 
-    return fetch(url, mergedOpts).then(function (r) {
+    return fetch(url, baseOpts).then(function (r) {
       clearTimeout(timer);
       return r;
     }).catch(function (err) {
@@ -716,7 +725,7 @@ function fetchWithTimeout(url, options, timeoutMs) {
   }
 
   // Intento 2: Promise.race (fallback para navegadores sin AbortController)
-  var fetchPromise = fetch(url, options);
+  var fetchPromise = fetch(url, baseOpts);
   var timeoutPromise = new Promise(function (_, reject) {
     setTimeout(function () { reject(new Error('TIMEOUT')); }, timeoutMs);
   });
@@ -3524,7 +3533,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
     numPlanilla: planilla,
     registros: registrosPlanilla,
     registrosPDF: regsPDF
-  }, API_TIMEOUT_DEFAULT)
+  }, API_TIMEOUT_PDF)
     .then(function (r) {
       if (r && r.ok) {
         /* Mostrar mensaje de exito de guardado (incluye aviso de duplicados omitidos) */
@@ -3553,7 +3562,7 @@ function logGuardarYDescargarEjecutar(planilla, conductor, placa, folderId, sele
           folderId: folderId,
           folderDestino: folderId,
           modulo: 'logistica'
-        }, API_TIMEOUT_DEFAULT)
+        }, API_TIMEOUT_PDF)
           .then(function (r2) {
             if (btnComb) { btnComb.disabled = false; btnComb.innerHTML = btnHtmlOrig; }
             var pdfLink = r2 && (r2.pdfUrl || r2.url);
@@ -4070,10 +4079,109 @@ function ctrlAbrirModalEntrega(ix) {
   if ($('t7m_lblConductor')) $('t7m_lblConductor').textContent = it.conductor || '\u2014';
   if ($('t7m_lblPlaca'))     $('t7m_lblPlaca').textContent     = it.placa || '\u2014';
   if ($('t7m_observaciones')) $('t7m_observaciones').value = '';
+  if ($('t7m_regente')) $('t7m_regente').value = '';
+  if ($('t7m_cedula'))  $('t7m_cedula').value  = '';
   var modalEl = document.getElementById('modalEntregaConductor');
   if (modalEl && typeof bootstrap !== 'undefined') {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
+  // Preparar el lienzo de firma una vez visible (medidas correctas).
+  _mfFirmaRegistrarEventos();
+  setTimeout(function () { _mfFirmaPrepararCanvas(); }, 250);
+}
+
+/* ===================== FIRMA DIGITAL (modal confirmar entrega) ===================== */
+var _mfFirmaCtx = null;
+var _mfFirmaDibujando = false;
+var _mfFirmaConContenido = false;
+var _mfFirmaInit = false;
+
+/** _mfFirmaPrepararCanvas — ajusta la resolucion del canvas a su tamano real y limpia. */
+function _mfFirmaPrepararCanvas() {
+  var canvas = $('t7m_firmaCanvas');
+  if (!canvas) return;
+  var ratio = window.devicePixelRatio || 1;
+  var rect = canvas.getBoundingClientRect();
+  var w = rect.width || 500;
+  var h = rect.height || 180;
+  canvas.width = Math.round(w * ratio);
+  canvas.height = Math.round(h * ratio);
+  _mfFirmaCtx = canvas.getContext('2d');
+  _mfFirmaCtx.scale(ratio, ratio);
+  _mfFirmaCtx.lineWidth = 2.2;
+  _mfFirmaCtx.lineCap = 'round';
+  _mfFirmaCtx.lineJoin = 'round';
+  _mfFirmaCtx.strokeStyle = '#1a1a1a';
+  _mfFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _mfFirmaConContenido = false;
+}
+
+/** _mfFirmaCoord — obtiene las coordenadas (x,y) relativas al canvas desde mouse o touch. */
+function _mfFirmaCoord(ev) {
+  var canvas = $('t7m_firmaCanvas');
+  var rect = canvas.getBoundingClientRect();
+  var cx, cy;
+  if (ev.touches && ev.touches.length) {
+    cx = ev.touches[0].clientX; cy = ev.touches[0].clientY;
+  } else {
+    cx = ev.clientX; cy = ev.clientY;
+  }
+  return { x: cx - rect.left, y: cy - rect.top };
+}
+
+function _mfFirmaStart(ev) {
+  if (!_mfFirmaCtx) _mfFirmaPrepararCanvas();
+  _mfFirmaDibujando = true;
+  var p = _mfFirmaCoord(ev);
+  _mfFirmaCtx.beginPath();
+  _mfFirmaCtx.moveTo(p.x, p.y);
+  ev.preventDefault();
+}
+
+function _mfFirmaMove(ev) {
+  if (!_mfFirmaDibujando || !_mfFirmaCtx) return;
+  var p = _mfFirmaCoord(ev);
+  _mfFirmaCtx.lineTo(p.x, p.y);
+  _mfFirmaCtx.stroke();
+  _mfFirmaConContenido = true;
+  ev.preventDefault();
+}
+
+function _mfFirmaEnd(ev) {
+  _mfFirmaDibujando = false;
+  if (ev) ev.preventDefault();
+}
+
+/** _mfFirmaLimpiar — borra el trazo de la firma. */
+function _mfFirmaLimpiar() {
+  if (!_mfFirmaCtx) { _mfFirmaPrepararCanvas(); return; }
+  var canvas = $('t7m_firmaCanvas');
+  _mfFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _mfFirmaConContenido = false;
+}
+
+/** _mfFirmaDataURL — devuelve la firma como PNG data URI, o '' si esta vacia. */
+function _mfFirmaDataURL() {
+  var canvas = $('t7m_firmaCanvas');
+  if (!canvas || !_mfFirmaConContenido) return '';
+  try { return canvas.toDataURL('image/png'); } catch (e) { return ''; }
+}
+
+/** _mfFirmaRegistrarEventos — enlaza una sola vez los listeners del canvas. */
+function _mfFirmaRegistrarEventos() {
+  if (_mfFirmaInit) return;
+  var canvas = $('t7m_firmaCanvas');
+  if (!canvas) return;
+  canvas.addEventListener('mousedown', _mfFirmaStart);
+  canvas.addEventListener('mousemove', _mfFirmaMove);
+  canvas.addEventListener('mouseup', _mfFirmaEnd);
+  canvas.addEventListener('mouseleave', _mfFirmaEnd);
+  canvas.addEventListener('touchstart', _mfFirmaStart, { passive: false });
+  canvas.addEventListener('touchmove', _mfFirmaMove, { passive: false });
+  canvas.addEventListener('touchend', _mfFirmaEnd);
+  var btnLimpiar = $('t7m_btnLimpiarFirma');
+  if (btnLimpiar) btnLimpiar.addEventListener('click', _mfFirmaLimpiar);
+  _mfFirmaInit = true;
 }
 
 /** ctrlConfirmarEntrega — envia la confirmacion al backend y refresca la tabla. */
@@ -4088,6 +4196,9 @@ function ctrlConfirmarEntrega() {
     bodegaDestino: ($('t7m_bodega') ? $('t7m_bodega').value : '').trim(),
     ruta:      ($('t7m_ruta')      ? $('t7m_ruta').value      : '').trim(),
     observaciones: ($('t7m_observaciones') ? $('t7m_observaciones').value : '').trim(),
+    nombreRegente: ($('t7m_regente') ? $('t7m_regente').value : '').trim(),
+    cedula:    ($('t7m_cedula') ? $('t7m_cedula').value : '').trim(),
+    firma:     _mfFirmaDataURL(),
     usuario:   (typeof nombreUsuario === 'function' ? nombreUsuario() : '')
   };
   if (!payload.planilla && !payload.documento) {
